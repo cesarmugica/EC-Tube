@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+windows/dist/
+windows/out/
+windows/.build/
+windows/cache/
+src/ectube_build.py

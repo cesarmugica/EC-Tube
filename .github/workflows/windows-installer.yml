@@ -1,0 +1,61 @@
+# Compila el instalador de Windows de EC-Tube en GitHub (no se instala nada en tu PC).
+# - Cada push a main compila EC-Tube-Setup (pestaña Actions).
+# - Si APP_VERSION (src/ectube_server.py) es nueva, publica un Release con el .exe.
+name: Instalador Windows
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar PyInstaller e Inno Setup
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+
+      - name: Compilar instalador
+        shell: pwsh
+        run: ./windows/build.ps1
+
+      - name: Guardar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: EC-Tube-Setup
+          path: windows/out/*.exe
+          if-no-files-found: error
+
+      - name: Publicar Release (si la versión es nueva)
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $exe = Get-ChildItem windows/out/*.exe | Select-Object -First 1
+          $version = (Select-String -Path src/ectube_server.py -Pattern '^APP_VERSION = "(.+)"').Matches[0].Groups[1].Value
+          $tag = "v$version"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host "La versión $tag ya está publicada; súbele APP_VERSION para publicar otra."; exit 0 }
+          (Get-FileHash $exe.FullName -Algorithm SHA256).Hash + "  " + $exe.Name | Out-File windows/out/SHA256SUMS.txt -Encoding ascii
+          # Notas: la sección "## <versión>" de CHANGELOG.md, si existe.
+          $notes = "Instalador de Windows de EC-Tube. Descarga EC-Tube-Setup-$version.exe y ejecútalo."
+          $changelog = Get-Content CHANGELOG.md -Raw -Encoding UTF8
+          $match = [regex]::Match($changelog, "(?ms)^## " + [regex]::Escape($version) + "\b.*?(?=^## |\z)")
+          if ($match.Success) { $notes = $match.Value.Trim() + "`n`n---`nInstalador: **EC-Tube-Setup-$version.exe**. Historial completo: CHANGELOG.md" }
+          Set-Content -Path release-notes.md -Value $notes -Encoding UTF8
+          gh release create $tag $exe.FullName windows/out/SHA256SUMS.txt --target $env:GITHUB_SHA --title "EC-Tube $tag" --notes-file release-notes.md
+          exit 0

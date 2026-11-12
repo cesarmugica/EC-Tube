@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EC-Tube</title>
+  <link rel="icon" href="/img/ectube.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
+      --bg: #121416; --surface: #1b1e21; --surface-2: #252a2e; --surface-3: #30363b;
+      --border: #2e3439; --muted: #9aa3aa; --text: #f2f4f5;
+      --accent: #6c4ce6; --accent-strong: #8569ff; --ok: #6fcf97; --warn: #f2c94c; --danger: #ff7a70;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); }
+    body { min-height: 100vh; }
+    button, select, textarea { font: inherit; }
+    button { border: 0; border-radius: 10px; padding: 10px 14px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; transition: background .15s, opacity .15s; }
+    button:hover:not(:disabled) { background: var(--accent-strong); }
+    button:disabled { opacity: .5; cursor: default; }
+    button.secondary { background: var(--surface-2); color: var(--text); }
+    button.secondary:hover:not(:disabled) { background: var(--surface-3); }
+    button.link { background: none; padding: 0; color: var(--muted); font-weight: 500; text-decoration: underline; }
+    button.link:hover:not(:disabled) { background: none; color: var(--text); }
+    button:focus-visible, select:focus-visible, textarea:focus-visible, .seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px clamp(16px, 4vw, 36px); border-bottom: 1px solid var(--border); background: var(--surface); }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand img { width: 42px; height: 42px; border-radius: 12px; }
+    .brand h1 { margin: 0; font-size: 1.3rem; }
+    .brand small, .engine { color: var(--muted); font-size: .78rem; }
+    .engine { text-align: right; }
+
+    main { max-width: 980px; margin: 0 auto; padding: 22px clamp(16px, 4vw, 36px) 40px; display: grid; gap: 18px; }
+    .panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 18px; }
+    label.title { display: block; margin-bottom: 8px; font-weight: 600; }
+    textarea { width: 100%; min-height: 92px; resize: vertical; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); padding: 12px; line-height: 1.45; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 14px; }
+    .row .grow { flex: 1 1 auto; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .seg label { position: relative; }
+    .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .seg span { display: block; padding: 9px 16px; color: var(--muted); font-weight: 600; cursor: pointer; }
+    .seg input:checked + span { background: var(--accent); color: #fff; }
+    .field { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+    select { border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text); padding: 8px 10px; }
+    .folder { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .folder code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-family: inherit; font-size: .88rem; }
+    .check { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; cursor: pointer; }
+    .check input { width: 17px; height: 17px; accent-color: var(--accent); }
+    .go { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+    .go button { padding: 12px 22px; font-size: 1rem; }
+    #message { min-height: 1.2em; margin: 10px 0 0; color: var(--warn); font-size: .9rem; } #message.ok { color: var(--ok); }
+
+    .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .list-head h2 { margin: 0; font-size: 1.05rem; }
+    #jobs { display: grid; gap: 10px; margin-top: 12px; }
+    .empty { color: var(--muted); font-size: .92rem; padding: 18px 4px; text-align: center; }
+    .job { display: grid; grid-template-columns: 96px 1fr auto; gap: 14px; align-items: center; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); padding: 10px; }
+    .thumb { width: 96px; aspect-ratio: 16/9; border-radius: 8px; background: var(--surface-2) center/cover no-repeat; display: grid; place-items: center; color: var(--muted); font-size: 1.4rem; }
+    .job .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .job .meta { color: var(--muted); font-size: .8rem; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar { height: 7px; border-radius: 99px; background: var(--surface-3); margin-top: 8px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s ease; }
+    .job.done .bar > i { background: var(--ok); }
+    .job.error .meta.status { color: var(--danger); white-space: normal; }
+    .job.done .meta.status { color: var(--ok); }
+    .actions { display: flex; gap: 6px; }
+    .actions button { padding: 7px 10px; font-size: .82rem; }
+    footer { color: var(--muted); font-size: .76rem; text-align: center; padding-bottom: 24px; }
+    @media (max-width: 640px) { .job { grid-template-columns: 1fr; } .thumb { display: none; } .actions { justify-content: flex-end; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="/img/ectube.png" alt="">
+      <div><h1>EC-Tube</h1><small id="version">Versión …</small></div>
+    </div>
+    <div class="engine"><span id="engine">Motor …</span><br><button class="link" id="updateEngine" type="button">Actualizar motor</button></div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <label class="title" for="urls">Pega aquí uno o varios enlaces</label>
+      <textarea id="urls" placeholder="https://www.youtube.com/watch?v=…&#10;(uno por renglón)" spellcheck="false" autocomplete="off"></textarea>
+
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Qué descargar">
+          <label><input type="radio" name="kind" value="audio"><span>🎵 Audio</span></label>
+          <label><input type="radio" name="kind" value="video"><span>🎬 Video</span></label>
+        </div>
+        <span class="field audio-only">Formato
+          <select id="audioFormat"><option value="mp3">MP3</option><option value="m4a">M4A</option><option value="wav">WAV (sin compresión)</option></select>
+        </span>
+        <span class="field audio-only mp3-only">Calidad
+          <select id="audioQuality"><option value="320">320 kbps (alta)</option><option value="192">192 kbps</option><option value="128">128 kbps (ligera)</option></select>
+        </span>
+        <span class="field video-only">Calidad
+          <select id="videoQuality"><option value="best">Máxima (puede ser 4K)</option><option value="2160">4K (2160p)</option><option value="1440">1440p</option><option value="1080">1080p (Full HD)</option><option value="720">720p</option><option value="480">480p</option><option value="360">360p (ligera)</option></select>
+        </span>
+      </div>
+
+      <div class="row">
+        <div class="folder grow"><span class="field" style="white-space:nowrap">Guardar en</span><code id="folder">…</code></div>
+        <button class="secondary" id="pickFolder" type="button">Cambiar…</button>
+        <button class="secondary" id="openFolder" type="button">📂 Abrir</button>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="playlist"> Si el enlace es una lista de reproducción, bajar la lista completa</label>
+      </div>
+
+      <div class="go">
+        <button class="secondary" id="paste" type="button">📋 Pegar</button>
+        <button id="download" type="button">⬇ Descargar</button>
+      </div>
+      <p id="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel">
+      <div class="list-head"><h2>Descargas</h2><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div>
+      <div id="jobs"><p class="empty">Aquí aparecen tus descargas.</p></div>
+    </section>
+
+    <footer>EC-Tube usa <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener" style="color:inherit">yt-dlp</a>, Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.</footer>
+  </main>
+
+  <script>
+    const $ = selector => document.querySelector(selector);
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    let settings = {}, saving = null;
+
+    async function api(path, body) {
+      const options = body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)};
+      const response = await fetch(path, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || 'Algo falló. Intenta de nuevo.');
+      return data;
+    }
+    function say(text, ok = false) { $('#message').textContent = text || ''; $('#message').classList.toggle('ok', ok); }
+
+    function applySettings() {
+      document.querySelectorAll('input[name=kind]').forEach(input => { input.checked = input.value === settings.kind; });
+      $('#audioFormat').value = settings.audio_format; $('#audioQuality').value = settings.audio_quality;
+      $('#videoQuality').value = settings.video_quality; $('#playlist').checked = !!settings.playlist;
+      const video = settings.kind === 'video';
+      document.querySelectorAll('.audio-only').forEach(el => el.hidden = video);
+      document.querySelectorAll('.video-only').forEach(el => el.hidden = !video);
+      document.querySelectorAll('.mp3-only').forEach(el => el.hidden = video || settings.audio_format !== 'mp3');
+      const folder = video ? settings.video_folder : settings.audio_folder;
+      $('#folder').textContent = folder; $('#folder').title = folder;
+    }
+    function readForm() {
+      return {kind: document.querySelector('input[name=kind]:checked')?.value || 'audio', audio_format: $('#audioFormat').value,
+        audio_quality: $('#audioQuality').value, video_quality: $('#videoQuality').value, playlist: $('#playlist').checked};
+    }
+    async function saveSettings() {
+      Object.assign(settings, readForm()); applySettings();
+      try { settings = (await api('/api/settings', readForm())).settings; } catch (_) {}
+    }
+    ['#audioFormat', '#audioQuality', '#videoQuality', '#playlist'].forEach(id => $(id).addEventListener('change', saveSettings));
+    document.querySelectorAll('input[name=kind]').forEach(input => input.addEventListener('change', saveSettings));
+
+    $('#paste').addEventListener('click', async () => {
+      try {
+        const text = (await navigator.clipboard.readText()).trim();
+        if (!text) { say('El portapapeles está vacío.'); return; }
+        const box = $('#urls'); box.value = (box.value.trim() ? box.value.trim() + '\n' : '') + text; say('');
+      } catch (_) { say('No se pudo leer el portapapeles: pega con Ctrl+V.'); $('#urls').focus(); }
+    });
+    $('#download').addEventListener('click', async () => {
+      const button = $('#download'); button.disabled = true; say('');
+      try {
+        const data = await api('/api/jobs', {...readForm(), urls: $('#urls').value});
+        $('#urls').value = ''; say(data.added === 1 ? 'Agregada a la lista.' : `${data.added} descargas agregadas.`, true);
+        refreshJobs();
+      } catch (error) { say(error.message); }
+      finally { button.disabled = false; }
+    });
+    $('#urls').addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#download').click(); });
+    $('#pickFolder').addEventListener('click', async () => {
+      const button = $('#pickFolder'); button.disabled = true; say('Elige la carpeta en la ventana que se abrió…');
+      try {
+        const data = await api('/api/pick-folder', {kind: readForm().kind});
+        settings[readForm().kind === 'video' ? 'video_folder' : 'audio_folder'] = data.folder; applySettings(); say('');
+      } catch (error) { say(error.message); }
+      finally { button.disabled = false; }
+    });
+    $('#openFolder').addEventListener('click', () => api('/api/open-folder', {kind: readForm().kind}).catch(error => say(error.message)));
+    $('#clear').addEventListener('click', () => api('/api/jobs/clear', {}).then(refreshJobs).catch(() => {}));
+    $('#updateEngine').addEventListener('click', async () => {
+      $('#updateEngine').disabled = true; $('#engine').textContent = 'Actualizando motor…';
+      try { await api('/api/engine/update', {}); } catch (_) {}
+      const wait = async () => { const info = await api('/api/info'); if (info.engine_updating) { setTimeout(wait, 1500); return; } showInfo(info); $('#updateEngine').disabled = false; };
+      setTimeout(wait, 1500);
+    });
+
+    const STATUS = {queued: 'En espera', running: 'Descargando', converting: 'Convirtiendo…', done: 'Listo', error: 'Error', cancelled: 'Cancelada'};
+    function jobHtml(job) {
+      const thumb = job.thumbnail ? `style="background-image:url('${esc(job.thumbnail)}')"` : '';
+      const icon = job.thumbnail ? '' : (job.kind === 'audio' ? '🎵' : '🎬');
+      const list = job.items > 1 ? ` · ${job.item} de ${job.items}` : '';
+      let status = STATUS[job.status] || job.status;
+      if (job.status === 'running') status = `${job.percent.toFixed(0)} %${job.speed ? ' · ' + job.speed : ''}${job.eta ? ' · faltan ' + job.eta : ''}`;
+      if (job.status === 'error') status = job.error || 'La descarga falló.';
+      if (job.status === 'done' && job.error) status = 'Listo · ' + job.error;
+      const percent = job.status === 'done' ? 100 : (job.status === 'converting' ? 100 : job.percent);
+      const buttons = [];
+      if (['queued', 'running', 'converting'].includes(job.status)) buttons.push(`<button class="secondary" data-act="cancel">Cancelar</button>`);
+      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="Reproducir">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 Ver</button>`); }
+      if (['error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="retry">Reintentar</button>`);
+      if (['done', 'error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="remove" title="Quitar de la lista">✕</button>`);
+      return `<article class="job ${job.status}" data-id="${job.id}">
+        <div class="thumb" ${thumb}>${icon}</div>
+        <div style="min-width:0"><div class="name" title="${esc(job.title || job.url)}">${esc(job.title || job.url)}</div>
+          <div class="meta">${esc(job.format)}${job.quality ? ' · ' + esc(job.quality) : ''}${list}</div>
+          <div class="meta status">${esc(status)}</div>
+          <div class="bar"><i style="width:${percent}%"></i></div></div>
+        <div class="actions">${buttons.join('')}</div></article>`;
+    }
+    let lastJobs = '';
+    async function refreshJobs() {
+      try {
+        const data = await api('/api/jobs');
+        const html = data.jobs.length ? data.jobs.map(jobHtml).join('') : '<p class="empty">Aquí aparecen tus descargas.</p>';
+        if (html !== lastJobs) { $('#jobs').innerHTML = html; lastJobs = html; }
+        const busy = data.jobs.some(job => ['queued', 'running', 'converting'].includes(job.status));
+        clearTimeout(refreshJobs.timer); refreshJobs.timer = setTimeout(refreshJobs, busy ? 700 : 4000);
+      } catch (_) { clearTimeout(refreshJobs.timer); refreshJobs.timer = setTimeout(refreshJobs, 4000); }
+    }
+    $('#jobs').addEventListener('click', async event => {
+      const button = event.target.closest('button[data-act]'); if (!button) return;
+      const id = button.closest('.job').dataset.id;
+      try { await api(`/api/jobs/${id}/${button.dataset.act}`, {}); } catch (error) { say(error.message); }
+      refreshJobs();
+    });
+
+    function showInfo(info) {
+      $('#version').textContent = `Versión ${info.version}${info.build_date ? ' · ' + info.build_date : ''}`;
+      $('#engine').textContent = info.engine_updating ? 'Actualizando motor…' : (info.engine ? `Motor yt-dlp ${info.engine}` : 'Motor no encontrado');
+      if (info.engine_message) $('#updateEngine').title = info.engine_message;
+    }
+    (async function init() {
+      try { const info = await api('/api/info'); settings = info.settings; applySettings(); showInfo(info); }
+      catch (_) { say('No se pudo conectar con EC-Tube. Ciérralo y vuelve a abrirlo.'); }
+      refreshJobs();
+      setInterval(() => fetch('/api/ping').catch(() => {}), 20000);
+      const info = await api('/api/info').catch(() => null);
+      if (info && info.engine_updating) { const wait = async () => { const i = await api('/api/info'); showInfo(i); if (i.engine_updating) setTimeout(wait, 2000); }; setTimeout(wait, 2000); }
+    })();
+  </script>
+</body>
+</html>
