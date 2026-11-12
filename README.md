@@ -9,6 +9,7 @@ Descarga **audio y video** de YouTube (y de los demás sitios que soporta yt-dlp
 - Listas de reproducción completas (opcional), en una carpeta con el nombre de la lista.
 - El motor (yt-dlp) se actualiza solo una vez al día, para que siga funcionando cuando YouTube cambia algo. También hay un botón **Actualizar motor**.
 - Se cierra solo cuando cierras la ventana y no hay descargas pendientes.
+- En **español o inglés** (🌐 en la app; también se elige en el instalador).
 
 ## Instalar
 

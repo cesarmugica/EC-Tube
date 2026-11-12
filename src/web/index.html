@@ -32,7 +32,9 @@
     .brand img { width: 42px; height: 42px; border-radius: 12px; }
     .brand h1 { margin: 0; font-size: 1.3rem; }
     .brand small, .engine { color: var(--muted); font-size: .78rem; }
+    @media (max-width: 640px) { .engine { display: none; } }
     .engine { text-align: right; }
+    .head-right { display: flex; align-items: center; gap: 16px; }
 
     main { max-width: 980px; margin: 0 auto; padding: 22px clamp(16px, 4vw, 36px) 40px; display: grid; gap: 18px; }
     .panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 18px; }
@@ -101,7 +103,10 @@
       <img src="/img/ectube.png" alt="">
       <div><h1>EC-Tube</h1><small id="version">Versión …</small></div>
     </div>
-    <div class="engine"><span id="engine">Motor …</span><br><button class="link" id="updateEngine" type="button">Actualizar motor</button></div>
+    <div class="head-right">
+      <select id="langSelect" aria-label="Idioma"><option value="es">🌐 Español</option><option value="en">🌐 English</option></select>
+      <div class="engine"><span id="engine">Motor …</span><br><button class="link" id="updateEngine" type="button">Actualizar motor</button></div>
+    </div>
   </header>
 
   <main>
@@ -178,6 +183,84 @@
 
   <script>
     const $ = selector => document.querySelector(selector);
+    // ---------- Idioma (español / inglés) ----------
+    // La página está escrita en español; en inglés se traduce con este diccionario.
+    const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
+    const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».';
+    const EN = {
+      'Versión …': 'Version …', 'Versión': 'Version', 'Motor …': 'Engine …', 'Motor': 'Engine', 'Actualizar motor': 'Update engine',
+      'Actualizando motor…': 'Updating engine…', 'Motor no encontrado': 'Engine not found', 'Idioma': 'Language',
+      'Pega aquí uno o varios enlaces': 'Paste one or more links here',
+      'https://www.youtube.com/watch?v=…\n(uno por renglón)': 'https://www.youtube.com/watch?v=…\n(one per line)',
+      'Qué descargar': 'What to download', 'Formato': 'Format', 'Calidad': 'Quality',
+      'WAV (sin compresión)': 'WAV (uncompressed)', '320 kbps (alta)': '320 kbps (high)', '128 kbps (ligera)': '128 kbps (light)',
+      'Máxima (puede ser 4K)': 'Highest (may be 4K)', '360p (ligera)': '360p (light)', 'Máxima': 'Highest',
+      'Guardar en': 'Save to', 'Cambiar…': 'Change…', '📂 Abrir': '📂 Open',
+      'Si el enlace es una lista de reproducción, bajar la lista completa': 'If the link is a playlist, download the whole playlist',
+      '📋 Pegar': '📋 Paste', '⬇ Descargar': '⬇ Download', 'Descargas': 'Downloads',
+      '✂ Recortar un archivo…': '✂ Trim a file…', 'Limpiar terminadas': 'Clear finished', 'Aquí aparecen tus descargas.': 'Your downloads show up here.',
+      '✂ Recortar': '✂ Trim', 'Cerrar': 'Close', 'Recorte': 'Trim', 'Inicio del recorte': 'Trim start', 'Final del recorte': 'Trim end',
+      'Inicio': 'Start', 'Final': 'End', 'Inicio (minutos:segundos)': 'Start (minutes:seconds)', 'Final (minutos:segundos)': 'End (minutes:seconds)',
+      'Usa el punto donde va el reproductor': 'Use the player\'s current position', '⇤ Inicio aquí': '⇤ Start here', 'Final aquí ⇥': 'End here ⇥',
+      [TRIM_HELP]: 'Drag the handles, or play and use “Start here” / “End here”. The original is not changed: a “(trim)” copy is saved.',
+      '▶ Escuchar recorte': '▶ Preview trim', '✂ Guardar recorte': '✂ Save trim',
+      'EC-Tube usa': 'EC-Tube uses', ', Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.': ', Deno and FFmpeg. Only download content that is yours, free or that you have permission for.',
+      'Algo falló. Intenta de nuevo.': 'Something went wrong. Try again.', 'El portapapeles está vacío.': 'The clipboard is empty.',
+      'No se pudo leer el portapapeles: pega con Ctrl+V.': 'Could not read the clipboard: paste with Ctrl+V.',
+      'Agregada a la lista.': 'Added to the list.', '{0} descargas agregadas.': '{0} downloads added.',
+      'Elige la carpeta en la ventana que se abrió…': 'Choose the folder in the window that opened…',
+      'Elige el archivo en la ventana que se abrió…': 'Choose the file in the window that opened…',
+      'En espera': 'Waiting', 'Descargando': 'Downloading', 'Convirtiendo…': 'Converting…', 'Listo': 'Done', 'Error': 'Error', 'Cancelada': 'Cancelled',
+      '{0} de {1}': '{0} of {1}', 'faltan {0}': '{0} left', 'La descarga falló.': 'The download failed.',
+      'Cancelar': 'Cancel', 'Reproducir': 'Play', 'Ver': 'Show', 'Recortar': 'Trim', 'Reintentar': 'Retry', 'Quitar de la lista': 'Remove from the list',
+      'Duración del recorte: {0} de {1}': 'Trim length: {0} of {1}', 'Recortando… {0} %': 'Trimming… {0} %',
+      'Guardado como': 'Saved as', 'Ver en la carpeta': 'Show in folder', 'Abrir el recorte aquí': 'Open the trim here',
+      'No se pudo recortar.': 'Could not trim.', 'Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.': 'This file can\'t be played here, but you can still trim it by typing the times.',
+      'No se pudo conectar con EC-Tube. Ciérralo y vuelve a abrirlo.': 'Could not connect to EC-Tube. Close it and open it again.',
+      // Mensajes del servidor
+      'Motor actualizado.': 'Engine updated.', 'El motor ya está al día.': 'The engine is up to date.',
+      'No se pudo buscar actualización (¿sin internet?).': 'Could not check for updates (no internet?).', 'No se pudo buscar actualización.': 'Could not check for updates.',
+      'El video es privado.': 'The video is private.',
+      'El video no está disponible (borrado o bloqueado en tu país).': 'The video is not available (removed or blocked in your country).',
+      'El video tiene restricción de edad y pide iniciar sesión en YouTube.': 'The video is age-restricted and requires signing in to YouTube.',
+      'YouTube pide confirmar que no eres un robot. Espera un rato y vuelve a intentar.': 'YouTube asks to confirm you are not a bot. Wait a while and try again.',
+      'El video es solo para miembros del canal.': 'The video is for channel members only.', 'La transmisión todavía no empieza.': 'The live stream has not started yet.',
+      'Ese enlace no es de un sitio compatible.': 'That link is not from a supported site.',
+      'No hay esa calidad para este video. Prueba con «Máxima».': 'That quality is not available for this video. Try “Highest”.',
+      'El sitio rechazó la descarga. Dale «Actualizar motor» y reintenta.': 'The site refused the download. Click “Update engine” and retry.',
+      'Demasiadas descargas seguidas; el sitio pide esperar. Intenta más tarde.': 'Too many downloads in a row; the site asks to wait. Try later.',
+      'No hay conexión a internet o el sitio no respondió.': 'No internet connection, or the site did not respond.',
+      'No hay espacio en el disco.': 'There is no space left on the disk.', 'No se puede escribir en esa carpeta.': 'Cannot write to that folder.',
+      'Falló la conversión con FFmpeg.': 'The FFmpeg conversion failed.', 'Algunos videos de la lista no se pudieron bajar.': 'Some videos in the playlist could not be downloaded.',
+      'Pega al menos un enlace (que empiece con https://).': 'Paste at least one link (starting with https://).', 'Máximo 200 enlaces a la vez.': 'At most 200 links at a time.',
+      'No se encontró el motor de descargas. Reinstala EC-Tube.': 'The download engine was not found. Reinstall EC-Tube.',
+      'No se encontró el motor de descargas (yt-dlp).': 'The download engine (yt-dlp) was not found.',
+      'Ya no existe esa descarga.': 'That download no longer exists.', 'El archivo ya no está en esa carpeta.': 'The file is no longer in that folder.',
+      'El archivo ya no está en su carpeta.': 'The file is no longer in its folder.', 'Ese archivo no es de audio o video compatible.': 'That file is not a supported audio or video file.',
+      'Tiempos inválidos.': 'Invalid times.', 'El recorte debe durar al menos 0.2 segundos.': 'The trim must be at least 0.2 seconds long.',
+      'Hay demasiados recortes de este archivo.': 'There are too many trims of this file.', 'No se encontró FFmpeg.': 'FFmpeg was not found.',
+      'No existe ese recorte.': 'That trim does not exist.', 'Solicitud rechazada.': 'Request refused.', 'Solicitud inválida.': 'Invalid request.',
+    };
+    const t = text => (LANG === 'en' && text && EN[text]) || text;
+    const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
+    function translatePage() {
+      if (LANG !== 'en') return;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {acceptNode: node => node.parentElement.closest('script, style') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT});
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const raw = node.nodeValue, key = raw.trim();
+        if (key && EN[key]) node.nodeValue = raw.replace(key, EN[key]);
+      }
+      document.querySelectorAll('[placeholder], [title], [aria-label]').forEach(el => {
+        for (const attr of ['placeholder', 'title', 'aria-label']) { const value = el.getAttribute(attr); if (value && EN[value]) el.setAttribute(attr, EN[value]); }
+      });
+      document.title = 'EC-Tube';
+    }
+    translatePage();
+    $('#langSelect').value = LANG;
+    $('#langSelect').addEventListener('change', async () => {
+      try { await fetch('/api/settings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({language: $('#langSelect').value})}); } catch (_) {}
+      location.reload();
+    });
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
     let settings = {}, saving = null;
 
@@ -185,7 +268,7 @@
       const options = body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)};
       const response = await fetch(path, options);
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.ok === false) throw new Error(data.error || 'Algo falló. Intenta de nuevo.');
+      if (!response.ok || data.ok === false) throw new Error(t(data.error || 'Algo falló. Intenta de nuevo.'));
       return data;
     }
     function say(text, ok = false) { $('#message').textContent = text || ''; $('#message').classList.toggle('ok', ok); }
@@ -215,22 +298,22 @@
     $('#paste').addEventListener('click', async () => {
       try {
         const text = (await navigator.clipboard.readText()).trim();
-        if (!text) { say('El portapapeles está vacío.'); return; }
+        if (!text) { say(t('El portapapeles está vacío.')); return; }
         const box = $('#urls'); box.value = (box.value.trim() ? box.value.trim() + '\n' : '') + text; say('');
-      } catch (_) { say('No se pudo leer el portapapeles: pega con Ctrl+V.'); $('#urls').focus(); }
+      } catch (_) { say(t('No se pudo leer el portapapeles: pega con Ctrl+V.')); $('#urls').focus(); }
     });
     $('#download').addEventListener('click', async () => {
       const button = $('#download'); button.disabled = true; say('');
       try {
         const data = await api('/api/jobs', {...readForm(), urls: $('#urls').value});
-        $('#urls').value = ''; say(data.added === 1 ? 'Agregada a la lista.' : `${data.added} descargas agregadas.`, true);
+        $('#urls').value = ''; say(data.added === 1 ? t('Agregada a la lista.') : tf('{0} descargas agregadas.', data.added), true);
         refreshJobs();
       } catch (error) { say(error.message); }
       finally { button.disabled = false; }
     });
     $('#urls').addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#download').click(); });
     $('#pickFolder').addEventListener('click', async () => {
-      const button = $('#pickFolder'); button.disabled = true; say('Elige la carpeta en la ventana que se abrió…');
+      const button = $('#pickFolder'); button.disabled = true; say(t('Elige la carpeta en la ventana que se abrió…'));
       try {
         const data = await api('/api/pick-folder', {kind: readForm().kind});
         settings[readForm().kind === 'video' ? 'video_folder' : 'audio_folder'] = data.folder; applySettings(); say('');
@@ -240,7 +323,7 @@
     $('#openFolder').addEventListener('click', () => api('/api/open-folder', {kind: readForm().kind}).catch(error => say(error.message)));
     $('#clear').addEventListener('click', () => api('/api/jobs/clear', {}).then(refreshJobs).catch(() => {}));
     $('#updateEngine').addEventListener('click', async () => {
-      $('#updateEngine').disabled = true; $('#engine').textContent = 'Actualizando motor…';
+      $('#updateEngine').disabled = true; $('#engine').textContent = t('Actualizando motor…');
       try { await api('/api/engine/update', {}); } catch (_) {}
       const wait = async () => { const info = await api('/api/info'); if (info.engine_updating) { setTimeout(wait, 1500); return; } showInfo(info); $('#updateEngine').disabled = false; };
       setTimeout(wait, 1500);
@@ -250,21 +333,21 @@
     function jobHtml(job) {
       const thumb = job.thumbnail ? `style="background-image:url('${esc(job.thumbnail)}')"` : '';
       const icon = job.thumbnail ? '' : (job.kind === 'audio' ? '🎵' : '🎬');
-      const list = job.items > 1 ? ` · ${job.item} de ${job.items}` : '';
-      let status = STATUS[job.status] || job.status;
-      if (job.status === 'running') status = `${job.percent.toFixed(0)} %${job.speed ? ' · ' + job.speed : ''}${job.eta ? ' · faltan ' + job.eta : ''}`;
-      if (job.status === 'error') status = job.error || 'La descarga falló.';
-      if (job.status === 'done' && job.error) status = 'Listo · ' + job.error;
+      const list = job.items > 1 ? ' · ' + tf('{0} de {1}', job.item, job.items) : '';
+      let status = t(STATUS[job.status] || job.status);
+      if (job.status === 'running') status = `${job.percent.toFixed(0)} %${job.speed ? ' · ' + job.speed : ''}${job.eta ? ' · ' + tf('faltan {0}', job.eta) : ''}`;
+      if (job.status === 'error') status = t(job.error || 'La descarga falló.');
+      if (job.status === 'done' && job.error) status = t('Listo') + ' · ' + t(job.error);
       const percent = job.status === 'done' ? 100 : (job.status === 'converting' ? 100 : job.percent);
       const buttons = [];
-      if (['queued', 'running', 'converting'].includes(job.status)) buttons.push(`<button class="secondary" data-act="cancel">Cancelar</button>`);
-      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="Reproducir">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 Ver</button>`); if (job.media) buttons.push(`<button class="secondary" data-trim="${job.media}">✂ Recortar</button>`); }
-      if (['error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="retry">Reintentar</button>`);
-      if (['done', 'error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="remove" title="Quitar de la lista">✕</button>`);
+      if (['queued', 'running', 'converting'].includes(job.status)) buttons.push(`<button class="secondary" data-act="cancel">${t('Cancelar')}</button>`);
+      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="${t('Reproducir')}">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 ${t('Ver')}</button>`); if (job.media) buttons.push(`<button class="secondary" data-trim="${job.media}">✂ ${t('Recortar')}</button>`); }
+      if (['error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="retry">${t('Reintentar')}</button>`);
+      if (['done', 'error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="remove" title="${t('Quitar de la lista')}">✕</button>`);
       return `<article class="job ${job.status}" data-id="${job.id}">
         <div class="thumb" ${thumb}>${icon}</div>
         <div style="min-width:0"><div class="name" title="${esc(job.title || job.url)}">${esc(job.title || job.url)}</div>
-          <div class="meta">${esc(job.format)}${job.quality ? ' · ' + esc(job.quality) : ''}${list}</div>
+          <div class="meta">${esc(job.format)}${job.quality ? ' · ' + esc(t(job.quality)) : ''}${list}</div>
           <div class="meta status">${esc(status)}</div>
           <div class="bar"><i style="width:${percent}%"></i></div></div>
         <div class="actions">${buttons.join('')}</div></article>`;
@@ -273,7 +356,7 @@
     async function refreshJobs() {
       try {
         const data = await api('/api/jobs');
-        const html = data.jobs.length ? data.jobs.map(jobHtml).join('') : '<p class="empty">Aquí aparecen tus descargas.</p>';
+        const html = data.jobs.length ? data.jobs.map(jobHtml).join('') : `<p class="empty">${t('Aquí aparecen tus descargas.')}</p>`;
         if (html !== lastJobs) { $('#jobs').innerHTML = html; lastJobs = html; }
         const busy = data.jobs.some(job => ['queued', 'running', 'converting'].includes(job.status));
         clearTimeout(refreshJobs.timer); refreshJobs.timer = setTimeout(refreshJobs, busy ? 700 : 4000);
@@ -299,7 +382,7 @@
       $('#trimNow').style.left = ((editor.el?.currentTime || 0) / d * 100) + '%';
       if (document.activeElement !== $('#startText')) $('#startText').value = fmt(a);
       if (document.activeElement !== $('#endText')) $('#endText').value = fmt(b);
-      $('#trimLength').textContent = `Duración del recorte: ${fmt(b - a)} de ${fmt(d)}`;
+      $('#trimLength').textContent = tf('Duración del recorte: {0} de {1}', fmt(b - a), fmt(d));
     }
     function setRange(start, end) {
       const d = editor.duration; start = Math.min(Math.max(0, start), d); end = Math.min(Math.max(0, end), d);
@@ -316,9 +399,9 @@
       el.addEventListener('loadedmetadata', () => {
         editor.duration = el.duration || 0;
         ['#trimStart', '#trimEnd'].forEach(id => { $(id).max = editor.duration; });
-        setRange(0, editor.duration); trimSay('Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».');
+        setRange(0, editor.duration); trimSay(t(TRIM_HELP));
       });
-      el.addEventListener('error', () => trimSay('Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.'));
+      el.addEventListener('error', () => trimSay(t('Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.')));
       el.addEventListener('timeupdate', () => { if (editor.previewEnd !== null && el.currentTime >= editor.previewEnd) { el.pause(); editor.previewEnd = null; } drawTrim(); });
       $('#saveTrim').disabled = false; $('#editor').hidden = false;
     }
@@ -346,38 +429,38 @@
     $('#saveTrim').addEventListener('click', async () => {
       if (!editor.media) return;
       if (editor.el) editor.el.pause();
-      $('#saveTrim').disabled = true; trimSay('Recortando… 0 %');
+      $('#saveTrim').disabled = true; trimSay(tf('Recortando… {0} %', 0));
       try {
         const job = await api('/api/trim', {token: editor.media.token, start: +$('#trimStart').value, end: +$('#trimEnd').value});
         editor.trimId = job.id;
         const poll = async () => {
           const state = await api(`/api/trim/${job.id}`);
-          if (state.status === 'running') { trimSay(`Recortando… ${state.percent.toFixed(0)} %`); setTimeout(poll, 600); return; }
+          if (state.status === 'running') { trimSay(tf('Recortando… {0} %', state.percent.toFixed(0))); setTimeout(poll, 600); return; }
           $('#saveTrim').disabled = false;
           if (state.status === 'done') {
-            $('#trimStatus').innerHTML = `✅ Guardado como <strong>${esc(state.output)}</strong> · <button class="link" type="button" id="trimReveal">Ver en la carpeta</button> · <button class="link" type="button" id="trimOpenNew">Abrir el recorte aquí</button>`;
+            $('#trimStatus').innerHTML = `✅ ${t('Guardado como')} <strong>${esc(state.output)}</strong> · <button class="link" type="button" id="trimReveal">${t('Ver en la carpeta')}</button> · <button class="link" type="button" id="trimOpenNew">${t('Abrir el recorte aquí')}</button>`;
             $('#trimReveal').onclick = () => api(`/api/trim/${job.id}/reveal`, {}).catch(() => {});
             $('#trimOpenNew').onclick = () => openEditor(state.media);
-          } else trimSay(state.error || 'No se pudo recortar.');
+          } else trimSay(t(state.error || 'No se pudo recortar.'));
         };
         setTimeout(poll, 500);
       } catch (error) { $('#saveTrim').disabled = false; trimSay(error.message); }
     });
     $('#trimFile').addEventListener('click', async () => {
-      const button = $('#trimFile'); button.disabled = true; say('Elige el archivo en la ventana que se abrió…');
+      const button = $('#trimFile'); button.disabled = true; say(t('Elige el archivo en la ventana que se abrió…'));
       try { const data = await api('/api/pick-file', {}); say(''); if (data.media) openEditor(data.media); }
       catch (error) { say(error.message); }
       finally { button.disabled = false; }
     });
 
     function showInfo(info) {
-      $('#version').textContent = `Versión ${info.version}${info.build_date ? ' · ' + info.build_date : ''}`;
-      $('#engine').textContent = info.engine_updating ? 'Actualizando motor…' : (info.engine ? `Motor yt-dlp ${info.engine}` : 'Motor no encontrado');
-      if (info.engine_message) $('#updateEngine').title = info.engine_message;
+      $('#version').textContent = `${t('Versión')} ${info.version}${info.build_date ? ' · ' + info.build_date : ''}`;
+      $('#engine').textContent = info.engine_updating ? t('Actualizando motor…') : (info.engine ? `${t('Motor')} yt-dlp ${info.engine}` : t('Motor no encontrado'));
+      if (info.engine_message) $('#updateEngine').title = t(info.engine_message);
     }
     (async function init() {
       try { const info = await api('/api/info'); settings = info.settings; applySettings(); showInfo(info); }
-      catch (_) { say('No se pudo conectar con EC-Tube. Ciérralo y vuelve a abrirlo.'); }
+      catch (_) { say(t('No se pudo conectar con EC-Tube. Ciérralo y vuelve a abrirlo.')); }
       refreshJobs();
       setInterval(() => fetch('/api/ping').catch(() => {}), 20000);
       const info = await api('/api/info').catch(() => null);

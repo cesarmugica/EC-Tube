@@ -32,21 +32,40 @@ RestartApplications=no
 
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "en"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+es.TaskDesktop=Crear acceso directo «EC-Tube» en el escritorio
+en.TaskDesktop=Create an "EC-Tube" desktop shortcut
+es.GroupShortcuts=Accesos directos:
+en.GroupShortcuts=Shortcuts:
+es.IconComment=Descargar audio y video
+en.IconComment=Download audio and video
+es.IconData=Carpeta de datos de EC-Tube
+en.IconData=EC-Tube data folder
+es.IconUninstall=Desinstalar EC-Tube
+en.IconUninstall=Uninstall EC-Tube
+es.RunApp=Abrir EC-Tube
+en.RunApp=Open EC-Tube
 
 [Tasks]
-Name: "desktopicon"; Description: "Crear acceso directo «EC-Tube» en el escritorio"; GroupDescription: "Accesos directos:"
+Name: "desktopicon"; Description: "{cm:TaskDesktop}"; GroupDescription: "{cm:GroupShortcuts}"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\EC-Tube"; Filename: "{app}\ectube.exe"; Comment: "Descargar audio y video"
-Name: "{group}\Carpeta de datos de EC-Tube"; Filename: "{localappdata}\EC-Tube"
-Name: "{group}\Desinstalar EC-Tube"; Filename: "{uninstallexe}"
+Name: "{group}\EC-Tube"; Filename: "{app}\ectube.exe"; Comment: "{cm:IconComment}"
+Name: "{group}\{cm:IconData}"; Filename: "{localappdata}\EC-Tube"
+Name: "{group}\{cm:IconUninstall}"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\EC-Tube"; Filename: "{app}\ectube.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\ectube.exe"; Description: "Abrir EC-Tube"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\ectube.exe"; Description: "{cm:RunApp}"; Flags: nowait postinstall skipifsilent
+
+[InstallDelete]
+; Los accesos del menú Inicio cambian de nombre según el idioma
+Type: files; Name: "{group}\*.lnk"
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM ectube.exe /F"; Flags: runhidden; RunOnceId: "StopEcTube"
@@ -64,5 +83,11 @@ begin
     Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM ectube.exe /F', '', SW_HIDE, ewWaitUntilTerminated, R);
     { Que la copia de yt-dlp se renueve con la del instalador }
     DeleteFile(ExpandConstant('{localappdata}\EC-Tube\bin\yt-dlp.exe'));
+  end;
+  { El idioma del instalador es el idioma inicial de la app (luego se cambia en la app) }
+  if CurStep = ssPostInstall then
+  begin
+    ForceDirectories(ExpandConstant('{localappdata}\EC-Tube'));
+    SaveStringToFile(ExpandConstant('{localappdata}\EC-Tube\language.txt'), ActiveLanguage, False);
   end;
 end;

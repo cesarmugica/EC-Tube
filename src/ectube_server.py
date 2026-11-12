@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -200,6 +200,7 @@ DEFAULT_CONFIG = {
     "audio_folder": "",
     "video_folder": "",
     "playlist": False,
+    "language": "",  # "es" o "en"; vacío = el del instalador o el de Windows
 }
 AUDIO_FORMATS = {"mp3", "m4a", "wav"}
 AUDIO_QUALITIES = {"320", "192", "128"}
@@ -216,6 +217,16 @@ def load_config() -> dict:
     config["audio_folder"] = config["audio_folder"] or _default_folder("audio")
     config["video_folder"] = config["video_folder"] or _default_folder("video")
     return config
+
+
+def current_language(accept: str = "") -> str:
+    if CONFIG.get("language") in ("es", "en"):
+        return CONFIG["language"]
+    with contextlib.suppress(OSError):
+        installed = (HOME / "language.txt").read_text(encoding="utf-8").strip().lower()
+        if installed in ("es", "en"):
+            return installed
+    return "en" if accept.strip().lower().startswith("en") else "es"
 
 
 def save_config(config: dict) -> None:
@@ -305,7 +316,7 @@ class Job:
         if not path:
             raise RuntimeError("No se encontró el motor de descargas (yt-dlp).")
         name = "%(playlist_index)02d - %(title)s.%(ext)s" if self.playlist else "%(title)s.%(ext)s"
-        output = ("%(playlist_title,playlist|Lista)s/" + name) if self.playlist else name
+        output = ("%(playlist_title,playlist|" + ("Playlist" if current_language() == "en" else "Lista") + ")s/" + name) if self.playlist else name
         args = [
             path, "--newline", "--no-colors", "--progress", "--ignore-config", "--encoding", "utf-8",
             "--windows-filenames", "--no-mtime", "--concurrent-fragments", "4",
@@ -557,7 +568,8 @@ def media_info(path: Path) -> dict:
 
 def _unique_trim_path(source: Path) -> Path:
     for n in range(1, 1000):
-        label = " (recorte)" if n == 1 else f" (recorte {n})"
+        word = "trim" if current_language() == "en" else "recorte"
+        label = f" ({word})" if n == 1 else f" ({word} {n})"
         candidate = source.with_name(f"{source.stem}{label}{source.suffix}")
         if not candidate.exists():
             return candidate
@@ -635,13 +647,14 @@ def pick_file() -> str | None:
     if not IS_WINDOWS:
         return None
     patterns = ";".join("*" + ext for ext in sorted(AUDIO_EXTS | VIDEO_EXTS))
+    english = current_language() == "en"
     initial = CONFIG.get("audio_folder") or str(Path.home())
     script = (
         "Add-Type -AssemblyName System.Windows.Forms;"
         "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
         "$d = New-Object System.Windows.Forms.OpenFileDialog;"
-        "$d.Title = 'Elige el audio o video que quieres recortar';"
-        f"$d.Filter = 'Audio y video|{patterns}|Todos los archivos|*.*';"
+        f"$d.Title = '{english and 'Choose the audio or video to trim' or 'Elige el audio o video que quieres recortar'}';"
+        f"$d.Filter = '{english and 'Audio and video' or 'Audio y video'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
         f"$d.InitialDirectory = '{initial.replace(chr(39), chr(39) * 2)}';"
         "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.FileName }"
     )
@@ -667,7 +680,7 @@ def pick_folder(initial: str) -> str | None:
         "Add-Type -AssemblyName System.Windows.Forms;"
         "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
         "$d = New-Object System.Windows.Forms.FolderBrowserDialog;"
-        "$d.Description = 'Carpeta para las descargas de EC-Tube';"
+        f"$d.Description = '{'Folder for EC-Tube downloads' if current_language() == 'en' else 'Carpeta para las descargas de EC-Tube'}';"
         "$d.ShowNewFolderButton = $true;"
         f"$d.SelectedPath = '{initial.replace(chr(39), chr(39) * 2)}';"
         "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.SelectedPath }"
@@ -771,8 +784,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def send_file(self, path: Path) -> None:
-        data = path.read_bytes()
+    def send_file(self, path: Path, data: bytes | None = None) -> None:
+        data = path.read_bytes() if data is None else data
         ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
             ctype += "; charset=utf-8"
@@ -803,7 +816,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urlsplit(self.path).path
         if path in ("/", "/index.html"):
-            self.send_file(WEB_ROOT / "index.html")
+            lang = current_language(self.headers.get("Accept-Language") or "")
+            html = (WEB_ROOT / "index.html").read_text(encoding="utf-8").replace('<html lang="es">', f'<html lang="{lang}">', 1)
+            self.send_file(WEB_ROOT / "index.html", html.encode("utf-8"))
         elif path == "/api/info":
             LAST_PING = time.time()
             self.send_json({
@@ -981,6 +996,8 @@ class Handler(BaseHTTPRequestHandler):
             CONFIG["video_quality"] = str(data["video_quality"])
         if isinstance(data.get("playlist"), bool):
             CONFIG["playlist"] = data["playlist"]
+        if data.get("language") in ("es", "en"):
+            CONFIG["language"] = data["language"]
         save_config(CONFIG)
 
     def _add_jobs(self, data: dict) -> None:

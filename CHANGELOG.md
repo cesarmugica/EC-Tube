@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 1.2.0 — Español e inglés
+- La app y el instalador están en **español o inglés**. Se elige en el instalador y se cambia cuando quieras con el selector 🌐 de arriba.
+- En inglés, los recortes se guardan como «(trim)» y las listas sin nombre en «Playlist».
+
 ## 1.1.0 — Editor para recortar
 - **✂ Recortar:** en cada descarga terminada (o con «✂ Recortar un archivo…» para cualquier audio o video de tu PC). Marcas de inicio y final arrastrables, botones «Inicio aquí» / «Final aquí» desde el reproductor, tiempos escritos a mano y «▶ Escuchar recorte».
 - El original no se toca: se guarda una copia «(recorte)» en la misma carpeta. El audio se corta sin recomprimir; el video se recodifica para que el corte sea exacto.
