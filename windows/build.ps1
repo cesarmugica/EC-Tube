@@ -22,8 +22,9 @@ function Invoke-Checked([string]$FilePath, [string[]]$ArgumentList = @()) {
 $version = (Select-String -Path (Join-Path $srcRoot 'ectube_server.py') -Pattern '^APP_VERSION = "(.+)"').Matches[0].Groups[1].Value
 Write-Host "EC-Tube $version" -ForegroundColor Cyan
 
-$python = if (Get-Command py -ErrorAction SilentlyContinue) { 'py' } else { 'python' }
-$pythonArgs = if ($python -eq 'py') { @('-3.12') } else { @() }
+# El Python que está en el PATH (en GitHub Actions, el de setup-python con PyInstaller).
+$python = 'python'
+$pythonArgs = @()
 
 $distDir = Join-Path $scriptDir 'dist'
 $outDir  = Join-Path $scriptDir 'out'
