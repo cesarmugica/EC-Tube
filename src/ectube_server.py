@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -296,6 +296,7 @@ class Job:
             "title": self.title, "thumbnail": self.thumbnail, "percent": round(self.percent, 1),
             "speed": self.speed, "eta": self.eta, "item": self.item, "items": self.items,
             "files": len(self.files), "error": self.error,
+            "media": MEDIA.token_for(self.files[-1]) if self.status == "done" and self.files and not self.playlist else "",
         }
 
     # ---------- comando ----------
@@ -513,6 +514,146 @@ DOWNLOADS = Downloads()
 
 
 # ---------------------------------------------------------------------------
+# Editor: recortar audio o video (inicio y final) con FFmpeg
+# ---------------------------------------------------------------------------
+AUDIO_EXTS = {".mp3", ".m4a", ".aac", ".wav", ".ogg", ".opus", ".flac"}
+VIDEO_EXTS = {".mp4", ".m4v", ".mov", ".webm", ".mkv"}
+MEDIA_TYPES = {".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav",
+               ".ogg": "audio/ogg", ".opus": "audio/ogg", ".flac": "audio/flac", ".mp4": "video/mp4",
+               ".m4v": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm", ".mkv": "video/x-matroska"}
+
+
+class MediaRegistry:
+    """Solo se sirven archivos que EC-Tube bajó o que el usuario eligió."""
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.by_token: dict[str, Path] = {}
+        self.by_path: dict[str, str] = {}
+
+    def token_for(self, path: str | Path) -> str:
+        key = str(Path(path))
+        with self.lock:
+            token = self.by_path.get(key)
+            if not token:
+                token = uuid.uuid4().hex
+                self.by_path[key], self.by_token[token] = token, Path(key)
+            return token
+
+    def path(self, token: str) -> Path | None:
+        with self.lock:
+            return self.by_token.get(token)
+
+
+MEDIA = MediaRegistry()
+
+
+def media_info(path: Path) -> dict:
+    ext = path.suffix.lower()
+    return {"token": MEDIA.token_for(path), "name": path.name, "folder": str(path.parent),
+            "kind": "video" if ext in VIDEO_EXTS else "audio", "type": MEDIA_TYPES.get(ext, ""),
+            "size": path.stat().st_size if path.exists() else 0}
+
+
+def _unique_trim_path(source: Path) -> Path:
+    for n in range(1, 1000):
+        label = " (recorte)" if n == 1 else f" (recorte {n})"
+        candidate = source.with_name(f"{source.stem}{label}{source.suffix}")
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError("Hay demasiados recortes de este archivo.")
+
+
+class TrimJob:
+    def __init__(self, source: Path, start: float, end: float) -> None:
+        self.id = uuid.uuid4().hex[:12]
+        self.source, self.start, self.end = source, start, end
+        self.output = _unique_trim_path(source)
+        self.status, self.percent, self.error = "running", 0.0, ""
+        self.process: subprocess.Popen | None = None
+        self.cancelled = False
+
+    def command(self) -> list[str]:
+        if not FFMPEG:
+            raise RuntimeError("No se encontró FFmpeg.")
+        ext = self.source.suffix.lower()
+        args = [FFMPEG, "-hide_banner", "-nostdin", "-y", "-ss", f"{self.start:.3f}", "-i", str(self.source),
+                "-t", f"{self.end - self.start:.3f}", "-map_metadata", "0"]
+        if ext in VIDEO_EXTS:
+            # Recodificar para cortar exacto (copiar cortaría en el cuadro clave más cercano).
+            args += ["-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                     "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k"]
+            if ext in (".mp4", ".m4v", ".mov"):
+                args += ["-movflags", "+faststart"]
+        elif ext == ".wav":
+            args += ["-map", "0:a:0", "-c", "copy"]
+        else:
+            # Audio comprimido: copiar sin recomprimir (exacto a ~0.03 s) y conservar la portada.
+            args += ["-map", "0", "-c", "copy"]
+        return args + ["-progress", "pipe:1", "-nostats", str(self.output)]
+
+    def run(self) -> None:
+        duration = max(0.1, self.end - self.start)
+        try:
+            log(f"[recorte {self.id}] {self.source.name} {self.start:.2f}–{self.end:.2f}")
+            self.process = subprocess.Popen(self.command(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                            encoding="utf-8", errors="replace", creationflags=_no_window_flags())
+            errors: list[str] = []
+            threading.Thread(target=lambda: errors.extend(self.process.stderr.readlines()), daemon=True).start()  # type: ignore[union-attr]
+            for line in self.process.stdout:  # type: ignore[union-attr]
+                if line.startswith("out_time_us=") or line.startswith("out_time_ms="):
+                    with contextlib.suppress(ValueError):
+                        self.percent = min(99.0, int(line.split("=", 1)[1]) / 1e6 / duration * 100)
+            code = self.process.wait()
+            if self.cancelled:
+                self.status = "cancelled"
+            elif code == 0 and self.output.exists():
+                self.status, self.percent = "done", 100.0
+            else:
+                self.status = "error"
+                self.error = friendly_error("".join(errors[-20:])) if errors else "No se pudo recortar."
+                log(f"[recorte {self.id}] error: {''.join(errors[-5:])[:400]}")
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+        if self.status != "done":
+            with contextlib.suppress(OSError):
+                self.output.unlink()
+
+    def public(self) -> dict:
+        data = {"id": self.id, "status": self.status, "percent": round(self.percent, 1), "error": self.error,
+                "output": self.output.name}
+        if self.status == "done":
+            data["media"] = media_info(self.output)
+        return data
+
+
+TRIMS: dict[str, TrimJob] = {}
+
+
+def pick_file() -> str | None:
+    """Diálogo nativo de Windows para elegir un archivo de audio o video."""
+    if not IS_WINDOWS:
+        return None
+    patterns = ";".join("*" + ext for ext in sorted(AUDIO_EXTS | VIDEO_EXTS))
+    initial = CONFIG.get("audio_folder") or str(Path.home())
+    script = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
+        "$d = New-Object System.Windows.Forms.OpenFileDialog;"
+        "$d.Title = 'Elige el audio o video que quieres recortar';"
+        f"$d.Filter = 'Audio y video|{patterns}|Todos los archivos|*.*';"
+        f"$d.InitialDirectory = '{initial.replace(chr(39), chr(39) * 2)}';"
+        "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.FileName }"
+    )
+    with PICK_LOCK:
+        result = subprocess.run(["powershell", "-NoProfile", "-STA", "-Command", script], capture_output=True,
+                                text=True, encoding="utf-8", errors="replace", creationflags=_no_window_flags(),
+                                timeout=600)
+    chosen = result.stdout.strip().splitlines()[-1].strip() if result.stdout.strip() else ""
+    return chosen or None
+
+
+# ---------------------------------------------------------------------------
 # Elegir carpeta y abrir carpeta (Windows)
 # ---------------------------------------------------------------------------
 PICK_LOCK = threading.Lock()
@@ -590,7 +731,8 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:  # noqa: ANN002
         if "/api/jobs" in (args[0] if args else "") and '"GET' in fmt % args:
             return  # el sondeo de la lista llenaría el registro
-        if "/api/ping" in (fmt % args):
+        text = fmt % args
+        if "/api/ping" in text or '"GET /media/' in text or '"GET /api/trim/' in text:
             return
         log("HTTP " + (fmt % args))
 
@@ -674,6 +816,15 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/jobs":
             LAST_PING = time.time()
             self.send_json({"jobs": DOWNLOADS.list(), "engine_updating": ENGINE.updating})
+        elif path.startswith("/media/"):
+            self._send_media(path.rsplit("/", 1)[-1])
+            return
+        elif path.startswith("/api/trim/"):
+            job = TRIMS.get(path.rsplit("/", 1)[-1])
+            if job:
+                self.send_json(job.public())
+            else:
+                self.send_json({"ok": False, "error": "No existe ese recorte."}, 404)
         elif path == "/api/ping":
             LAST_PING = time.time()
             self.send_json({"ok": True})
@@ -721,11 +872,103 @@ class Handler(BaseHTTPRequestHandler):
             folder.mkdir(parents=True, exist_ok=True)
             open_in_explorer(folder)
             self.send_json({"ok": True})
+        elif path == "/api/pick-file":
+            chosen = pick_file()
+            if not chosen:
+                self.send_json({"ok": True, "media": None})
+            elif Path(chosen).suffix.lower() not in AUDIO_EXTS | VIDEO_EXTS:
+                self.send_json({"ok": False, "error": "Ese archivo no es de audio o video compatible."}, 400)
+            else:
+                self.send_json({"ok": True, "media": media_info(Path(chosen))})
+        elif path == "/api/media-info":
+            source = MEDIA.path(str(data.get("token") or ""))
+            if not source or not source.is_file():
+                self.send_json({"ok": False, "error": "El archivo ya no está en su carpeta."}, 404)
+            else:
+                self.send_json({"ok": True, "media": media_info(source)})
+        elif path == "/api/trim":
+            self._start_trim(data)
+        elif re.fullmatch(r"/api/trim/[0-9a-f]{12}/(cancel|reveal)", path):
+            job = TRIMS.get(path.split("/")[3])
+            if not job:
+                self.send_json({"ok": False, "error": "No existe ese recorte."}, 404)
+            elif path.endswith("cancel"):
+                job.cancelled = True
+                if job.process:
+                    _kill_tree(job.process)
+                self.send_json({"ok": True})
+            else:
+                open_in_explorer(job.output if job.output.exists() else job.source, select=True)
+                self.send_json({"ok": True})
         elif path == "/api/engine/update":
             threading.Thread(target=ENGINE.update, kwargs={"force": True}, daemon=True).start()
             self.send_json({"ok": True})
         else:
             self.send_json({"ok": False, "error": "No encontrado."}, 404)
+
+    def _start_trim(self, data: dict) -> None:
+        source = MEDIA.path(str(data.get("token") or ""))
+        try:
+            start, end = float(data.get("start")), float(data.get("end"))
+        except (TypeError, ValueError):
+            self.send_json({"ok": False, "error": "Tiempos inválidos."}, 400)
+            return
+        if not source or not source.is_file():
+            self.send_json({"ok": False, "error": "El archivo ya no está en su carpeta."}, 404)
+            return
+        if start < 0 or end - start < 0.2:
+            self.send_json({"ok": False, "error": "El recorte debe durar al menos 0.2 segundos."}, 400)
+            return
+        try:
+            job = TrimJob(source, start, end)
+        except RuntimeError as exc:
+            self.send_json({"ok": False, "error": str(exc)}, 400)
+            return
+        TRIMS[job.id] = job
+        threading.Thread(target=job.run, daemon=True).start()
+        self.send_json({"ok": True, **job.public()})
+
+    def _send_media(self, token: str) -> None:
+        """Servir el archivo con soporte de Range (para poder adelantar en el reproductor)."""
+        source = MEDIA.path(token)
+        if not source or not source.is_file():
+            self.send_error(404)
+            return
+        size = source.stat().st_size
+        start, end = 0, size - 1
+        header = self.headers.get("Range") or ""
+        match = re.fullmatch(r"bytes=(\d*)-(\d*)", header.strip())
+        partial = bool(match and (match.group(1) or match.group(2)))
+        if partial:
+            if match.group(1):
+                start = int(match.group(1))
+                if match.group(2):
+                    end = min(int(match.group(2)), size - 1)
+            else:
+                start = max(0, size - int(match.group(2)))
+            if start > end:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+        length = end - start + 1
+        self.send_response(206 if partial else 200)
+        self.send_header("Content-Type", MEDIA_TYPES.get(source.suffix.lower(), "application/octet-stream"))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(length))
+        if partial:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        with contextlib.suppress(ConnectionError, OSError), source.open("rb") as handle:
+            handle.seek(start)
+            remaining = length
+            while remaining > 0:
+                chunk = handle.read(min(256 * 1024, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
 
     def _save_settings(self, data: dict) -> None:
         if data.get("kind") in ("audio", "video"):
@@ -796,7 +1039,8 @@ def _idle_watch(server: ThreadingHTTPServer) -> None:
     """Cerrar el servidor si la ventana se cerró y no hay descargas pendientes."""
     while True:
         time.sleep(15)
-        if time.time() - LAST_PING > IDLE_EXIT_SECONDS and not DOWNLOADS.active():
+        trimming = any(job.status == "running" for job in TRIMS.values())
+        if time.time() - LAST_PING > IDLE_EXIT_SECONDS and not DOWNLOADS.active() and not trimming:
             log("Sin ventana abierta ni descargas: EC-Tube se cierra.")
             threading.Thread(target=server.shutdown, daemon=True).start()
             return

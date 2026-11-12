@@ -70,6 +70,27 @@
     .job.done .meta.status { color: var(--ok); }
     .actions { display: flex; gap: 6px; }
     .actions button { padding: 7px 10px; font-size: .82rem; }
+    /* ---------- Editor de recorte ---------- */
+    .modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.66); }
+    .modal-panel { width: min(860px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
+    .modal-panel header { position: static; border-radius: 18px 18px 0 0; }
+    .modal-panel header h2 { margin: 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .modal-body { padding: 18px; display: grid; gap: 14px; }
+    .player { width: 100%; max-height: 52vh; border-radius: 12px; background: #000; }
+    audio.player { background: none; }
+    .audio-art { display: grid; place-items: center; height: 90px; border-radius: 12px; background: var(--bg); font-size: 2.2rem; }
+    .trim { position: relative; height: 34px; margin: 4px 0; }
+    .trim .track { position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 99px; background: var(--surface-3); }
+    .trim .sel { position: absolute; top: 14px; height: 6px; border-radius: 99px; background: var(--accent); }
+    .trim .now { position: absolute; top: 6px; width: 2px; height: 22px; background: var(--text); opacity: .8; pointer-events: none; }
+    .trim input[type=range] { position: absolute; left: 0; width: 100%; top: 6px; height: 22px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+    .trim input[type=range]::-webkit-slider-runnable-track { background: none; height: 22px; }
+    .trim input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 16px; height: 26px; margin-top: -2px; border-radius: 5px; background: #fff; border: 3px solid var(--accent); cursor: ew-resize; }
+    .times { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+    .times input { width: 92px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); padding: 7px 9px; font: inherit; text-align: center; }
+    .times .total { color: var(--muted); font-size: .9rem; margin-left: auto; }
+    .modal-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; align-items: center; }
+    .modal-actions .grow { flex: 1 1 auto; color: var(--muted); font-size: .88rem; }
     footer { color: var(--muted); font-size: .76rem; text-align: center; padding-bottom: 24px; }
     @media (max-width: 640px) { .job { grid-template-columns: 1fr; } .thumb { display: none; } .actions { justify-content: flex-end; } }
   </style>
@@ -122,8 +143,34 @@
     </section>
 
     <section class="panel">
-      <div class="list-head"><h2>Descargas</h2><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div>
+      <div class="list-head"><h2>Descargas</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" id="trimFile" type="button">✂ Recortar un archivo…</button><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div></div>
       <div id="jobs"><p class="empty">Aquí aparecen tus descargas.</p></div>
+    </section>
+
+    <section id="editor" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+      <div class="modal-panel">
+        <header><h2 id="editorTitle">✂ Recortar</h2><button class="secondary" type="button" id="editorClose">Cerrar</button></header>
+        <div class="modal-body">
+          <div id="playerBox"></div>
+          <div class="trim" aria-label="Recorte">
+            <div class="track"></div><div class="sel" id="trimSel"></div><div class="now" id="trimNow"></div>
+            <input type="range" id="trimStart" min="0" max="1" step="0.1" value="0" aria-label="Inicio del recorte">
+            <input type="range" id="trimEnd" min="0" max="1" step="0.1" value="1" aria-label="Final del recorte">
+          </div>
+          <div class="times">
+            <label class="field">Inicio <input id="startText" inputmode="decimal" aria-label="Inicio (minutos:segundos)"></label>
+            <button class="secondary" type="button" id="markStart" title="Usa el punto donde va el reproductor">⇤ Inicio aquí</button>
+            <label class="field">Final <input id="endText" inputmode="decimal" aria-label="Final (minutos:segundos)"></label>
+            <button class="secondary" type="button" id="markEnd" title="Usa el punto donde va el reproductor">Final aquí ⇥</button>
+            <span class="total" id="trimLength"></span>
+          </div>
+          <div class="modal-actions">
+            <span class="grow" id="trimStatus">Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».</span>
+            <button class="secondary" type="button" id="previewTrim">▶ Escuchar recorte</button>
+            <button type="button" id="saveTrim">✂ Guardar recorte</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <footer>EC-Tube usa <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener" style="color:inherit">yt-dlp</a>, Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.</footer>
@@ -211,7 +258,7 @@
       const percent = job.status === 'done' ? 100 : (job.status === 'converting' ? 100 : job.percent);
       const buttons = [];
       if (['queued', 'running', 'converting'].includes(job.status)) buttons.push(`<button class="secondary" data-act="cancel">Cancelar</button>`);
-      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="Reproducir">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 Ver</button>`); }
+      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="Reproducir">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 Ver</button>`); if (job.media) buttons.push(`<button class="secondary" data-trim="${job.media}">✂ Recortar</button>`); }
       if (['error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="retry">Reintentar</button>`);
       if (['done', 'error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="remove" title="Quitar de la lista">✕</button>`);
       return `<article class="job ${job.status}" data-id="${job.id}">
@@ -233,10 +280,94 @@
       } catch (_) { clearTimeout(refreshJobs.timer); refreshJobs.timer = setTimeout(refreshJobs, 4000); }
     }
     $('#jobs').addEventListener('click', async event => {
+      const trim = event.target.closest('button[data-trim]');
+      if (trim) { openEditorByToken(trim.dataset.trim); return; }
       const button = event.target.closest('button[data-act]'); if (!button) return;
       const id = button.closest('.job').dataset.id;
       try { await api(`/api/jobs/${id}/${button.dataset.act}`, {}); } catch (error) { say(error.message); }
       refreshJobs();
+    });
+
+    // ---------- Editor de recorte ----------
+    const editor = {media: null, el: null, duration: 0, previewEnd: null, trimId: null};
+    const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s < 10 ? '0' : ''}${s.toFixed(1)}`; };
+    const parseTime = text => { const parts = String(text).trim().replace(',', '.').split(':').map(Number); if (parts.some(isNaN)) return NaN; return parts.reduce((acc, value) => acc * 60 + value, 0); };
+    function trimSay(text) { $('#trimStatus').textContent = text; }
+    function drawTrim() {
+      const d = editor.duration || 1, a = +$('#trimStart').value, b = +$('#trimEnd').value;
+      $('#trimSel').style.left = (a / d * 100) + '%'; $('#trimSel').style.width = Math.max(0, (b - a) / d * 100) + '%';
+      $('#trimNow').style.left = ((editor.el?.currentTime || 0) / d * 100) + '%';
+      if (document.activeElement !== $('#startText')) $('#startText').value = fmt(a);
+      if (document.activeElement !== $('#endText')) $('#endText').value = fmt(b);
+      $('#trimLength').textContent = `Duración del recorte: ${fmt(b - a)} de ${fmt(d)}`;
+    }
+    function setRange(start, end) {
+      const d = editor.duration; start = Math.min(Math.max(0, start), d); end = Math.min(Math.max(0, end), d);
+      if (end - start < 0.2) { if (start + 0.2 <= d) end = start + 0.2; else start = end - 0.2; }
+      $('#trimStart').value = start; $('#trimEnd').value = end; drawTrim();
+    }
+    function openEditor(media) {
+      editor.media = media; editor.duration = 0; editor.previewEnd = null; editor.trimId = null;
+      $('#editorTitle').textContent = '✂ ' + media.name;
+      const tag = media.kind === 'video' ? 'video' : 'audio';
+      $('#playerBox').innerHTML = (tag === 'audio' ? '<div class="audio-art">🎵</div>' : '') + `<${tag} class="player" controls preload="metadata"></${tag}>`;
+      const el = editor.el = $('#playerBox .player');
+      el.src = '/media/' + media.token;
+      el.addEventListener('loadedmetadata', () => {
+        editor.duration = el.duration || 0;
+        ['#trimStart', '#trimEnd'].forEach(id => { $(id).max = editor.duration; });
+        setRange(0, editor.duration); trimSay('Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».');
+      });
+      el.addEventListener('error', () => trimSay('Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.'));
+      el.addEventListener('timeupdate', () => { if (editor.previewEnd !== null && el.currentTime >= editor.previewEnd) { el.pause(); editor.previewEnd = null; } drawTrim(); });
+      $('#saveTrim').disabled = false; $('#editor').hidden = false;
+    }
+    async function openEditorByToken(token) {
+      try { openEditor((await api('/api/media-info', {token})).media); } catch (error) { say(error.message); }
+    }
+    function closeEditor() {
+      if (editor.el) { editor.el.pause(); editor.el.removeAttribute('src'); editor.el.load(); }
+      $('#editor').hidden = true; $('#playerBox').innerHTML = ''; editor.el = null;
+    }
+    $('#editorClose').addEventListener('click', closeEditor);
+    $('#editor').addEventListener('click', event => { if (event.target === $('#editor')) closeEditor(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#editor').hidden) closeEditor(); });
+    $('#trimStart').addEventListener('input', () => { const a = +$('#trimStart').value, b = +$('#trimEnd').value; if (a > b - 0.2) $('#trimStart').value = b - 0.2; if (editor.el) editor.el.currentTime = +$('#trimStart').value; drawTrim(); });
+    $('#trimEnd').addEventListener('input', () => { const a = +$('#trimStart').value, b = +$('#trimEnd').value; if (b < a + 0.2) $('#trimEnd').value = a + 0.2; if (editor.el) editor.el.currentTime = Math.max(0, +$('#trimEnd').value - 2); drawTrim(); });
+    $('#startText').addEventListener('change', () => { const t = parseTime($('#startText').value); if (!isNaN(t)) setRange(t, +$('#trimEnd').value); else drawTrim(); });
+    $('#endText').addEventListener('change', () => { const t = parseTime($('#endText').value); if (!isNaN(t)) setRange(+$('#trimStart').value, t); else drawTrim(); });
+    $('#markStart').addEventListener('click', () => setRange(editor.el?.currentTime || 0, +$('#trimEnd').value));
+    $('#markEnd').addEventListener('click', () => setRange(+$('#trimStart').value, editor.el?.currentTime || 0));
+    $('#previewTrim').addEventListener('click', () => {
+      if (!editor.el) return;
+      editor.el.currentTime = +$('#trimStart').value; editor.previewEnd = +$('#trimEnd').value;
+      editor.el.play().catch(() => {});
+    });
+    $('#saveTrim').addEventListener('click', async () => {
+      if (!editor.media) return;
+      if (editor.el) editor.el.pause();
+      $('#saveTrim').disabled = true; trimSay('Recortando… 0 %');
+      try {
+        const job = await api('/api/trim', {token: editor.media.token, start: +$('#trimStart').value, end: +$('#trimEnd').value});
+        editor.trimId = job.id;
+        const poll = async () => {
+          const state = await api(`/api/trim/${job.id}`);
+          if (state.status === 'running') { trimSay(`Recortando… ${state.percent.toFixed(0)} %`); setTimeout(poll, 600); return; }
+          $('#saveTrim').disabled = false;
+          if (state.status === 'done') {
+            $('#trimStatus').innerHTML = `✅ Guardado como <strong>${esc(state.output)}</strong> · <button class="link" type="button" id="trimReveal">Ver en la carpeta</button> · <button class="link" type="button" id="trimOpenNew">Abrir el recorte aquí</button>`;
+            $('#trimReveal').onclick = () => api(`/api/trim/${job.id}/reveal`, {}).catch(() => {});
+            $('#trimOpenNew').onclick = () => openEditor(state.media);
+          } else trimSay(state.error || 'No se pudo recortar.');
+        };
+        setTimeout(poll, 500);
+      } catch (error) { $('#saveTrim').disabled = false; trimSay(error.message); }
+    });
+    $('#trimFile').addEventListener('click', async () => {
+      const button = $('#trimFile'); button.disabled = true; say('Elige el archivo en la ventana que se abrió…');
+      try { const data = await api('/api/pick-file', {}); say(''); if (data.media) openEditor(data.media); }
+      catch (error) { say(error.message); }
+      finally { button.disabled = false; }
     });
 
     function showInfo(info) {

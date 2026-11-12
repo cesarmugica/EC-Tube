@@ -5,6 +5,7 @@ Descarga **audio y video** de YouTube (y de los demás sitios que soporta yt-dlp
 - **Audio:** MP3 (128, 192 o 320 kbps), M4A (calidad original) o WAV. Con portada, título y artista dentro del archivo.
 - **Video:** MP4 de 360p a 4K. Hasta 1080p usa H.264, que se reproduce en cualquier lado.
 - Varias descargas a la vez, con progreso, cancelar y reintentar.
+- **✂ Editor para recortar** el inicio y el final de un audio o video (lo que bajaste o cualquier archivo de tu PC). Guarda una copia «(recorte)» y no toca el original.
 - Listas de reproducción completas (opcional), en una carpeta con el nombre de la lista.
 - El motor (yt-dlp) se actualiza solo una vez al día, para que siga funcionando cuando YouTube cambia algo. También hay un botón **Actualizar motor**.
 - Se cierra solo cuando cierras la ventana y no hay descargas pendientes.
