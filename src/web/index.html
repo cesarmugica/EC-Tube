@@ -36,6 +36,7 @@
     .engine { text-align: right; }
     .head-right { display: flex; align-items: center; gap: 16px; }
 
+    .update { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border: 1px solid var(--accent); }
     main { max-width: 980px; margin: 0 auto; padding: 22px clamp(16px, 4vw, 36px) 40px; display: grid; gap: 18px; }
     .panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 18px; }
     label.title { display: block; margin-bottom: 8px; font-weight: 600; }
@@ -105,11 +106,12 @@
     </div>
     <div class="head-right">
       <select id="langSelect" aria-label="Idioma"><option value="es">🌐 Español</option><option value="en">🌐 English</option></select>
-      <div class="engine"><span id="engine">Motor …</span><br><button class="link" id="updateEngine" type="button">Actualizar motor</button></div>
+      <div class="engine"><span id="engine">Motor …</span><br><button class="link" id="updateEngine" type="button">Actualizar motor</button> · <button class="link" id="checkUpdate" type="button">Buscar actualización</button></div>
     </div>
   </header>
 
   <main>
+    <div class="update" id="updateBox" hidden><span id="updateText"></span><button type="button" id="updateButton">⬆ Actualizar</button></div>
     <section class="panel">
       <label class="title" for="urls">Pega aquí uno o varios enlaces</label>
       <textarea id="urls" placeholder="https://www.youtube.com/watch?v=…&#10;(uno por renglón)" spellcheck="false" autocomplete="off"></textarea>
@@ -189,7 +191,15 @@
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».';
     const EN = {
       'Versión …': 'Version …', 'Versión': 'Version', 'Motor …': 'Engine …', 'Motor': 'Engine', 'Actualizar motor': 'Update engine',
-      'Actualizando motor…': 'Updating engine…', 'Motor no encontrado': 'Engine not found', 'Idioma': 'Language',
+      'Actualizando motor…': 'Updating engine…',
+      'Buscar actualización': 'Check for updates', 'Buscando…': 'Checking…', '✓ Estás al día': '✓ Up to date',
+      'Buscar actualización (falló)': 'Check for updates (failed)', '⬆ Actualizar': '⬆ Update',
+      'Hay una versión nueva': 'A new version is available', 'tienes la': 'you have', 'Bajando': 'Downloading',
+      'Instalando': 'Installing', 'se cierra y se vuelve a abrir sola.': 'it will close and reopen by itself.',
+      'Espera a que terminen las descargas y recortes.': 'Wait for downloads and trims to finish.',
+      'No hay una versión nueva para instalar.': 'There is no new version to install.',
+      'No se pudo buscar actualización (¿sin internet?).': 'Could not check for updates (no internet?).',
+      'El instalador se bajó dañado (no coincide su huella). Vuelve a intentar.': 'The installer downloaded corrupted (checksum mismatch). Try again.', 'Motor no encontrado': 'Engine not found', 'Idioma': 'Language',
       'Pega aquí uno o varios enlaces': 'Paste one or more links here',
       'https://www.youtube.com/watch?v=…\n(uno por renglón)': 'https://www.youtube.com/watch?v=…\n(one per line)',
       'Qué descargar': 'What to download', 'Formato': 'Format', 'Calidad': 'Quality',
@@ -263,6 +273,30 @@
     });
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
     let settings = {}, saving = null;
+
+    // ---------- Actualizar EC-Tube ----------
+    async function pollUpdate() {
+      let u = null;
+      try { u = await api('/api/update'); } catch (_) {}
+      if (u) {
+        const show = ['available', 'downloading', 'installing'].includes(u.state);
+        $('#updateBox').hidden = !show;
+        $('#checkUpdate').textContent = t(u.state === 'checking' ? 'Buscando…' : u.state === 'uptodate' ? '✓ Estás al día' : u.state === 'error' ? 'Buscar actualización (falló)' : 'Buscar actualización');
+        if (show) {
+          $('#updateText').textContent = u.state === 'downloading' ? `${t('Bajando')} EC-Tube ${u.latest}… ${u.percent != null ? u.percent + '%' : ''}`
+            : u.state === 'installing' ? `${t('Instalando')} EC-Tube ${u.latest}… ${t('se cierra y se vuelve a abrir sola.')}`
+            : `${t('Hay una versión nueva')}: EC-Tube ${u.latest} (${t('tienes la')} ${u.current}).` + (u.error ? ' ⚠ ' + t(u.error) : u.busy ? ' ⏳ ' + t(u.busy) : '');
+          $('#updateButton').hidden = u.state !== 'available';
+          $('#updateButton').disabled = !!u.busy;
+        }
+      }
+      setTimeout(pollUpdate, u && ['checking', 'downloading', 'installing'].includes(u.state) ? 1000 : 15000);
+    }
+    setTimeout(() => {
+      $('#updateButton').addEventListener('click', () => api('/api/update/install', {}).then(pollUpdate).catch(error => say(error.message)));
+      $('#checkUpdate').addEventListener('click', () => api('/api/update/check', {}).then(() => setTimeout(pollUpdate, 800)).catch(error => say(error.message)));
+      pollUpdate();
+    }, 0);
 
     async function api(path, body) {
       const options = body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)};

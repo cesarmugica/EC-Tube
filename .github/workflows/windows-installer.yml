@@ -58,4 +58,5 @@ jobs:
           if ($match.Success) { $notes = $match.Value.Trim() + "`n`n---`nInstalador: **EC-Tube-Setup-$version.exe**. Historial completo: CHANGELOG.md" }
           Set-Content -Path release-notes.md -Value $notes -Encoding UTF8
           gh release create $tag $exe.FullName windows/out/SHA256SUMS.txt --target $env:GITHUB_SHA --title "EC-Tube $tag" --notes-file release-notes.md
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el Release.' }
           exit 0

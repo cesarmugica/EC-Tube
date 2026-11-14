@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -843,6 +843,8 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/ping":
             LAST_PING = time.time()
             self.send_json({"ok": True})
+        elif path == "/api/update":
+            self.send_json(UPDATER.public())
         elif path.startswith("/img/") or path in ("/app.js", "/style.css", "/favicon.ico"):
             target = (WEB_ROOT / path.lstrip("/")).resolve()
             if WEB_ROOT.resolve() in target.parents and target.is_file():
@@ -915,6 +917,15 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 open_in_explorer(job.output if job.output.exists() else job.source, select=True)
                 self.send_json({"ok": True})
+        elif path == "/api/update/check":
+            UPDATER.check(force=True)
+            self.send_json({"ok": True})
+        elif path == "/api/update/install":
+            try:
+                UPDATER.install()
+                self.send_json({"ok": True})
+            except RuntimeError as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
         elif path == "/api/engine/update":
             threading.Thread(target=ENGINE.update, kwargs={"force": True}, daemon=True).start()
             self.send_json({"ok": True})
@@ -1052,6 +1063,17 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
 
 
+def _update_blocker() -> str:
+    trimming = any(job.status == "running" for job in TRIMS.values())
+    return "Espera a que terminen las descargas y recortes." if DOWNLOADS.active() or trimming else ""
+
+
+from ectube_update import Updater  # noqa: E402
+
+UPDATER = Updater(app="EC-Tube", repo="EC-Tube", tag_prefix="v", current=APP_VERSION, folder=HOME / "updates", log=log,
+                  busy=_update_blocker, extra_args=lambda: [f"/LANG={current_language()}"])
+
+
 def _idle_watch(server: ThreadingHTTPServer) -> None:
     """Cerrar el servidor si la ventana se cerró y no hay descargas pendientes."""
     while True:
@@ -1090,6 +1112,7 @@ def main() -> int:
         threading.Thread(target=_idle_watch, args=(server,), daemon=True).start()
     if not args.no_browser:
         threading.Timer(0.6, open_app_window, args=(url,)).start()
+    threading.Timer(8, UPDATER.check).start()  # ¿hay versión nueva de EC-Tube?
     try:
         server.serve_forever()
     except KeyboardInterrupt:

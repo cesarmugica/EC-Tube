@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 1.3.0 — Botón «Actualizar»
+- EC-Tube busca solo si hay versión nueva (al abrir) y muestra **⬆ Actualizar**: la baja, revisa que no venga dañada, se instala en silencio (en tu idioma) y se vuelve a abrir. Sin pasar por Edge, así que ya no sale el aviso de «no se descarga comúnmente».
+- No actualiza mientras haya descargas o recortes en curso.
+- «Buscar actualización» arriba a la derecha.
+
 ## 1.2.0 — Español e inglés
 - La app y el instalador están en **español o inglés**. Se elige en el instalador y se cambia cuando quieras con el selector 🌐 de arriba.
 - En inglés, los recortes se guardan como «(trim)» y las listas sin nombre en «Playlist».

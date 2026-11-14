@@ -71,6 +71,7 @@ Invoke-Checked $python ($pythonArgs + @(
   '--add-data', "$(Join-Path $srcRoot 'web');web",
   '--paths', $srcRoot,
   '--hidden-import', 'ectube_build',
+  '--hidden-import', 'ectube_update',
   '--exclude-module', 'tkinter',
   '--distpath', $distDir,
   '--workpath', (Join-Path $scriptDir '.build'),

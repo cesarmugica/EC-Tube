@@ -62,6 +62,8 @@ Name: "{userdesktop}\EC-Tube"; Filename: "{app}\ectube.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\ectube.exe"; Description: "{cm:RunApp}"; Flags: nowait postinstall skipifsilent
+; Actualización desde la app (instalador en silencio): volver a abrir EC-Tube al terminar.
+Filename: "{app}\ectube.exe"; Flags: nowait; Check: WizardSilent
 
 [InstallDelete]
 ; Los accesos del menú Inicio cambian de nombre según el idioma
