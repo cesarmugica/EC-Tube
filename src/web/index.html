@@ -56,6 +56,7 @@
     .check input { width: 17px; height: 17px; accent-color: var(--accent); }
     .go { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
     .go button { padding: 12px 22px; font-size: 1rem; }
+    #plMessage { min-height: 1.2em; margin: 0 0 8px; color: var(--warn); font-size: .9rem; } #plMessage.ok { color: var(--ok); }
     #message { min-height: 1.2em; margin: 10px 0 0; color: var(--warn); font-size: .9rem; } #message.ok { color: var(--ok); }
 
     .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -95,6 +96,51 @@
     .modal-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; align-items: center; }
     .modal-actions .grow { flex: 1 1 auto; color: var(--muted); font-size: .88rem; }
     footer { color: var(--muted); font-size: .76rem; text-align: center; padding-bottom: 24px; }
+    /* ---------- Pestañas ---------- */
+    .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
+    .tabs button { background: none; color: var(--muted); border-radius: 10px 10px 0 0; padding: 10px 16px; border-bottom: 3px solid transparent; }
+    .tabs button:hover:not(:disabled) { background: var(--surface); color: var(--text); }
+    .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+    /* ---------- Reproductor ---------- */
+    body.has-player main { padding-bottom: 120px; }
+    .pl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .pl-head select { flex: 1 1 220px; min-width: 0; font-weight: 600; }
+    .pl-info { color: var(--muted); font-size: .85rem; margin: 10px 2px 6px; }
+    .tracks { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); max-height: 46vh; overflow: auto; }
+    .tracks li { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+    .tracks li:last-child { border-bottom: 0; }
+    .tracks li:hover { background: var(--surface-2); }
+    .tracks li.now { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
+    .tracks li.missing { color: var(--muted); text-decoration: line-through; }
+    .tracks li.drag-over { box-shadow: inset 0 2px 0 var(--accent); }
+    .tracks .num { color: var(--muted); font-size: .8rem; text-align: right; font-variant-numeric: tabular-nums; }
+    .tracks .tname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tracks .dur { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
+    .tracks .tbtn { display: flex; gap: 2px; }
+    .tracks .tbtn button { padding: 3px 7px; font-size: .78rem; background: none; color: var(--muted); }
+    .tracks .tbtn button:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+    .lib-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+    .lib-head input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); padding: 8px 10px; font: inherit; }
+    .lib { list-style: none; margin: 10px 0 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); max-height: 40vh; overflow: auto; }
+    .lib li { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .lib li:last-child { border-bottom: 0; }
+    .lib li:hover { background: var(--surface-2); }
+    .lib .lname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+    .lib .lname small { color: var(--muted); margin-left: 6px; }
+    .lib button { padding: 4px 10px; font-size: .8rem; }
+    .playerbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--surface); border-top: 1px solid var(--border); padding: 10px clamp(12px, 3vw, 28px); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px 18px; align-items: center; box-shadow: 0 -8px 24px rgba(0,0,0,.35); }
+    .pb-title { min-width: 0; }
+    .pb-title strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pb-title small { color: var(--muted); font-size: .78rem; }
+    .pb-controls { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .pb-controls button { width: 40px; height: 40px; padding: 0; border-radius: 50%; background: var(--surface-2); font-size: 1rem; }
+    .pb-controls button.main { width: 48px; height: 48px; background: var(--accent); font-size: 1.15rem; }
+    .pb-controls button.toggle.on { background: color-mix(in srgb, var(--accent) 45%, var(--surface-2)); }
+    .pb-right { display: flex; align-items: center; gap: 8px; justify-content: flex-end; color: var(--muted); font-size: .85rem; }
+    .pb-right input { width: 110px; accent-color: var(--accent); }
+    .pb-seek { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .pb-seek input { flex: 1; accent-color: var(--accent); }
+    @media (max-width: 760px) { .playerbar { grid-template-columns: 1fr; } .pb-right { justify-content: center; } .pb-title { text-align: center; } }
     @media (max-width: 640px) { .job { grid-template-columns: 1fr; } .thumb { display: none; } .actions { justify-content: flex-end; } }
   </style>
 </head>
@@ -112,6 +158,11 @@
 
   <main>
     <div class="update" id="updateBox" hidden><span id="updateText"></span><button type="button" id="updateButton">⬆ Actualizar</button></div>
+    <nav class="tabs" role="tablist">
+      <button type="button" class="on" data-tab="download" role="tab">⬇ Descargar y recortar</button>
+      <button type="button" data-tab="player" role="tab">🎵 Reproductor</button>
+    </nav>
+    <div id="tabDownload" style="display:grid;gap:18px">
     <section class="panel">
       <label class="title" for="urls">Pega aquí uno o varios enlaces</label>
       <textarea id="urls" placeholder="https://www.youtube.com/watch?v=…&#10;(uno por renglón)" spellcheck="false" autocomplete="off"></textarea>
@@ -137,6 +188,11 @@
         <button class="secondary" id="pickFolder" type="button">Cambiar…</button>
         <button class="secondary" id="openFolder" type="button">📂 Abrir</button>
       </div>
+      <div class="row" style="margin-top:8px">
+        <div class="folder grow"><span class="field" style="white-space:nowrap">Recortes en</span><code id="editedFolder">…</code></div>
+        <button class="secondary" id="pickEdited" type="button">Cambiar…</button>
+        <button class="secondary" id="openEdited" type="button">📂 Abrir</button>
+      </div>
 
       <div class="row">
         <label class="check"><input type="checkbox" id="playlist"> Si el enlace es una lista de reproducción, bajar la lista completa</label>
@@ -153,6 +209,38 @@
       <div class="list-head"><h2>Descargas</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" id="trimFile" type="button">✂ Recortar un archivo…</button><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div></div>
       <div id="jobs"><p class="empty">Aquí aparecen tus descargas.</p></div>
     </section>
+    </div>
+
+    <div id="tabPlayer" style="display:grid;gap:18px" hidden>
+      <section class="panel">
+        <div class="pl-head">
+          <select id="plSelect" aria-label="Lista"></select>
+          <button class="secondary" id="plNew" type="button">➕ Nueva lista</button>
+          <button class="secondary" id="plRename" type="button">✏ Renombrar</button>
+          <button class="secondary" id="plDelete" type="button">🗑 Borrar lista</button>
+        </div>
+        <p class="pl-info" id="plInfo"></p>
+        <p id="plMessage" class="msg" role="status" aria-live="polite"></p>
+        <ul class="tracks" id="tracks"></ul>
+        <div class="row" style="margin-top:10px">
+          <span class="grow muted" style="color:var(--muted);font-size:.82rem">Doble clic para reproducir · arrastra para cambiar el orden</span>
+          <button class="secondary" id="plClear" type="button">🧹 Vaciar lista</button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="list-head"><h2>Agregar canciones</h2></div>
+        <div class="lib-head">
+          <div class="seg" role="radiogroup" aria-label="Carpeta">
+            <label><input type="radio" name="libWhere" value="downloads" checked><span>⬇ Descargas</span></label>
+            <label><input type="radio" name="libWhere" value="edited"><span>✂ Editados</span></label>
+          </div>
+          <input id="libSearch" type="search" placeholder="Buscar…" aria-label="Buscar canción">
+          <button class="secondary" id="libAddAll" type="button">➕ Agregar todas</button>
+          <button class="secondary" id="libPick" type="button">📂 Otros archivos…</button>
+        </div>
+        <ul class="lib" id="lib"></ul>
+      </section>
+    </div>
 
     <section id="editor" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="editorTitle">
       <div class="modal-panel">
@@ -172,13 +260,28 @@
             <span class="total" id="trimLength"></span>
           </div>
           <div class="modal-actions">
-            <span class="grow" id="trimStatus">Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».</span>
+            <span class="grow" id="trimStatus">Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.</span>
             <button class="secondary" type="button" id="previewTrim">▶ Escuchar recorte</button>
             <button type="button" id="saveTrim">✂ Guardar recorte</button>
           </div>
         </div>
       </div>
     </section>
+
+    <div class="playerbar" id="playerBar" hidden>
+      <div class="pb-title"><strong id="pbTitle">—</strong><small id="pbSub"></small></div>
+      <div class="pb-controls">
+        <button type="button" class="toggle" id="pbShuffle" title="Aleatorio">🔀</button>
+        <button type="button" id="pbPrev" title="Anterior">⏮</button>
+        <button type="button" class="main" id="pbPlay" title="Reproducir / pausa">▶</button>
+        <button type="button" id="pbStop" title="Detener">⏹</button>
+        <button type="button" id="pbNext" title="Siguiente">⏭</button>
+        <button type="button" class="toggle" id="pbRepeat" title="Repetir">🔁</button>
+      </div>
+      <div class="pb-right"><span aria-hidden="true">🔊</span><input type="range" id="pbVolume" min="0" max="1" step="0.01" aria-label="Volumen"></div>
+      <div class="pb-seek"><span id="pbCur">0:00</span><input type="range" id="pbSeek" min="0" max="1" step="0.1" value="0" aria-label="Posición"><span id="pbDur">0:00</span></div>
+      <audio id="pbAudio" preload="auto"></audio>
+    </div>
 
     <footer>EC-Tube usa <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener" style="color:inherit">yt-dlp</a>, Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.</footer>
   </main>
@@ -188,7 +291,7 @@
     // ---------- Idioma (español / inglés) ----------
     // La página está escrita en español; en inglés se traduce con este diccionario.
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
-    const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)».';
+    const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
       'Versión …': 'Version …', 'Versión': 'Version', 'Motor …': 'Engine …', 'Motor': 'Engine', 'Actualizar motor': 'Update engine',
       'Actualizando motor…': 'Updating engine…',
@@ -212,7 +315,7 @@
       '✂ Recortar': '✂ Trim', 'Cerrar': 'Close', 'Recorte': 'Trim', 'Inicio del recorte': 'Trim start', 'Final del recorte': 'Trim end',
       'Inicio': 'Start', 'Final': 'End', 'Inicio (minutos:segundos)': 'Start (minutes:seconds)', 'Final (minutos:segundos)': 'End (minutes:seconds)',
       'Usa el punto donde va el reproductor': 'Use the player\'s current position', '⇤ Inicio aquí': '⇤ Start here', 'Final aquí ⇥': 'End here ⇥',
-      [TRIM_HELP]: 'Drag the handles, or play and use “Start here” / “End here”. The original is not changed: a “(trim)” copy is saved.',
+      [TRIM_HELP]: 'Drag the handles, or play and use “Start here” / “End here”. The original is not changed: a “(trim)” copy is saved in the trims folder.',
       '▶ Escuchar recorte': '▶ Preview trim', '✂ Guardar recorte': '✂ Save trim',
       'EC-Tube usa': 'EC-Tube uses', ', Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.': ', Deno and FFmpeg. Only download content that is yours, free or that you have permission for.',
       'Algo falló. Intenta de nuevo.': 'Something went wrong. Try again.', 'El portapapeles está vacío.': 'The clipboard is empty.',
@@ -250,6 +353,23 @@
       'Tiempos inválidos.': 'Invalid times.', 'El recorte debe durar al menos 0.2 segundos.': 'The trim must be at least 0.2 seconds long.',
       'Hay demasiados recortes de este archivo.': 'There are too many trims of this file.', 'No se encontró FFmpeg.': 'FFmpeg was not found.',
       'No existe ese recorte.': 'That trim does not exist.', 'Solicitud rechazada.': 'Request refused.', 'Solicitud inválida.': 'Invalid request.',
+      'Recortes en': 'Trims in', '⬇ Descargar y recortar': '⬇ Download & trim', '🎵 Reproductor': '🎵 Player',
+      '➕ Nueva lista': '➕ New list', '✏ Renombrar': '✏ Rename', '🗑 Borrar lista': '🗑 Delete list', '🧹 Vaciar lista': '🧹 Clear list',
+      'Doble clic para reproducir · arrastra para cambiar el orden': 'Double-click to play · drag to reorder',
+      'Agregar canciones': 'Add songs', '⬇ Descargas': '⬇ Downloads', '✂ Editados': '✂ Edited', 'Buscar…': 'Search…',
+      'Buscar canción': 'Search song', '➕ Agregar todas': '➕ Add all', '📂 Otros archivos…': '📂 Other files…',
+      'Aleatorio': 'Shuffle', 'Anterior': 'Previous', 'Reproducir / pausa': 'Play / pause', 'Detener': 'Stop', 'Siguiente': 'Next',
+      'Repetir': 'Repeat', 'Volumen': 'Volume', 'Posición': 'Position', 'Lista': 'List', 'Carpeta': 'Folder',
+      'Mi lista': 'My list', 'Nombre de la lista nueva:': 'Name of the new list:', 'Nuevo nombre de la lista:': 'New name for the list:',
+      '¿Borrar la lista «{0}»? Las canciones no se borran de tu PC.': 'Delete the list “{0}”? The songs are not deleted from your PC.',
+      '¿Quitar todas las canciones de «{0}»? (No se borran de tu PC.)': 'Remove all songs from “{0}”? (They are not deleted from your PC.)',
+      'Debe quedar al menos una lista.': 'At least one list must remain.', '{0} canciones · {1}': '{0} songs · {1}', '1 canción · {0}': '1 song · {0}',
+      'La lista está vacía: agrega canciones abajo.': 'The list is empty: add songs below.', 'agregar': 'add', 'Quitar': 'Remove',
+      'Subir': 'Move up', 'Bajar': 'Move down', 'No hay canciones en esta carpeta todavía.': 'No songs in this folder yet.',
+      'Nada coincide con la búsqueda.': 'Nothing matches the search.', 'Agregada a «{0}»': 'Added to “{0}”', '{0} agregadas a «{1}»': '{0} added to “{1}”',
+      'El archivo ya no está en su carpeta: se salta.': 'The file is no longer in its folder: skipped.', 'Repetir: no': 'Repeat: off',
+      'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
+      'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
@@ -305,7 +425,10 @@
       if (!response.ok || data.ok === false) throw new Error(t(data.error || 'Algo falló. Intenta de nuevo.'));
       return data;
     }
-    function say(text, ok = false) { $('#message').textContent = text || ''; $('#message').classList.toggle('ok', ok); }
+    function say(text, ok = false) {
+      for (const el of [$('#message'), $('#plMessage')]) { if (!el) continue; el.textContent = text || ''; el.classList.toggle('ok', ok); }
+      clearTimeout(say.timer); if (ok && text) say.timer = setTimeout(() => say(''), 4000);
+    }
 
     function applySettings() {
       document.querySelectorAll('input[name=kind]').forEach(input => { input.checked = input.value === settings.kind; });
@@ -317,6 +440,8 @@
       document.querySelectorAll('.mp3-only').forEach(el => el.hidden = video || settings.audio_format !== 'mp3');
       const folder = video ? settings.video_folder : settings.audio_folder;
       $('#folder').textContent = folder; $('#folder').title = folder;
+      const edited = video ? settings.video_edited_folder : settings.audio_edited_folder;
+      $('#editedFolder').textContent = edited || '…'; $('#editedFolder').title = edited || '';
     }
     function readForm() {
       return {kind: document.querySelector('input[name=kind]:checked')?.value || 'audio', audio_format: $('#audioFormat').value,
@@ -355,6 +480,13 @@
       finally { button.disabled = false; }
     });
     $('#openFolder').addEventListener('click', () => api('/api/open-folder', {kind: readForm().kind}).catch(error => say(error.message)));
+    $('#pickEdited').addEventListener('click', async () => {
+      const button = $('#pickEdited'); button.disabled = true; say(t('Elige la carpeta en la ventana que se abrió…'));
+      try { const data = await api('/api/pick-folder', {kind: readForm().kind, which: 'edited'}); settings = data.settings; applySettings(); say(''); }
+      catch (error) { say(error.message); }
+      finally { button.disabled = false; }
+    });
+    $('#openEdited').addEventListener('click', () => api('/api/open-folder', {kind: readForm().kind, which: 'edited'}).catch(error => say(error.message)));
     $('#clear').addEventListener('click', () => api('/api/jobs/clear', {}).then(refreshJobs).catch(() => {}));
     $('#updateEngine').addEventListener('click', async () => {
       $('#updateEngine').disabled = true; $('#engine').textContent = t('Actualizando motor…');
@@ -492,11 +624,243 @@
       $('#engine').textContent = info.engine_updating ? t('Actualizando motor…') : (info.engine ? `${t('Motor')} yt-dlp ${info.engine}` : t('Motor no encontrado'));
       if (info.engine_message) $('#updateEngine').title = t(info.engine_message);
     }
+    // ---------- Pestañas ----------
+    function showTab(name) {
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+      $('#tabDownload').hidden = name !== 'download'; $('#tabPlayer').hidden = name !== 'player';
+      try { localStorage.setItem('ectube-tab', name); } catch (_) {}
+      if (name === 'player') { Player.init(); Library.load(); }
+    }
+    document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+    // ---------- Reproductor (tipo Winamp) ----------
+    const hms = sec => { if (!isFinite(sec) || sec == null) return ''; sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), x = String(sec % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+    const audio = $('#pbAudio');
+    const Player = {
+      ready: false, lists: [], current: '', prefs: {volume: 0.8, shuffle: false, repeat: 'all'},
+      playing: null,          // {listId, token}
+      history: [], saveTimer: null, measuring: false,
+      list() { return this.lists.find(l => l.id === this.current) || this.lists[0]; },
+      playingList() { return this.playing && this.lists.find(l => l.id === this.playing.listId); },
+      async init() {
+        if (this.ready) return;
+        this.ready = true;
+        try {
+          const data = await api('/api/playlists');
+          this.lists = data.lists; this.current = data.current; this.prefs = data.player;
+        } catch (error) { say(error.message); }
+        audio.volume = this.prefs.volume; $('#pbVolume').value = this.prefs.volume;
+        this.render(); this.renderBar(); this.measure();
+      },
+      save() {
+        clearTimeout(this.saveTimer);
+        this.saveTimer = setTimeout(async () => {
+          const body = {current: this.current, player: this.prefs,
+            lists: this.lists.map(l => ({id: l.id, name: l.name, items: l.items.map(i => ({token: i.token, duration: i.duration}))}))};
+          try {
+            const data = await api('/api/playlists', body);
+            // el servidor puede asignar ids nuevos; conservar lo que se está tocando
+            const map = new Map(this.lists.map((l, i) => [i, l.id]));
+            data.lists.forEach((l, i) => { if (map.get(i) !== l.id) { if (this.current === map.get(i)) this.current = l.id; if (this.playing && this.playing.listId === map.get(i)) this.playing.listId = l.id; } });
+            data.lists.forEach((l, i) => { l.items.forEach((item, k) => { const old = this.lists[i] && this.lists[i].items[k]; if (old && old.duration && !item.duration) item.duration = old.duration; }); });
+            this.lists = data.lists; this.render();
+          } catch (error) { say(error.message); }
+        }, 400);
+      },
+      render() {
+        const list = this.list(); if (!list) return;
+        $('#plSelect').innerHTML = this.lists.map(l => `<option value="${esc(l.id)}">${esc(l.name)} (${l.items.length})</option>`).join('');
+        $('#plSelect').value = list.id;
+        const total = list.items.reduce((sum, i) => sum + (i.duration || 0), 0);
+        $('#plInfo').textContent = list.items.length ? (list.items.length === 1 ? tf('1 canción · {0}', hms(total)) : tf('{0} canciones · {1}', list.items.length, hms(total))) : t('La lista está vacía: agrega canciones abajo.');
+        $('#plDelete').disabled = this.lists.length < 2;
+        const nowToken = this.playing && this.playing.listId === list.id ? this.playing.token : null;
+        $('#tracks').innerHTML = list.items.map((item, i) => `<li draggable="true" data-i="${i}" class="${item.token === nowToken ? 'now' : ''}${item.exists === false ? ' missing' : ''}">
+            <span class="num">${item.token === nowToken ? (audio.paused ? '⏸' : '▶') : i + 1}</span><span class="tname" title="${esc(item.name)}">${esc(item.name)}</span>
+            <span class="dur">${hms(item.duration)}</span>
+            <span class="tbtn"><button type="button" data-act="up" title="${t('Subir')}">▲</button><button type="button" data-act="down" title="${t('Bajar')}">▼</button><button type="button" data-act="rm" title="${t('Quitar')}">✕</button></span></li>`).join('');
+      },
+      renderBar() {
+        const list = this.playingList(), item = list && list.items.find(i => i.token === this.playing.token);
+        document.body.classList.toggle('has-player', true);
+        $('#playerBar').hidden = false;
+        $('#pbTitle').textContent = item ? item.name : '—';
+        $('#pbSub').textContent = item ? tf('Canción {0} de {1} · {2}', list.items.indexOf(item) + 1, list.items.length, list.name) : '';
+        $('#pbPlay').textContent = audio.paused ? '▶' : '⏸';
+        $('#pbShuffle').classList.toggle('on', this.prefs.shuffle);
+        $('#pbRepeat').classList.toggle('on', this.prefs.repeat !== 'off');
+        $('#pbRepeat').textContent = this.prefs.repeat === 'one' ? '🔂' : '🔁';
+        $('#pbRepeat').title = t({off: 'Repetir: no', all: 'Repetir: toda la lista', one: 'Repetir: esta canción'}[this.prefs.repeat]);
+        if ('mediaSession' in navigator && item) navigator.mediaSession.metadata = new MediaMetadata({title: item.name, album: list.name, artist: 'EC-Tube'});
+      },
+      play(listId, token, remember = true) {
+        const list = this.lists.find(l => l.id === listId), item = list && list.items.find(i => i.token === token);
+        if (!item) return;
+        if (item.exists === false) { say(t('El archivo ya no está en su carpeta: se salta.')); return; }
+        if (remember && this.playing) this.history.push(this.playing);
+        this.playing = {listId, token};
+        audio.src = `/media/${token}`;
+        audio.play().catch(() => {});
+        this.render(); this.renderBar();
+      },
+      order(list) { return list.items.filter(i => i.exists !== false); },
+      next(auto = false) {
+        const list = this.playingList() || this.list(); if (!list || !list.items.length) return;
+        const items = this.order(list); if (!items.length) return;
+        if (auto && this.prefs.repeat === 'one' && this.playing) { audio.currentTime = 0; audio.play(); return; }
+        let target;
+        if (this.prefs.shuffle && items.length > 1) {
+          const candidates = items.filter(i => !this.playing || i.token !== this.playing.token);
+          target = candidates[Math.floor(Math.random() * candidates.length)];
+        } else {
+          const at = this.playing ? items.findIndex(i => i.token === this.playing.token) : -1;
+          if (at + 1 >= items.length) { if (auto && this.prefs.repeat === 'off') { this.stop(); return; } target = items[0]; }
+          else target = items[at + 1];
+        }
+        this.play(list.id, target.token);
+      },
+      prev() {
+        if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+        const list = this.playingList(); if (!list) return;
+        if (this.prefs.shuffle && this.history.length) { const back = this.history.pop(); this.play(back.listId, back.token, false); return; }
+        const items = this.order(list), at = items.findIndex(i => i.token === this.playing.token);
+        const target = items[(at - 1 + items.length) % items.length]; if (target) this.play(list.id, target.token);
+      },
+      toggle() {
+        if (!this.playing) { const list = this.list(), first = list && this.order(list)[0]; if (first) this.play(list.id, first.token); return; }
+        if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+      },
+      stop() { audio.pause(); audio.currentTime = 0; this.renderBar(); this.render(); },
+      add(items) {
+        const list = this.list(); let added = 0;
+        for (const item of items) { if (!list.items.some(i => i.token === item.token)) { list.items.push({token: item.token, name: item.name, exists: true, duration: item.duration || null}); added++; } }
+        this.render(); this.save(); this.measure();
+        say(added === 1 ? tf('Agregada a «{0}»', list.name) : added ? tf('{0} agregadas a «{1}»', added, list.name) : t('Ya está en la lista'), !!added);
+      },
+      async measure() {
+        // Duración de las canciones que no la tienen (una por una, sin reproducir)
+        if (this.measuring) return; this.measuring = true;
+        const probe = new Audio(); probe.preload = 'metadata'; probe.muted = true;
+        try {
+          for (const list of this.lists) for (const item of list.items) {
+            if (item.duration || item.exists === false) continue;
+            item.duration = await new Promise(resolve => {
+              const done = v => { probe.onloadedmetadata = probe.onerror = null; resolve(v); };
+              probe.onloadedmetadata = () => done(isFinite(probe.duration) ? probe.duration : null);
+              probe.onerror = () => done(null); probe.src = `/media/${item.token}`;
+              setTimeout(() => done(null), 8000);
+            });
+          }
+        } finally { this.measuring = false; probe.removeAttribute('src'); }
+        this.render(); this.save();
+      },
+    };
+    $('#plSelect').addEventListener('change', () => { Player.current = $('#plSelect').value; Player.render(); Player.save(); });
+    $('#plNew').addEventListener('click', () => {
+      const name = (prompt(t('Nombre de la lista nueva:')) || '').trim(); if (!name) return;
+      const id = Array.from(crypto.getRandomValues(new Uint8Array(5)), b => b.toString(16).padStart(2, '0')).join('');
+      Player.lists.push({id, name, items: []}); Player.current = id; Player.render(); Player.save();
+    });
+    $('#plRename').addEventListener('click', () => {
+      const list = Player.list(); const name = (prompt(t('Nuevo nombre de la lista:'), list.name) || '').trim(); if (!name) return;
+      list.name = name; Player.render(); Player.renderBar(); Player.save();
+    });
+    $('#plDelete').addEventListener('click', () => {
+      const list = Player.list(); if (Player.lists.length < 2 || !confirm(tf('¿Borrar la lista «{0}»? Las canciones no se borran de tu PC.', list.name))) return;
+      if (Player.playing && Player.playing.listId === list.id) { audio.pause(); Player.playing = null; }
+      Player.lists = Player.lists.filter(l => l !== list); Player.current = Player.lists[0].id; Player.render(); Player.renderBar(); Player.save();
+    });
+    $('#plClear').addEventListener('click', () => {
+      const list = Player.list(); if (!list.items.length || !confirm(tf('¿Quitar todas las canciones de «{0}»? (No se borran de tu PC.)', list.name))) return;
+      list.items = []; Player.render(); Player.save();
+    });
+    $('#tracks').addEventListener('click', event => {
+      const li = event.target.closest('li'); const act = event.target.dataset.act; if (!li || !act) return;
+      const list = Player.list(), i = +li.dataset.i;
+      if (act === 'rm') list.items.splice(i, 1);
+      else if (act === 'up' && i > 0) [list.items[i - 1], list.items[i]] = [list.items[i], list.items[i - 1]];
+      else if (act === 'down' && i < list.items.length - 1) [list.items[i + 1], list.items[i]] = [list.items[i], list.items[i + 1]];
+      Player.render(); Player.renderBar(); Player.save();
+    });
+    $('#tracks').addEventListener('dblclick', event => {
+      const li = event.target.closest('li'); if (!li || event.target.closest('button')) return;
+      const list = Player.list(); Player.play(list.id, list.items[+li.dataset.i].token);
+    });
+    let dragFrom = null;
+    $('#tracks').addEventListener('dragstart', event => { const li = event.target.closest('li'); dragFrom = li ? +li.dataset.i : null; event.dataTransfer.effectAllowed = 'move'; });
+    $('#tracks').addEventListener('dragover', event => { event.preventDefault(); document.querySelectorAll('.tracks li.drag-over').forEach(el => el.classList.remove('drag-over')); const li = event.target.closest('li'); if (li) li.classList.add('drag-over'); });
+    $('#tracks').addEventListener('drop', event => {
+      event.preventDefault(); const li = event.target.closest('li'); if (dragFrom == null || !li) return;
+      const list = Player.list(), to = +li.dataset.i; const [moved] = list.items.splice(dragFrom, 1); list.items.splice(to, 0, moved);
+      dragFrom = null; Player.render(); Player.renderBar(); Player.save();
+    });
+    $('#tracks').addEventListener('dragend', () => document.querySelectorAll('.tracks li.drag-over').forEach(el => el.classList.remove('drag-over')));
+    $('#pbPlay').addEventListener('click', () => Player.toggle());
+    $('#pbNext').addEventListener('click', () => Player.next());
+    $('#pbPrev').addEventListener('click', () => Player.prev());
+    $('#pbStop').addEventListener('click', () => Player.stop());
+    $('#pbShuffle').addEventListener('click', () => { Player.prefs.shuffle = !Player.prefs.shuffle; Player.renderBar(); Player.save(); });
+    $('#pbRepeat').addEventListener('click', () => { const order = ['all', 'one', 'off']; Player.prefs.repeat = order[(order.indexOf(Player.prefs.repeat) + 1) % 3]; Player.renderBar(); Player.save(); });
+    $('#pbVolume').addEventListener('input', () => { audio.volume = +$('#pbVolume').value; Player.prefs.volume = audio.volume; });
+    $('#pbVolume').addEventListener('change', () => Player.save());
+    let seeking = false;
+    $('#pbSeek').addEventListener('input', () => { seeking = true; $('#pbCur').textContent = hms(+$('#pbSeek').value); });
+    $('#pbSeek').addEventListener('change', () => { audio.currentTime = +$('#pbSeek').value; seeking = false; });
+    audio.addEventListener('timeupdate', () => { if (!seeking) { $('#pbSeek').value = audio.currentTime; $('#pbCur').textContent = hms(audio.currentTime) || '0:00'; } });
+    audio.addEventListener('loadedmetadata', () => {
+      $('#pbSeek').max = audio.duration || 1; $('#pbDur').textContent = hms(audio.duration);
+      const list = Player.playingList(), item = list && list.items.find(i => i.token === Player.playing.token);
+      if (item && !item.duration && isFinite(audio.duration)) { item.duration = audio.duration; Player.render(); Player.save(); }
+    });
+    audio.addEventListener('play', () => { Player.renderBar(); Player.render(); });
+    audio.addEventListener('pause', () => { Player.renderBar(); Player.render(); });
+    audio.addEventListener('ended', () => Player.next(true));
+    audio.addEventListener('error', () => { if (Player.playing) { say(t('El archivo ya no está en su carpeta: se salta.')); setTimeout(() => Player.next(true), 600); } });
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('play', () => Player.toggle());
+      navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+      navigator.mediaSession.setActionHandler('nexttrack', () => Player.next());
+      navigator.mediaSession.setActionHandler('previoustrack', () => Player.prev());
+    }
+    document.addEventListener('keydown', event => {
+      if (event.code !== 'Space' || !Player.ready || $('#tabPlayer').hidden || event.target.closest('input, textarea, select, button')) return;
+      event.preventDefault(); Player.toggle();
+    });
+
+    const Library = {
+      where: 'downloads', items: [], loaded: {},
+      async load(force = false) {
+        if (this.loaded[this.where] && !force) { this.render(); return; }
+        try { const data = await api(`/api/library?where=${this.where}`); this.items = data.items; this.loaded[this.where] = data.items; }
+        catch (error) { say(error.message); this.items = []; }
+        this.render();
+      },
+      filtered() { const q = $('#libSearch').value.trim().toLowerCase(); const items = this.loaded[this.where] || []; return q ? items.filter(i => (i.name + ' ' + i.sub).toLowerCase().includes(q)) : items; },
+      render() {
+        const items = this.filtered(), all = this.loaded[this.where] || [];
+        $('#lib').innerHTML = items.length ? items.slice(0, 600).map((item, i) => `<li data-i="${i}"><span class="lname" title="${esc(item.file)}">${esc(item.name)}${item.sub ? `<small>${esc(item.sub)}</small>` : ''}</span><button class="secondary" type="button" data-add="${i}">➕ ${t('agregar')}</button></li>`).join('')
+          : `<li><span class="lname" style="color:var(--muted)">${t(all.length ? 'Nada coincide con la búsqueda.' : 'No hay canciones en esta carpeta todavía.')}</span></li>`;
+      },
+    };
+    document.querySelectorAll('input[name=libWhere]').forEach(input => input.addEventListener('change', () => { Library.where = input.value; Library.load(true); }));
+    $('#libSearch').addEventListener('input', () => Library.render());
+    $('#lib').addEventListener('click', event => { const i = event.target.dataset.add; if (i !== undefined) Player.add([Library.filtered()[+i]]); });
+    $('#lib').addEventListener('dblclick', event => { const li = event.target.closest('li[data-i]'); if (li && !event.target.closest('button')) Player.add([Library.filtered()[+li.dataset.i]]); });
+    $('#libAddAll').addEventListener('click', () => { const items = Library.filtered(); if (items.length) Player.add(items); });
+    $('#libPick').addEventListener('click', async () => {
+      const button = $('#libPick'); button.disabled = true; say(t('Elige los archivos en la ventana que se abrió…'));
+      try { const data = await api('/api/pick-songs', {}); say(''); if (data.items.length) Player.add(data.items); }
+      catch (error) { say(error.message); }
+      finally { button.disabled = false; }
+    });
+
     (async function init() {
       try { const info = await api('/api/info'); settings = info.settings; applySettings(); showInfo(info); }
       catch (_) { say(t('No se pudo conectar con EC-Tube. Ciérralo y vuelve a abrirlo.')); }
       refreshJobs();
       setInterval(() => fetch('/api/ping').catch(() => {}), 20000);
+      let tab = 'download'; try { tab = localStorage.getItem('ectube-tab') || 'download'; } catch (_) {}
+      showTab(tab === 'player' ? 'player' : 'download');
       const info = await api('/api/info').catch(() => null);
       if (info && info.engine_updating) { const wait = async () => { const i = await api('/api/info'); showInfo(i); if (i.engine_updating) setTimeout(wait, 2000); }; setTimeout(wait, 2000); }
     })();

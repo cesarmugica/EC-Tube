@@ -24,9 +24,9 @@ import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -183,11 +183,11 @@ ENGINE = Engine()
 # ---------------------------------------------------------------------------
 # Configuración
 # ---------------------------------------------------------------------------
-def _default_folder(kind: str) -> str:
+def _default_folder(kind: str, edited: bool = False) -> str:
     base = Path.home() / ("Music" if kind == "audio" else "Videos")
     if not base.is_dir():
         base = Path.home() / "Downloads"
-    return str(base / "EC-Tube")
+    return str(base / ("EC-Tube Editados" if edited else "EC-Tube"))
 
 
 CONFIG_PATH = HOME / "config.json"
@@ -199,6 +199,8 @@ DEFAULT_CONFIG = {
     "video_quality": "1080",
     "audio_folder": "",
     "video_folder": "",
+    "audio_edited_folder": "",   # recortes de audio (aparte de las descargas)
+    "video_edited_folder": "",   # recortes de video
     "playlist": False,
     "language": "",  # "es" o "en"; vacío = el del instalador o el de Windows
 }
@@ -216,6 +218,8 @@ def load_config() -> dict:
             config.update({k: v for k, v in data.items() if k in DEFAULT_CONFIG})
     config["audio_folder"] = config["audio_folder"] or _default_folder("audio")
     config["video_folder"] = config["video_folder"] or _default_folder("video")
+    config["audio_edited_folder"] = config["audio_edited_folder"] or _default_folder("audio", edited=True)
+    config["video_edited_folder"] = config["video_edited_folder"] or _default_folder("video", edited=True)
     return config
 
 
@@ -566,11 +570,20 @@ def media_info(path: Path) -> dict:
             "size": path.stat().st_size if path.exists() else 0}
 
 
+def edited_folder_for(source: Path) -> Path:
+    """Los recortes van a la carpeta de editados (audio o video), aparte de las descargas."""
+    kind = "video" if source.suffix.lower() in VIDEO_EXTS else "audio"
+    folder = Path(CONFIG[f"{kind}_edited_folder"])
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
 def _unique_trim_path(source: Path) -> Path:
+    folder = edited_folder_for(source)
     for n in range(1, 1000):
         word = "trim" if current_language() == "en" else "recorte"
         label = f" ({word})" if n == 1 else f" ({word} {n})"
-        candidate = source.with_name(f"{source.stem}{label}{source.suffix}")
+        candidate = folder / f"{source.stem}{label}{source.suffix}"
         if not candidate.exists():
             return candidate
     raise RuntimeError("Hay demasiados recortes de este archivo.")
@@ -640,6 +653,124 @@ class TrimJob:
 
 
 TRIMS: dict[str, TrimJob] = {}
+
+
+# ---------------------------------------------------------------------------
+# Reproductor: biblioteca (carpetas de descargas y editados) y listas guardadas
+# ---------------------------------------------------------------------------
+PLAYLISTS_PATH = HOME / "playlists.json"
+PLAYLISTS_LOCK = threading.Lock()
+MAX_LISTS, MAX_ITEMS = 100, 5000
+
+
+def library(where: str) -> dict:
+    """Canciones de una carpeta (y sus subcarpetas, p. ej. listas de YouTube), las más nuevas primero."""
+    folder = Path(CONFIG["audio_edited_folder"] if where == "edited" else CONFIG["audio_folder"])
+    files = []
+    if folder.is_dir():
+        base_depth = len(folder.parts)
+        for root, dirs, names in os.walk(folder):
+            if len(Path(root).parts) - base_depth >= 3:
+                dirs[:] = []
+            for name in names:
+                path = Path(root) / name
+                if path.suffix.lower() in AUDIO_EXTS and not name.endswith((".part", ".ytdl")):
+                    with contextlib.suppress(OSError):
+                        stat = path.stat()
+                        files.append((stat.st_mtime, path, stat.st_size))
+            if len(files) > 3000:
+                break
+    files.sort(key=lambda item: item[0], reverse=True)
+    return {"folder": str(folder), "items": [
+        {"token": MEDIA.token_for(path), "name": path.stem, "file": path.name,
+         "sub": str(path.parent.relative_to(folder)) if path.parent != folder else "",
+         "mtime": int(mtime), "size": size} for mtime, path, size in files[:2000]]}
+
+
+def _clean_player(data: object) -> dict:
+    data = data if isinstance(data, dict) else {}
+    volume = data.get("volume", 0.8)
+    return {"volume": float(min(1.0, max(0.0, volume))) if isinstance(volume, (int, float)) else 0.8,
+            "shuffle": bool(data.get("shuffle")),
+            "repeat": data.get("repeat") if data.get("repeat") in ("off", "all", "one") else "all"}
+
+
+def load_playlists() -> dict:
+    with PLAYLISTS_LOCK, contextlib.suppress(OSError, json.JSONDecodeError):
+        data = json.loads(PLAYLISTS_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and isinstance(data.get("lists"), list):
+            return data
+    first = "Mi lista" if current_language() != "en" else "My list"
+    return {"lists": [{"id": uuid.uuid4().hex[:10], "name": first, "items": []}], "current": "", "player": {}}
+
+
+def playlists_public(data: dict) -> dict:
+    lists = []
+    for entry in data.get("lists", []):
+        items = []
+        for item in entry.get("items", []):
+            path = Path(str(item.get("path") or ""))
+            items.append({"token": MEDIA.token_for(path), "name": path.stem, "exists": path.is_file(),
+                          "duration": item.get("duration")})
+        lists.append({"id": entry.get("id"), "name": entry.get("name"), "items": items})
+    current = data.get("current") if any(entry["id"] == data.get("current") for entry in lists) else (lists[0]["id"] if lists else "")
+    return {"lists": lists, "current": current, "player": _clean_player(data.get("player"))}
+
+
+def save_playlists(incoming: dict) -> dict:
+    """La página manda las listas con «token» de cada canción; aquí se cambian por la ruta real."""
+    raw_lists = incoming.get("lists")
+    if not isinstance(raw_lists, list) or not raw_lists:
+        raise ValueError("Debe quedar al menos una lista.")
+    lists = []
+    for entry in raw_lists[:MAX_LISTS]:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()[:80] or "Lista"
+        list_id = str(entry.get("id") or "")
+        if not re.fullmatch(r"[0-9a-f]{10}", list_id):
+            list_id = uuid.uuid4().hex[:10]
+        items = []
+        for item in (entry.get("items") or [])[:MAX_ITEMS]:
+            if not isinstance(item, dict):
+                continue
+            path = MEDIA.path(str(item.get("token") or ""))
+            if path is None:
+                continue  # solo canciones que EC-Tube ya conoce (biblioteca, archivos elegidos o listas guardadas)
+            duration = item.get("duration")
+            items.append({"path": str(path),
+                          "duration": round(float(duration), 2) if isinstance(duration, (int, float)) and 0 < duration < 86400 else None})
+        lists.append({"id": list_id, "name": name, "items": items})
+    data = {"lists": lists, "current": str(incoming.get("current") or ""), "player": _clean_player(incoming.get("player"))}
+    with PLAYLISTS_LOCK:
+        HOME.mkdir(parents=True, exist_ok=True)
+        tmp = PLAYLISTS_PATH.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(PLAYLISTS_PATH)
+    return playlists_public(data)
+
+
+def pick_files(initial: str) -> list[str]:
+    """Elegir varias canciones para el reproductor."""
+    if not IS_WINDOWS:
+        return []
+    patterns = ";".join("*" + ext for ext in sorted(AUDIO_EXTS | VIDEO_EXTS))
+    english = current_language() == "en"
+    script = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
+        "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true;"
+        f"$d.Title = '{english and 'Choose songs for the list' or 'Elige canciones para la lista'}';"
+        f"$d.Filter = '{english and 'Audio and video' or 'Audio y video'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
+        f"$d.InitialDirectory = '{initial.replace(chr(39), chr(39) * 2)}';"
+        "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.FileNames -join \"`n\" }"
+    )
+    with PICK_LOCK:
+        result = subprocess.run(["powershell", "-NoProfile", "-STA", "-Command", script], capture_output=True,
+                                text=True, encoding="utf-8", errors="replace", creationflags=_no_window_flags(),
+                                timeout=600)
+    return [line.strip() for line in result.stdout.splitlines()
+            if line.strip() and Path(line.strip()).suffix.lower() in AUDIO_EXTS | VIDEO_EXTS]
 
 
 def pick_file() -> str | None:
@@ -801,7 +932,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def read_json(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
-        if length > 256 * 1024:
+        if length > 4 * 1024 * 1024:
             raise ValueError("demasiado grande")
         data = json.loads(self.rfile.read(length) or b"{}")
         if not isinstance(data, dict):
@@ -845,6 +976,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
         elif path == "/api/update":
             self.send_json(UPDATER.public())
+        elif path == "/api/library":
+            where = parse_qs(urlsplit(self.path).query).get("where", ["downloads"])[0]
+            self.send_json({"ok": True, **library("edited" if where == "edited" else "downloads")})
+        elif path == "/api/playlists":
+            self.send_json({"ok": True, **playlists_public(load_playlists())})
         elif path.startswith("/img/") or path in ("/app.js", "/style.css", "/favicon.ico"):
             target = (WEB_ROOT / path.lstrip("/")).resolve()
             if WEB_ROOT.resolve() in target.parents and target.is_file():
@@ -878,14 +1014,17 @@ class Handler(BaseHTTPRequestHandler):
             self._job_action(match.group(1), match.group(2))
         elif path == "/api/pick-folder":
             kind = "video" if data.get("kind") == "video" else "audio"
-            chosen = pick_folder(CONFIG[f"{kind}_folder"])
+            key = f"{kind}_edited_folder" if data.get("which") == "edited" else f"{kind}_folder"
+            chosen = pick_folder(CONFIG[key])
             if chosen:
-                CONFIG[f"{kind}_folder"] = chosen
+                CONFIG[key] = chosen
                 save_config(CONFIG)
-            self.send_json({"ok": True, "folder": CONFIG[f"{kind}_folder"], "changed": bool(chosen)})
+            self.send_json({"ok": True, "folder": CONFIG[key], "changed": bool(chosen),
+                            "settings": {k: v for k, v in CONFIG.items() if k != "port"}})
         elif path == "/api/open-folder":
             kind = "video" if data.get("kind") == "video" else "audio"
-            folder = Path(CONFIG[f"{kind}_folder"])
+            key = f"{kind}_edited_folder" if data.get("which") == "edited" else f"{kind}_folder"
+            folder = Path(CONFIG[key])
             folder.mkdir(parents=True, exist_ok=True)
             open_in_explorer(folder)
             self.send_json({"ok": True})
@@ -897,6 +1036,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "error": "Ese archivo no es de audio o video compatible."}, 400)
             else:
                 self.send_json({"ok": True, "media": media_info(Path(chosen))})
+        elif path == "/api/pick-songs":
+            chosen = pick_files(CONFIG["audio_folder"])
+            self.send_json({"ok": True, "items": [{"token": MEDIA.token_for(Path(p)), "name": Path(p).stem} for p in chosen]})
+        elif path == "/api/playlists":
+            try:
+                self.send_json({"ok": True, **save_playlists(data)})
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
         elif path == "/api/media-info":
             source = MEDIA.path(str(data.get("token") or ""))
             if not source or not source.is_file():
