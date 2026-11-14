@@ -375,6 +375,7 @@
       'El archivo ya no está en su carpeta: se salta.': 'The file is no longer in its folder: skipped.', 'Repetir: no': 'Repeat: off',
       'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
       'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
+      'Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.': 'Installing the new version… a new window will open. This one closes by itself.',
       'Qué guardar': 'What to save', '✂ Tal cual (voz y música)': '✂ As is (vocals and music)',
       '🎵 Solo música (quitar la voz)': '🎵 Music only (remove vocals)', '🎤 Solo voz (quitar la música)': '🎤 Vocals only (remove music)',
       'Bajando el separador (solo la primera vez, ~65 MB)… {0} %': 'Downloading the separator (first time only, ~65 MB)… {0} %',
@@ -407,9 +408,19 @@
     let settings = {}, saving = null;
 
     // ---------- Actualizar EC-Tube ----------
+    let installing = false;
     async function pollUpdate() {
       let u = null;
-      try { u = await api('/api/update'); } catch (_) {}
+      try { u = await api('/api/update'); } catch (_) {
+        if (installing) {
+          // EC-Tube se cerró para actualizarse: la versión nueva abre su propia ventana; esta ya no sirve.
+          $('#updateText').textContent = t('Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.');
+          try { audio.pause(); } catch (_) {}
+          setTimeout(() => window.close(), 1500);
+          return;
+        }
+      }
+      if (u) installing = u.state === 'installing';
       if (u) {
         const show = ['available', 'downloading', 'installing'].includes(u.state);
         $('#updateBox').hidden = !show;
