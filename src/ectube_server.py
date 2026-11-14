@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "2.0.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -578,10 +578,13 @@ def edited_folder_for(source: Path) -> Path:
     return folder
 
 
-def _unique_trim_path(source: Path) -> Path:
+TRIM_WORDS = {"original": ("recorte", "trim"), "music": ("música", "music"), "voice": ("voz", "vocals")}
+
+
+def _unique_trim_path(source: Path, mode: str = "original") -> Path:
     folder = edited_folder_for(source)
     for n in range(1, 1000):
-        word = "trim" if current_language() == "en" else "recorte"
+        word = TRIM_WORDS.get(mode, TRIM_WORDS["original"])[1 if current_language() == "en" else 0]
         label = f" ({word})" if n == 1 else f" ({word} {n})"
         candidate = folder / f"{source.stem}{label}{source.suffix}"
         if not candidate.exists():
@@ -589,11 +592,34 @@ def _unique_trim_path(source: Path) -> Path:
     raise RuntimeError("Hay demasiados recortes de este archivo.")
 
 
+SEPARATOR = {"mdx": None, "lock": threading.Lock()}
+
+
+def _separator(progress, cancelled):
+    """El separador se carga una vez y se reutiliza (el modelo se baja la primera vez)."""
+    from ectube_separate import MDX, ensure_model
+
+    with SEPARATOR["lock"]:
+        if SEPARATOR["mdx"] is None:
+            model = ensure_model(HOME / "models", progress=progress, cancelled=cancelled)
+            SEPARATOR["mdx"] = MDX(str(model))
+            log("Separador listo en: " + ", ".join(SEPARATOR["mdx"].providers))
+        return SEPARATOR["mdx"]
+
+
+AUDIO_CODECS = {".mp3": ["-c:a", "libmp3lame", "-b:a", "320k"], ".m4a": ["-c:a", "aac", "-b:a", "256k"],
+                ".aac": ["-c:a", "aac", "-b:a", "256k"], ".wav": ["-c:a", "pcm_s16le"],
+                ".ogg": ["-c:a", "libvorbis", "-q:a", "7"], ".opus": ["-c:a", "libopus", "-b:a", "192k"],
+                ".flac": ["-c:a", "flac"]}
+
+
 class TrimJob:
-    def __init__(self, source: Path, start: float, end: float) -> None:
+    def __init__(self, source: Path, start: float, end: float, mode: str = "original") -> None:
         self.id = uuid.uuid4().hex[:12]
         self.source, self.start, self.end = source, start, end
-        self.output = _unique_trim_path(source)
+        self.mode = mode if mode in TRIM_WORDS else "original"
+        self.output = _unique_trim_path(source, self.mode)
+        self.phase = ""
         self.status, self.percent, self.error = "running", 0.0, ""
         self.process: subprocess.Popen | None = None
         self.cancelled = False
@@ -617,7 +643,75 @@ class TrimJob:
             args += ["-map", "0", "-c", "copy"]
         return args + ["-progress", "pipe:1", "-nostats", str(self.output)]
 
+    def _separate(self) -> None:
+        """Recortar + separar: sacar el audio, quitar voz o música y volver a guardar (con el video si era video)."""
+        import numpy as np
+
+        if not FFMPEG:
+            raise RuntimeError("No se encontró FFmpeg.")
+        duration = max(0.1, self.end - self.start)
+        if duration > 30 * 60:
+            raise RuntimeError("Para separar voz o música, el tramo debe durar máximo 30 minutos.")
+        span = ["-ss", f"{self.start:.3f}", "-i", str(self.source), "-t", f"{duration:.3f}"]
+        self.phase = "audio"
+        self.process = subprocess.Popen([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", *span, "-vn",
+                                         "-f", "f32le", "-ac", "2", "-ar", "44100", "pipe:1"],
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=_no_window_flags())
+        raw, errors = self.process.communicate()
+        if self.cancelled:
+            return
+        if self.process.returncode != 0 or not raw:
+            raise RuntimeError(friendly_error(errors.decode("utf-8", "replace")) if errors else "No se pudo leer el audio.")
+        mix = np.frombuffer(raw, dtype="<f4").reshape(-1, 2).T.copy()
+        self.percent = 3.0
+
+        def model_progress(fraction: float) -> None:
+            self.phase, self.percent = "model", 3 + fraction * 7
+
+        def separate_progress(fraction: float) -> None:
+            self.phase, self.percent = "separate", 10 + fraction * 82
+
+        mdx = _separator(model_progress, lambda: self.cancelled)
+        self.phase = "separate"
+        vocals = mdx.vocals(mix, progress=separate_progress, cancelled=lambda: self.cancelled)
+        result = vocals if self.mode == "voice" else mix - vocals
+        pcm = np.ascontiguousarray(np.clip(result, -1, 1).T, dtype="<f4").tobytes()
+        self.phase, self.percent = "save", 93.0
+        ext = self.source.suffix.lower()
+        args = [FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-y"]
+        if ext in VIDEO_EXTS:
+            args += [*span, "-f", "f32le", "-ar", "44100", "-ac", "2", "-i", "pipe:0", "-map", "0:v:0", "-map", "1:a:0",
+                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k"]
+            if ext in (".mp4", ".m4v", ".mov"):
+                args += ["-movflags", "+faststart"]
+        else:
+            args += ["-f", "f32le", "-ar", "44100", "-ac", "2", "-i", "pipe:0",
+                     *AUDIO_CODECS.get(ext, ["-c:a", "libmp3lame", "-b:a", "320k"])]
+        self.process = subprocess.Popen(args + [str(self.output)], stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        creationflags=_no_window_flags())
+        _, errors = self.process.communicate(pcm)
+        if self.cancelled:
+            return
+        if self.process.returncode != 0 or not self.output.exists():
+            raise RuntimeError(friendly_error(errors.decode("utf-8", "replace")) if errors else "No se pudo guardar.")
+
     def run(self) -> None:
+        if self.mode != "original":
+            try:
+                log(f"[separar {self.id}] {self.source.name} {self.start:.2f}–{self.end:.2f} → {self.mode}")
+                self._separate()
+                self.status = "cancelled" if self.cancelled else "done"
+                if self.status == "done":
+                    self.percent = 100.0
+            except InterruptedError:
+                self.status = "cancelled"
+            except Exception as exc:  # noqa: BLE001
+                self.status, self.error = "error", str(exc)
+                log(f"[separar {self.id}] error: {exc}")
+            if self.status != "done":
+                with contextlib.suppress(OSError):
+                    self.output.unlink()
+            return
         duration = max(0.1, self.end - self.start)
         try:
             log(f"[recorte {self.id}] {self.source.name} {self.start:.2f}–{self.end:.2f}")
@@ -646,7 +740,7 @@ class TrimJob:
 
     def public(self) -> dict:
         data = {"id": self.id, "status": self.status, "percent": round(self.percent, 1), "error": self.error,
-                "output": self.output.name}
+                "output": self.output.name, "mode": self.mode, "phase": self.phase}
         if self.status == "done":
             data["media"] = media_info(self.output)
         return data
@@ -1093,7 +1187,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": False, "error": "El recorte debe durar al menos 0.2 segundos."}, 400)
             return
         try:
-            job = TrimJob(source, start, end)
+            job = TrimJob(source, start, end, str(data.get("mode") or "original"))
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return

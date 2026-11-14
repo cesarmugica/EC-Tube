@@ -72,6 +72,8 @@ Invoke-Checked $python ($pythonArgs + @(
   '--paths', $srcRoot,
   '--hidden-import', 'ectube_build',
   '--hidden-import', 'ectube_update',
+  '--hidden-import', 'ectube_separate',
+  '--collect-all', 'onnxruntime',
   '--exclude-module', 'tkinter',
   '--distpath', $distDir,
   '--workpath', (Join-Path $scriptDir '.build'),

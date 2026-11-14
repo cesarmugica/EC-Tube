@@ -261,6 +261,11 @@
           </div>
           <div class="modal-actions">
             <span class="grow" id="trimStatus">Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.</span>
+            <select id="trimMode" aria-label="Qué guardar">
+              <option value="original">✂ Tal cual (voz y música)</option>
+              <option value="music">🎵 Solo música (quitar la voz)</option>
+              <option value="voice">🎤 Solo voz (quitar la música)</option>
+            </select>
             <button class="secondary" type="button" id="previewTrim">▶ Escuchar recorte</button>
             <button type="button" id="saveTrim">✂ Guardar recorte</button>
           </div>
@@ -370,6 +375,13 @@
       'El archivo ya no está en su carpeta: se salta.': 'The file is no longer in its folder: skipped.', 'Repetir: no': 'Repeat: off',
       'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
       'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
+      'Qué guardar': 'What to save', '✂ Tal cual (voz y música)': '✂ As is (vocals and music)',
+      '🎵 Solo música (quitar la voz)': '🎵 Music only (remove vocals)', '🎤 Solo voz (quitar la música)': '🎤 Vocals only (remove music)',
+      'Bajando el separador (solo la primera vez, ~65 MB)… {0} %': 'Downloading the separator (first time only, ~65 MB)… {0} %',
+      'Guardando… {0} %': 'Saving… {0} %', 'Quitando la voz… {0} %': 'Removing vocals… {0} %', 'Quitando la música… {0} %': 'Removing music… {0} %',
+      'Para separar voz o música, el tramo debe durar máximo 30 minutos.': 'To separate vocals or music, the section must be 30 minutes or less.',
+      'El separador se descargó mal. Vuelve a intentar.': 'The separator downloaded corrupted. Try again.',
+      'No se pudo leer el audio.': 'Could not read the audio.', 'No se pudo guardar.': 'Could not save.',
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
@@ -569,7 +581,7 @@
       });
       el.addEventListener('error', () => trimSay(t('Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.')));
       el.addEventListener('timeupdate', () => { if (editor.previewEnd !== null && el.currentTime >= editor.previewEnd) { el.pause(); editor.previewEnd = null; } drawTrim(); });
-      $('#saveTrim').disabled = false; $('#editor').hidden = false;
+      $('#saveTrim').disabled = false; $('#editor').hidden = false; $('#trimMode').value = 'original';
     }
     async function openEditorByToken(token) {
       try { openEditor((await api('/api/media-info', {token})).media); } catch (error) { say(error.message); }
@@ -597,11 +609,19 @@
       if (editor.el) editor.el.pause();
       $('#saveTrim').disabled = true; trimSay(tf('Recortando… {0} %', 0));
       try {
-        const job = await api('/api/trim', {token: editor.media.token, start: +$('#trimStart').value, end: +$('#trimEnd').value});
+        const mode = $('#trimMode').value;
+        const job = await api('/api/trim', {token: editor.media.token, start: +$('#trimStart').value, end: +$('#trimEnd').value, mode});
         editor.trimId = job.id;
         const poll = async () => {
           const state = await api(`/api/trim/${job.id}`);
-          if (state.status === 'running') { trimSay(tf('Recortando… {0} %', state.percent.toFixed(0))); setTimeout(poll, 600); return; }
+          if (state.status === 'running') {
+            const pct = state.percent.toFixed(0);
+            const text = mode === 'original' ? tf('Recortando… {0} %', pct)
+              : state.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
+              : state.phase === 'save' ? tf('Guardando… {0} %', pct)
+              : tf(mode === 'music' ? 'Quitando la voz… {0} %' : 'Quitando la música… {0} %', pct);
+            trimSay(text); setTimeout(poll, 700); return;
+          }
           $('#saveTrim').disabled = false;
           if (state.status === 'done') {
             $('#trimStatus').innerHTML = `✅ ${t('Guardado como')} <strong>${esc(state.output)}</strong> · <button class="link" type="button" id="trimReveal">${t('Ver en la carpeta')}</button> · <button class="link" type="button" id="trimOpenNew">${t('Abrir el recorte aquí')}</button>`;

@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 2.0.0 — Separar voz y música
+- **En el editor, «Qué guardar»:** ✂ Tal cual · 🎵 **Solo música** (quita la voz: pista para cantar) · 🎤 **Solo voz** (quita la música). Funciona con el tramo que elijas (o la canción completa) y con audio o video (el video se conserva, con el audio nuevo).
+- Usa el separador MDX-Net «Kim Vocal 2» de UVR. Se baja solo la primera vez (~65 MB, con revisión de huella) y usa tu tarjeta de video con DirectML (NVIDIA, AMD o Intel); si no hay, el procesador (más lento).
+- Se guarda en la carpeta de editados como «… (música)» o «… (voz)».
+- Hasta 30 minutos por separación.
+- *EN:* New “What to save” in the editor: as is / music only (remove vocals) / vocals only (remove music).
+
 ## 1.4.0 — Reproductor y carpeta de editados
 - **Carpetas separadas:** los recortes ya no se guardan junto al original; van a su propia carpeta («Recortes en», por defecto `Música\EC-Tube Editados` y `Videos\EC-Tube Editados`), que puedes cambiar o abrir igual que la de descargas.
 - **🎵 Reproductor** (pestaña nueva), ligero, tipo Winamp:
