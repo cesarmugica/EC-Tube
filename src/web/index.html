@@ -472,6 +472,14 @@
       <section class="panel">
         <div class="list-head"><h2>3 · Fondo y video</h2></div>
         <div class="row">
+          <div class="seg" role="radiogroup" aria-label="Tipo de video">
+            <label><input type="radio" name="kType" value="karaoke"><span>🎤 Karaoke (sin voz)</span></label>
+            <label><input type="radio" name="kType" value="lyrics"><span>🎵 Video con letra (con voz)</span></label>
+          </div>
+          <label class="kcheck" id="kHighlightWrap"><input type="checkbox" id="kHighlight"> Iluminar la letra mientras se canta</label>
+        </div>
+        <p class="khelp" id="kTypeHelp"></p>
+        <div class="row">
           <div class="seg" role="radiogroup" aria-label="Fondo">
             <label><input type="radio" name="kBg" value="video"><span>🎬 Video original</span></label>
             <label><input type="radio" name="kBg" value="image"><span>🖼 Imagen</span></label>
@@ -657,6 +665,11 @@
       'La frase debe terminar después de que entra (al menos 0.2 s).': 'The line must end after it starts (at least 0.2 s).', 'Escribe el tiempo así: 0:29 o 0:29.5': 'Type the time like this: 0:29 or 0:29.5',
       'Primero escribe a qué hora entra la frase.': 'First type when the line starts.',
       'Ocultar en la vista previa las que no he editado': 'Hide the lines I have not edited in the preview', '↺ empezar de nuevo': '↺ start over',
+      '🎤 Karaoke (sin voz)': '🎤 Karaoke (no vocals)', '🎵 Video con letra (con voz)': '🎵 Lyric video (with vocals)', 'Iluminar la letra mientras se canta': 'Highlight the lyrics as they are sung',
+      '🎬 Crear video con letra': '🎬 Create lyric video',
+      'Karaoke: suena la pista sin voz, la letra se ilumina mientras se canta y hay cuenta regresiva ● ● ● antes de cada entrada.': 'Karaoke: the instrumental plays, the lyrics light up as they are sung and there is a ● ● ● countdown before each entry.',
+      'Video con letra: suena la canción con voz («{0}»), sin cuenta regresiva y la letra aparece y se desvanece suave. (La vista previa suena con la pista; el video final lleva la voz.)': 'Lyric video: the song with vocals plays (“{0}”), no countdown, and the lyrics fade in and out. (The preview plays the instrumental; the final video has the vocals.)',
+      'Video con letra: se usará el audio de «{0}». Si esa pista no tiene voz, elige la canción con voz (método 🤖 Automático o 🎤 Frase + voz).': 'Lyric video: the audio of “{0}” will be used. If that track has no vocals, choose the song with vocals (🤖 Automatic or 🎤 Line + voice method).',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1318,9 +1331,11 @@
         kMedia.src = p.source ? `/media/${p.source.token}` : ''; if (!p.source) kMedia.removeAttribute('src');
         if (p.image) kImg.src = `/media/${p.image.token}`;
         document.querySelectorAll('input[name=kBg]').forEach(i => { i.checked = i.value === p.bg; });
-        document.querySelectorAll('input[name=kFormat]').forEach(i => { i.checked = i.value === p.format; });
+        document.querySelectorAll('input[name=kType]').forEach(i => i.addEventListener('change', () => { Karaoke.proj.video_type = i.value; Karaoke.syncType(); Karaoke.save(); }));
+    $('#kHighlight').addEventListener('change', () => { Karaoke.proj.lyrics_highlight = $('#kHighlight').checked; Karaoke.save(); });
+    document.querySelectorAll('input[name=kFormat]').forEach(i => { i.checked = i.value === p.format; });
         $('#kColor1').value = p.color1; $('#kColor2').value = p.color2; $('#kSung').value = p.sung_color;
-        $('#kMode').value = p.mark_mode || 'line'; $('#kHideUnedited').checked = !!p.hide_unedited;
+        $('#kMode').value = p.mark_mode || 'line'; $('#kHideUnedited').checked = !!p.hide_unedited; this.syncType();
         this.showGuide(); this.checkGuide(true); this.undoStack = []; KT.loadWave(); this.applyMethod();
         $('#kOffset').value = p.offset || 0; $('#kOffsetText').textContent = `${(+p.offset || 0).toFixed(2)} s`;
         $('#kDelete').disabled = !p.id;
@@ -1339,7 +1354,7 @@
         const run = async () => {
           const p = this.proj;
           const body = {id: p.id, title: p.title, lyrics: p.lyrics, lines: p.lines, offset: p.offset, sung_color: p.sung_color, bg: p.bg,
-            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
+            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, video_type: p.video_type || 'karaoke', lyrics_highlight: !!p.lyrics_highlight, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
           if (!p.source && !p.lyrics.trim() && !p.title.trim()) return;
           try {
             const data = await api('/api/karaoke/save', body);
@@ -1425,7 +1440,7 @@
         const ready = !!(g && st.state === 'ready');
         $('#kAlign').disabled = !ready; $('#ktAuto').disabled = !ready; $('#kAutoTop').disabled = !ready;
         if ($('#kSongName')) $('#kSongName').textContent = g ? text : t('— (todavía no la eliges)');
-        this.renderSteps();
+        this.renderSteps(); this.syncType();
       },
       async checkGuide(guess = false) {
         clearTimeout(this.guideTimer);
@@ -1478,6 +1493,17 @@
         if (this.proj.guide && this.guideState && this.guideState.state === 'ready') this.align([li]).then(() => this.renderLines());
         this.renderLines(); this.save();
         return true;
+      },
+      isLyrics() { return this.proj && this.proj.video_type === 'lyrics'; },
+      syncType() {
+        const p = this.proj, lyr = this.isLyrics();
+        document.querySelectorAll('input[name=kType]').forEach(i => { i.checked = i.value === (lyr ? 'lyrics' : 'karaoke'); });
+        $('#kHighlightWrap').hidden = !lyr; $('#kHighlight').checked = !!p.lyrics_highlight;
+        $('#kExport').textContent = lyr ? t('🎬 Crear video con letra') : t('🎬 Crear video de karaoke');
+        $('#kTypeHelp').textContent = !lyr
+          ? t('Karaoke: suena la pista sin voz, la letra se ilumina mientras se canta y hay cuenta regresiva ● ● ● antes de cada entrada.')
+          : p.guide ? tf('Video con letra: suena la canción con voz («{0}»), sin cuenta regresiva y la letra aparece y se desvanece suave. (La vista previa suena con la pista; el video final lleva la voz.)', p.guide.name)
+          : tf('Video con letra: se usará el audio de «{0}». Si esa pista no tiene voz, elige la canción con voz (método 🤖 Automático o 🎤 Frase + voz).', p.source ? p.source.name : '—');
       },
       markEdited(li) {
         const p = this.proj; if (!p.lines[li]) return;
@@ -1592,7 +1618,7 @@
           ctx.fillStyle = '#fff'; ctx.fillText(p.title, W / 2, H / 2); ctx.textAlign = 'left';
         }
         for (const item of placed) {
-          if (item.countdown && now >= item.start - 3 && now < item.start) {
+          if (item.countdown && !this.isLyrics() && now >= item.start - 3 && now < item.start) {
             const n = Math.ceil(item.start - now), size = kFont(p.lines[item.line], fullW, fullH, p.lines) * 0.7 * scale;
             ctx.font = `bold ${size}px Arial`; ctx.fillStyle = p.sung_color; ctx.textAlign = 'center';
             ctx.fillText(Array(n).fill('●').join(' '), W / 2, kSlotY(item.slot, fullW, fullH) * scale - kFont(p.lines[item.line], fullW, fullH, p.lines) * 1.15 * scale); ctx.textAlign = 'left';
@@ -1606,7 +1632,7 @@
           units.forEach((u, i) => {
             ctx.strokeText(pieces[i], x, y); ctx.fillStyle = '#fff'; ctx.fillText(pieces[i], x, y);
             const start = u.start != null ? u.start + (+p.offset || 0) : null, end = u.end != null ? u.end + (+p.offset || 0) : null;
-            let f = 0; if (start != null && now >= start) f = end != null && end > start ? Math.min(1, (now - start) / (end - start)) : 1;
+            let f = 0; if (start != null && now >= start && (!this.isLyrics() || p.lyrics_highlight)) f = end != null && end > start ? Math.min(1, (now - start) / (end - start)) : 1;
             if (f > 0) { const tw = ctx.measureText(u.text).width; ctx.save(); ctx.beginPath(); ctx.rect(x, y - size, tw * f, size * 2); ctx.clip(); ctx.fillStyle = p.sung_color; ctx.fillText(pieces[i], x, y); ctx.restore(); }
             x += widths[i];
           });

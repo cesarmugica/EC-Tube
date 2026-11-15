@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.6.1"
+APP_VERSION = "2.7.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -897,7 +897,7 @@ def _karaoke_path(project_id: str) -> Path:
 
 def karaoke_public(project: dict) -> dict:
     data = {k: project.get(k) for k in ("id", "title", "lyrics", "lines", "offset", "sung_color", "bg", "color1",
-                                       "color2", "format", "mark_mode", "method", "holds", "edited", "hide_unedited", "updated")}
+                                       "color2", "format", "mark_mode", "method", "holds", "edited", "hide_unedited", "video_type", "lyrics_highlight", "updated")}
     for key in ("source", "image", "guide"):
         path = Path(project[key]) if project.get(key) else None
         data[key] = {"token": MEDIA.token_for(path), "name": path.name, "exists": path.is_file(),
@@ -952,6 +952,8 @@ def karaoke_save(data: dict) -> dict:
         ok = isinstance(hold, list) and len(hold) == 2 and all(isinstance(x, (int, float)) for x in hold)
         holds.append([round(float(hold[0]), 3), round(float(hold[1]), 3)] if ok else None)
     project["holds"] = holds
+    project["video_type"] = "lyrics" if data.get("video_type") == "lyrics" else "karaoke"
+    project["lyrics_highlight"] = bool(data.get("lyrics_highlight"))
     project["edited"] = [bool(x) for x in (data.get("edited") or [])[:1000]]
     project["hide_unedited"] = bool(data.get("hide_unedited"))
     project["method"] = data.get("method") if data.get("method") in ("auto", "semi", "manual") else None
@@ -985,14 +987,30 @@ class KaraokeExport:
         if not source.is_file():
             raise RuntimeError("La música del karaoke ya no está en su carpeta.")
         self.source = source
+        # Video con letra: suena la canción CON voz (la voz guía), corrida igual que la pista.
+        self.lyrics = project.get("video_type") == "lyrics"
+        self.voice: Path | None = None
+        self.voice_shift = 0.0
+        guide = Path(project.get("guide") or "")
+        if self.lyrics and project.get("guide") and guide.is_file() and guide != source:
+            self.voice = guide
+            with contextlib.suppress(Exception):
+                g = guide_for(guide)
+                for _ in range(50):
+                    if g.state != "preparing":
+                        break
+                    time.sleep(0.1)
+                if g.state == "ready":
+                    self.voice_shift = g.offset_for(source)
         folder = Path(CONFIG["karaoke_folder"])
         folder.mkdir(parents=True, exist_ok=True)
         name = re.sub(r'[<>:"/\\|?*]+', "", project.get("title") or source.stem).strip() or "Karaoke"
         suffix = " (vertical)" if self.fmt == "9:16" else ""
-        output = folder / f"{name} (karaoke){suffix}.mp4"
+        word = ("lyrics" if current_language() == "en" else "letra") if self.lyrics else "karaoke"
+        output = folder / f"{name} ({word}){suffix}.mp4"
         n = 2
         while output.exists():
-            output = folder / f"{name} (karaoke {n}){suffix}.mp4"
+            output = folder / f"{name} ({word} {n}){suffix}.mp4"
             n += 1
         self.output = output
         self.status, self.percent, self.error = "running", 0.0, ""
@@ -1021,6 +1039,12 @@ class KaraokeExport:
                      "-i", str(self.source)]
             chain = "[0:v]setsar=1"
             audio = "1:a:0"
+        if self.voice:
+            # tiempo_en_pista = tiempo_en_guía + corrimiento → retrasar (o adelantar) la canción con voz
+            index = sum(1 for a in args if a == "-i")
+            shift = self.voice_shift
+            args += (["-itsoffset", f"{shift:.3f}"] if shift > 0 else ["-ss", f"{-shift:.3f}"] if shift < 0 else []) + ["-i", str(self.voice)]
+            audio = f"{index}:a:0"
         args += ["-filter_complex", f"{chain},ass=karaoke.ass,format=yuv420p[v]", "-map", "[v]", "-map", audio,
                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "192k",
                  "-movflags", "+faststart", "-shortest", "-progress", "pipe:1", "-nostats", str(self.output)]

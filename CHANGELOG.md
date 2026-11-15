@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 2.7.0 — Video con letra (lyric video)
+- En **3 · Fondo y video** eliges el **tipo de video**:
+  - **🎤 Karaoke (sin voz)**: como siempre (pista sin voz, letra que se ilumina, cuenta regresiva ● ● ●).
+  - **🎵 Video con letra (con voz)**: suena la canción **con voz** (la voz guía, corrida igual que la pista), sin cuenta regresiva, y la letra aparece y se desvanece suave. Opcional: **«Iluminar la letra mientras se canta»**.
+- Los mismos tiempos sirven para los dos: puedes sacar el karaoke y el video con letra del mismo proyecto. El archivo se llama «… (karaoke).mp4» o «… (letra).mp4».
+- Si no hay voz guía, el video con letra usa el audio de la pista que elegiste (útil si elegiste directamente la canción con voz).
+
 ## 2.6.1 — Karaoke: ocultar lo que no has editado
 - Casilla **«Ocultar en la vista previa las que no he editado»** en 📝 Frases: así lo que ya estaba no se mezcla con lo que estás arreglando. Todas se ocultan y van apareciendo conforme las editas.
 - Cuenta como editada (✓ verde en la lista) una frase a la que le escribes entra/sale, la marcas con la espaciadora o la mueves en la línea de tiempo. En la línea de tiempo las no editadas se ven atenuadas.

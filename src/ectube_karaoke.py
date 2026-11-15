@@ -119,6 +119,8 @@ def build_ass(project: dict, fmt: str) -> str:
         "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
     placed = layout(lines, offset)
+    lyric_video = project.get("video_type") == "lyrics"          # video con letra: sin cuenta regresiva
+    plain = lyric_video and not project.get("lyrics_highlight")   # …y sin iluminar: solo aparece y se desvanece
     title = _clean(project.get("title") or "")
     if title and placed and placed[0]["appear"] > 1.5:
         out.append(f"Dialogue: 0,{_ts(0.4)},{_ts(placed[0]['appear'] - 0.2)},T,,0,0,0,,{{\\an5\\pos({width // 2},{height // 2})\\fad(400,300)}}{title}")
@@ -128,6 +130,11 @@ def build_ass(project: dict, fmt: str) -> str:
         y = slot_y(item["slot"], width, height)
         cursor = item["appear"]
         text = []
+        if plain:
+            words = "".join(f"{_clean(u['text'])}{' ' if u['space'] else ''}" for u in units)
+            out.append(f"Dialogue: 1,{_ts(item['appear'])},{_ts(item['disappear'])},K,,0,0,0,,"
+                       f"{{\\an5\\pos({width // 2},{y})\\fs{size}\\1c&H00FFFFFF\\fad(300,300)}}{words}")
+            continue
         for unit in units:
             start = (unit.get("start") if unit.get("start") is not None else cursor - offset) + offset
             end = (unit.get("end") if unit.get("end") is not None else start - offset + 0.3) + offset
@@ -139,7 +146,7 @@ def build_ass(project: dict, fmt: str) -> str:
             cursor = max(cursor, start) + dur / 100
         out.append(f"Dialogue: 1,{_ts(item['appear'])},{_ts(item['disappear'])},K,,0,0,0,,"
                    f"{{\\an5\\pos({width // 2},{y})\\fs{size}\\fad(150,150)}}" + "".join(text))
-        if item["countdown"]:
+        if item["countdown"] and not lyric_video:
             cy = y - round(size * 1.15)
             for n in range(3, 0, -1):
                 start = item["start"] - n
