@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.7.0"
+APP_VERSION = "2.7.1"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1265,7 +1265,13 @@ def karaoke_align(guide_path: Path, source: Path, lines: list[dict]) -> list:
         except (TypeError, ValueError):
             result.append(None)
             continue
-        times = align_line(guide.env, units, start - shift, end - shift)
+        strict = bool(line.get("strict"))  # tiempos escritos a mano: entra y sale EXACTO donde dijo el usuario
+        times = align_line(guide.env, units, start - shift, end - shift, pad=(0.0, 0.0) if strict else (0.30, 0.45))
+        if times and strict:
+            lo, hi = start - shift, end - shift
+            times = [(min(max(s, lo), hi - 0.05), min(max(e, lo + 0.05), hi)) for s, e in times]
+            times[0] = (lo, max(times[0][1], lo + 0.05))
+            times[-1] = (min(times[-1][0], hi - 0.05), hi)
         result.append([[round(float(s + shift), 3), round(float(e + shift), 3)] for s, e in times] if times else None)
     return result
 

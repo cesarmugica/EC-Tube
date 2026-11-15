@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 2.7.1 — Los tiempos que escribes se respetan
+- Al escribir **entra/sale** de una frase con voz guía, las palabras se acomodaban a la voz buscando hasta 0.3 s antes, y si ahí estaba la cola de la frase anterior, te movía la entrada (escribías 0:56.8 y quedaba 0:56.4). Ahora lo que escribes es exacto: la frase entra y sale justo ahí, y la voz solo acomoda las palabras **dentro**.
+- Después de escribir, abajo te dice «✓ Frase N: entra … · sale …», o te avisa si se va a encimar con la anterior o la siguiente.
+
 ## 2.7.0 — Video con letra (lyric video)
 - En **3 · Fondo y video** eliges el **tipo de video**:
   - **🎤 Karaoke (sin voz)**: como siempre (pista sin voz, letra que se ilumina, cuenta regresiva ● ● ●).

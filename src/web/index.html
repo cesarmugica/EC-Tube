@@ -670,6 +670,9 @@
       'Karaoke: suena la pista sin voz, la letra se ilumina mientras se canta y hay cuenta regresiva ● ● ● antes de cada entrada.': 'Karaoke: the instrumental plays, the lyrics light up as they are sung and there is a ● ● ● countdown before each entry.',
       'Video con letra: suena la canción con voz («{0}»), sin cuenta regresiva y la letra aparece y se desvanece suave. (La vista previa suena con la pista; el video final lleva la voz.)': 'Lyric video: the song with vocals plays (“{0}”), no countdown, and the lyrics fade in and out. (The preview plays the instrumental; the final video has the vocals.)',
       'Video con letra: se usará el audio de «{0}». Si esa pista no tiene voz, elige la canción con voz (método 🤖 Automático o 🎤 Frase + voz).': 'Lyric video: the audio of “{0}” will be used. If that track has no vocals, choose the song with vocals (🤖 Automatic or 🎤 Line + voice method).',
+      '⚠ Ojo: la frase anterior sale en {0} y esta entra en {1}; se van a encimar un momento.': '⚠ Heads up: the previous line ends at {0} and this one starts at {1}; they will overlap for a moment.',
+      '⚠ Ojo: esta sale en {0} y la siguiente entra en {1}; se van a encimar un momento.': '⚠ Heads up: this line ends at {0} and the next starts at {1}; they will overlap for a moment.',
+      '✓ Frase {0}: entra {1} · sale {2}': '✓ Line {0}: starts {1} · ends {2}',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1462,7 +1465,7 @@
         }
       },
       // Acomodar las frases a la voz (li = lista de renglones, o null = todos los marcados por frase).
-      async align(lis) {
+      async align(lis, strict = false) {
         const p = this.proj; if (!p.guide || !p.source) return;
         if (!this.guideState || this.guideState.state !== 'ready') { this.pendingAlign = true; return; }
         const holds = p.holds || [];
@@ -1470,7 +1473,7 @@
         if (!pick.length) { if (!lis) this.msg(t('No hay frases marcadas «por frase» para ajustar.')); return; }
         try {
           const data = await api('/api/karaoke/align', {source_token: p.source.token, guide_token: p.guide.token,
-            lines: pick.map(i => ({start: holds[i][0], end: holds[i][1], units: p.lines[i].map(u => ({text: u.text}))}))});
+            lines: pick.map(i => ({start: holds[i][0], end: holds[i][1], strict, units: p.lines[i].map(u => ({text: u.text}))}))});
           if (this.proj !== p) return;
           if (!lis) this.snapshot();
           let done = 0;
@@ -1490,8 +1493,12 @@
           units.forEach(u => { u.start = start + (u.start - span[0]) * k; u.end = start + (u.end - span[0]) * k; });
         } else this.spread(li, start, end);
         (this.proj.holds = this.proj.holds || [])[li] = [start, end]; this.markEdited(li);
-        if (this.proj.guide && this.guideState && this.guideState.state === 'ready') this.align([li]).then(() => this.renderLines());
+        if (this.proj.guide && this.guideState && this.guideState.state === 'ready') this.align([li], true).then(() => this.renderLines());
         this.renderLines(); this.save();
+        const prev = li > 0 ? KT.lineSpan(li - 1) : null, next = KT.lineSpan(li + 1);
+        if (prev && prev[1] > start + 0.01) this.msg(tf('⚠ Ojo: la frase anterior sale en {0} y esta entra en {1}; se van a encimar un momento.', kTime(prev[1]), kTime(start)));
+        else if (next && next[0] < end - 0.01) this.msg(tf('⚠ Ojo: esta sale en {0} y la siguiente entra en {1}; se van a encimar un momento.', kTime(end), kTime(next[0])));
+        else this.msg(tf('✓ Frase {0}: entra {1} · sale {2}', li + 1, kTime(start), kTime(end)));
         return true;
       },
       isLyrics() { return this.proj && this.proj.video_type === 'lyrics'; },
