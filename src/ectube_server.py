@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.5.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -702,6 +702,14 @@ class TrimJob:
         mdx = _separator(model_progress, lambda: self.cancelled)
         self.phase = "separate"
         vocals = mdx.vocals(mix, progress=separate_progress, cancelled=lambda: self.cancelled)
+        if getattr(self, "save_guide", False):
+            # Karaoke «desde la canción con voz»: guardar de una vez la voz guía (no separar dos veces).
+            with contextlib.suppress(Exception):
+                from ectube_karaoke import voice_envelope
+
+                cache = KARAOKE_DIR / "guides" / f"{_guide_key(self.source)}.npz"
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                np.savez_compressed(cache, env=voice_envelope(vocals.mean(axis=0)), mix=voice_envelope(mix.mean(axis=0)))
         result = vocals if self.mode == "voice" else mix - vocals
         pcm = np.ascontiguousarray(np.clip(result, -1, 1).T, dtype="<f4").tobytes()
         self.phase, self.percent = "save", 93.0
@@ -1165,6 +1173,51 @@ def guide_for(path: Path) -> Guide:
         return guide
 
 
+WAVES: dict[str, str] = {}
+
+
+def _env_bytes(env) -> str:
+    import base64
+
+    import numpy as np
+
+    level = np.clip((np.asarray(env, dtype=np.float32) + 60) / 60, 0, 1) * 255
+    return base64.b64encode(level.astype(np.uint8).tobytes()).decode()
+
+
+def karaoke_wave(source: Path, guide_path: Path | None) -> dict:
+    """Formas de onda para la línea de tiempo (100 por segundo, 0-255): la pista y, si hay, la voz guía."""
+    import numpy as np
+
+    from ectube_karaoke import ENV_RATE, voice_envelope
+
+    key = f"{source}|{source.stat().st_mtime}"
+    if key not in WAVES:
+        WAVES[key] = _env_bytes(voice_envelope(_decode_audio(source, 1)))
+    voice = None
+    if guide_path and guide_path.is_file():
+        guide = guide_for(guide_path)
+        if guide.state == "ready":
+            shift = int(round(guide.offset_for(source) * ENV_RATE))
+            env = guide.env
+            env = np.concatenate([np.full(shift, -90, np.float32), env]) if shift >= 0 else env[-shift:]
+            voice = _env_bytes(env)
+    return {"rate": ENV_RATE, "music": WAVES[key], "voice": voice}
+
+
+def karaoke_autosync(guide_path: Path, source: Path, lines: list) -> list:
+    from ectube_karaoke import auto_align
+
+    guide = guide_for(guide_path)
+    if guide.state != "ready":
+        raise RuntimeError("La voz guía todavía se está preparando.")
+    shift = guide.offset_for(source)
+    texts = [[str(t)[:80] for t in (line or [])[:200]] for line in lines[:1000]]
+    result = auto_align(guide.env, texts)
+    return [[[round(float(s + shift), 3), round(float(e + shift), 3)] for s, e in line] if line else None
+            for line in result]
+
+
 def karaoke_align(guide_path: Path, source: Path, lines: list[dict]) -> list:
     from ectube_karaoke import align_line
 
@@ -1520,6 +1573,41 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 guide = guide_for(guide_path) if data.get("prepare", True) else None
                 self.send_json({"ok": True, "guide": {**media_info(guide_path), **(guide.public() if guide else {})}})
+        elif path == "/api/karaoke/from-song":
+            # Canción con voz → EC-Tube saca la pista sin voz (y de paso la voz guía).
+            source = MEDIA.path(str(data.get("token") or ""))
+            if not source or not source.is_file():
+                self.send_json({"ok": False, "error": "El archivo ya no está en su carpeta."}, 404)
+                return
+            duration = _media_duration(source)
+            if duration < 1:
+                self.send_json({"ok": False, "error": "No se pudo leer la duración de la canción."}, 400)
+                return
+            job = TrimJob(source, 0.0, duration, "music")
+            job.save_guide = True
+            TRIMS[job.id] = job
+            threading.Thread(target=job.run, daemon=True).start()
+            self.send_json({"ok": True, **job.public()})
+        elif path == "/api/karaoke/wave":
+            source = MEDIA.path(str(data.get("source_token") or ""))
+            guide_path = MEDIA.path(str(data.get("guide_token") or "")) if data.get("guide_token") else None
+            if not source or not source.is_file():
+                self.send_json({"ok": False, "error": "Falta la pista."}, 400)
+                return
+            try:
+                self.send_json({"ok": True, **karaoke_wave(source, guide_path)})
+            except RuntimeError as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
+        elif path == "/api/karaoke/autosync":
+            source = MEDIA.path(str(data.get("source_token") or ""))
+            guide_path = MEDIA.path(str(data.get("guide_token") or ""))
+            if not source or not guide_path:
+                self.send_json({"ok": False, "error": "Falta la pista o la voz guía."}, 400)
+                return
+            try:
+                self.send_json({"ok": True, "lines": karaoke_autosync(guide_path, source, data.get("lines") or [])})
+            except RuntimeError as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 409)
         elif path == "/api/karaoke/align":
             source = MEDIA.path(str(data.get("source_token") or ""))
             guide_path = MEDIA.path(str(data.get("guide_token") or ""))

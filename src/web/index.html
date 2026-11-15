@@ -118,6 +118,10 @@
     .klines .kt { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .78rem; }
     .klines .kl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .klines .kl.todo { color: var(--muted); }
+    .ktl-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+    .ktl-bar .grow { flex: 1; }
+    #kTimeline { display: block; width: 100%; height: 170px; margin-top: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); touch-action: none; cursor: default; }
+    .ksync { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .klines .kl .kdone { color: var(--accent, #36c5f0); }
     .klines .kl .knext { background: #ffd600; color: #111; border-radius: 4px; padding: 0 3px; }
     .klines button { padding: 3px 8px; font-size: .75rem; }
@@ -332,13 +336,14 @@
         <div class="row">
           <div class="folder grow"><span class="field" style="white-space:nowrap">🎵 Música</span><code id="kSource">Elige la pista (sin voz)…</code></div>
           <button class="secondary" id="kPickSource" type="button">Elegir de otra carpeta…</button>
+          <button class="secondary" id="kFromSong" type="button" title="Eliges la canción ORIGINAL (con voz): EC-Tube le quita la voz para la pista y la usa como voz guía">🎤 Desde la canción con voz…</button>
         </div>
         <div class="row">
           <label class="field" style="flex:1 1 320px">o de tus carpetas de EC-Tube:
             <select id="kQuick" style="flex:1;min-width:0"><option value="">Elige un archivo…</option></select></label>
           <button class="secondary" id="kQuickRefresh" type="button" title="Volver a leer las carpetas">🔄</button>
         </div>
-        <p class="khelp">Tip: para quitarle la voz a una canción, ábrela en «✂ Recortar» y guarda «🎵 Solo música»; queda en tu carpeta de editados.</p>
+        <p class="khelp" id="kSourceHelp">Tres maneras: <b>🎤 Desde la canción con voz</b> (EC-Tube saca la pista y puede poner los tiempos solo) · una <b>pista sin voz</b> + su canción original como voz guía · o <b>solo la pista</b> (marcas a mano y corriges en la línea de tiempo).</p>
       </section>
 
       <section class="panel knotice">
@@ -394,6 +399,7 @@
               <label class="field">Velocidad <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
               <label class="field" title="Si la letra se ilumina tarde, muévelo a la izquierda">Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
             </div>
+            <p class="khelp" id="kModeHint" style="margin:6px 0 0"></p>
             <div class="row kguide">
               <span class="field" style="white-space:nowrap" title="La canción original, CON voz. Con ella la letra se ilumina siguiendo al cantante.">🎤 Voz guía</span>
               <code id="kGuide" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</code>
@@ -404,6 +410,19 @@
             <ol class="klines" id="kLines"></ol>
           </div>
         </div>
+        <div class="ktl-bar">
+          <strong>🎚 Línea de tiempo</strong>
+          <button class="secondary" id="ktLoop" type="button" title="Oír solo la frase elegida, una y otra vez">🔁 Oír frase</button>
+          <button class="secondary" id="ktLeft" type="button" title="Mover la frase elegida 0.1 s antes">◀ 0.1 s</button>
+          <button class="secondary" id="ktRight" type="button" title="Mover la frase elegida 0.1 s después">0.1 s ▶</button>
+          <button class="secondary" id="ktUndo" type="button" title="Ctrl+Z">↶ Deshacer</button>
+          <span class="grow"></span>
+          <button class="secondary" id="ktAuto" type="button" title="Poner los tiempos de toda la canción solo, siguiendo la voz guía">🤖 Borrador automático</button>
+          <button class="secondary" id="ktZoomOut" type="button" title="Ver más tiempo">➖</button>
+          <button class="secondary" id="ktZoomIn" type="button" title="Ver más de cerca">➕</button>
+        </div>
+        <canvas id="kTimeline" height="170"></canvas>
+        <p class="khelp" id="ktHelp">Arrastra una palabra para moverla · jala sus orillas para alargarla o acortarla · <b>Shift</b>+arrastrar mueve la frase completa · clic en lo vacío = ir a ese momento · arrastrar lo vacío = recorrer · rueda = acercar/alejar. Gris = la pista, color = la voz guía.</p>
       </section>
 
       <section class="panel">
@@ -563,6 +582,16 @@
       '● SOSTÉN… suelta al terminar la frase': '● HOLD… release when the line ends', '● MARCANDO — aprieta ESPACIO cuando empiece la frase amarilla': '● MARKING — press SPACE when the yellow line starts',
       '⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada frase. ⌫ deshace · Esc detiene.': '⏺ MARKING: hold SPACE while each line is sung. ⌫ undo · Esc stop.',
       'Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.': 'Press “⏺ Mark”. When a line starts being sung, press and hold SPACE; release it when the line ends. The next one is ready. ⌫ undo · Esc stop.',
+      '🎚 Línea de tiempo': '🎚 Timeline', '🔁 Oír frase': '🔁 Hear line', '⏹ Dejar de repetir': '⏹ Stop repeating', '◀ 0.1 s': '◀ 0.1 s', '0.1 s ▶': '0.1 s ▶',
+      '↶ Deshacer': '↶ Undo', '🤖 Borrador automático': '🤖 Automatic draft', '🎤 Desde la canción con voz…': '🎤 From the song with vocals…',
+      'No hay nada que deshacer.': 'Nothing to undo.', 'Primero haz clic en una palabra de la frase (en la línea de tiempo).': 'First click a word of the line (in the timeline).',
+      'Esto cambia los tiempos de TODA la canción (lo puedes deshacer con ↶). ¿Seguir?': 'This changes the timing of the WHOLE song (you can undo it with ↶). Continue?',
+      '🤖 Escuchando la voz y acomodando la letra…': '🤖 Listening to the voice and placing the lyrics…',
+      '🤖 Borrador listo ({n} frases). Dale ▶ Vista previa y corrige en la línea de tiempo lo que no cuadre.': '🤖 Draft ready ({n} lines). Press ▶ Preview and fix in the timeline whatever is off.',
+      '✅ Pista sin voz lista y la canción quedó como voz guía. Escribe la letra y usa 🤖 Borrador automático, o marca tú.': '✅ Instrumental ready and the song is now the guide vocal. Write the lyrics and use 🤖 Automatic draft, or mark it yourself.',
+      'No se pudo quitar la voz.': 'Could not remove the vocals.',
+      'Con voz guía: «Frase» se acomoda sola a la voz al soltar · 🤖 Borrador automático pone toda la canción sin marcar.': 'With a guide vocal: “Line” fits itself to the voice when you release · 🤖 Automatic draft times the whole song without marking.',
+      'Sin voz guía: «Palabra» es lo más exacto · «Frase» reparte parejo (corrígelo abajo en la línea de tiempo).': 'Without a guide vocal: “Word” is the most precise · “Line” spreads evenly (fix it below in the timeline).',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1168,7 +1197,7 @@
     const kMedia = $('#kMedia'), kCanvas = $('#kCanvas'), kCtx = kCanvas.getContext('2d');
     const kImg = new Image();
     const Karaoke = {
-      ready: false, proj: null, saveTimer: null, marking: false, markIndex: 0, holding: false, raf: 0, job: null,
+      ready: false, proj: null, saveTimer: null, undoStack: [], marking: false, markIndex: 0, holding: false, raf: 0, job: null,
       blank() { return {id: '', title: '', lyrics: '', lines: [], offset: 0, sung_color: '#36C5F0', bg: 'color', color1: '#1B1340', color2: '#6C4CE6', format: '16:9', source: null, image: null, guide: null, holds: []}; },
       async init() {
         if (!this.ready) {
@@ -1180,7 +1209,7 @@
         }
         $('#kFolder').textContent = settings.karaoke_folder || '…'; $('#kFolder').title = settings.karaoke_folder || '';
         this.quickList();
-        cancelAnimationFrame(this.raf); const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); }; loop();
+        cancelAnimationFrame(this.raf); const loop = () => { this.draw(); KT.tick(); this.raf = requestAnimationFrame(loop); }; loop();
       },
       async quickList() {
         const groups = [['edited', 'audio', '✂🎵 Editados · audio'], ['edited', 'video', '✂🎬 Editados · video'], ['downloads', 'audio', '⬇🎵 Descargas · audio'], ['downloads', 'video', '⬇🎬 Descargas · video']];
@@ -1219,7 +1248,7 @@
         document.querySelectorAll('input[name=kFormat]').forEach(i => { i.checked = i.value === p.format; });
         $('#kColor1').value = p.color1; $('#kColor2').value = p.color2; $('#kSung').value = p.sung_color;
         $('#kMode').value = p.mark_mode || 'line';
-        this.showGuide(); this.checkGuide(true);
+        this.showGuide(); this.checkGuide(true); this.undoStack = []; KT.loadWave();
         $('#kOffset').value = p.offset || 0; $('#kOffsetText').textContent = `${(+p.offset || 0).toFixed(2)} s`;
         $('#kDelete').disabled = !p.id;
         this.syncBg(); this.sizeCanvas(); this.renderLines(); kDisclaimer();
@@ -1263,7 +1292,10 @@
         else if (g && st.state === 'ready') text += ' · ✓';
         else if (g && st.state === 'error') text += ' · ⚠ ' + (st.error || '');
         $('#kGuide').textContent = text; $('#kGuide').title = text;
-        $('#kAlign').disabled = !(g && st.state === 'ready');
+        $('#kModeHint').textContent = g && st.state === 'ready'
+          ? t('Con voz guía: «Frase» se acomoda sola a la voz al soltar · 🤖 Borrador automático pone toda la canción sin marcar.')
+          : t('Sin voz guía: «Palabra» es lo más exacto · «Frase» reparte parejo (corrígelo abajo en la línea de tiempo).');
+        $('#kAlign').disabled = !(g && st.state === 'ready'); $('#ktAuto').disabled = !(g && st.state === 'ready');
       },
       async checkGuide(guess = false) {
         clearTimeout(this.guideTimer);
@@ -1275,7 +1307,8 @@
           else this.guideState = null;
           this.showGuide();
           if (data.guide && data.guide.state === 'preparing') this.guideTimer = setTimeout(() => this.checkGuide(), 1500);
-          else if (data.guide && data.guide.state === 'ready' && this.pendingAlign) { this.pendingAlign = false; this.align(null); }
+          if (data.guide && data.guide.state === 'ready' && !KT.hasVoice) KT.loadWave();
+          if (data.guide && data.guide.state === 'ready' && this.pendingAlign) { this.pendingAlign = false; this.align(null); }
         } catch (error) { /* sin voz guía: se queda el reparto parejo */ }
       },
       // Acomodar las frases a la voz (li = lista de renglones, o null = todos los marcados por frase).
@@ -1289,6 +1322,7 @@
           const data = await api('/api/karaoke/align', {source_token: p.source.token, guide_token: p.guide.token,
             lines: pick.map(i => ({start: holds[i][0], end: holds[i][1], units: p.lines[i].map(u => ({text: u.text}))}))});
           if (this.proj !== p) return;
+          if (!lis) this.snapshot();
           let done = 0;
           pick.forEach((li, k) => { const times = data.lines[k]; if (!times) return; p.lines[li].forEach((u, j) => { u.start = times[j][0]; u.end = times[j][1]; }); done++; });
           if (!lis) this.msg(t('✨ Listo: {n} frases acomodadas a la voz.').replace('{n}', done));
@@ -1321,6 +1355,7 @@
         const p = this.proj;
         if (!p.source) { this.msg(t('Primero elige la música.')); return; }
         if (!p.lines.length) { this.msg(t('Primero escribe la letra.')); return; }
+        this.snapshot();
         const flat = this.flat(); const first = flat.findIndex(x => x.li === fromLine);
         flat.slice(first).forEach(x => { x.u.start = null; x.u.end = null; });
         this.proj.holds = (this.proj.holds || []).map((h, i) => i >= fromLine ? null : h);
@@ -1466,6 +1501,17 @@
           ctx.globalAlpha = 1;
         });
       },
+      // ---------- deshacer ----------
+      snapshot() {
+        const snap = JSON.stringify({lines: this.proj.lines.map(l => l.map(u => [u.start, u.end])), holds: this.proj.holds || []});
+        if (this.undoStack[this.undoStack.length - 1] !== snap) { this.undoStack.push(snap); if (this.undoStack.length > 60) this.undoStack.shift(); }
+      },
+      undoEdit() {
+        const snap = this.undoStack.pop(); if (!snap) { this.msg(t('No hay nada que deshacer.')); return; }
+        const data = JSON.parse(snap);
+        this.proj.lines.forEach((l, i) => l.forEach((u, j) => { const v = data.lines[i] && data.lines[i][j]; u.start = v ? v[0] : null; u.end = v ? v[1] : null; }));
+        this.proj.holds = data.holds; this.renderLines(); this.save();
+      },
       drawBar(now) {
         if (!this.seeking) { $('#kSeek').max = kMedia.duration || 1; $('#kSeek').value = now; }
         $('#kCur').textContent = hms(now) || '0:00'; $('#kDur').textContent = hms(kMedia.duration) || '0:00';
@@ -1499,6 +1545,233 @@
       try {
         const data = await api('/api/karaoke/pick', {kind: 'media'}); say('');
         if (data.media) kSetSource({token: data.media.token, name: data.media.name, video: data.media.kind === 'video'});
+      } catch (error) { say(error.message); }
+    });
+    // ---------- línea de tiempo (como los editores de karaoke: bloques por palabra sobre la forma de onda) ----------
+    const KT = {
+      canvas: $('#kTimeline'), view: 0, zoom: 10, wave: null, voice: null, rate: 100, hasVoice: false,
+      sel: null, drag: null, loop: null, follow: true,
+      async loadWave() {
+        const p = Karaoke.proj; this.wave = this.voice = null; this.hasVoice = false;
+        if (!p || !p.source) return;
+        try {
+          const data = await api('/api/karaoke/wave', {source_token: p.source.token, guide_token: p.guide ? p.guide.token : null});
+          if (Karaoke.proj !== p) return;
+          const dec = b64 => { const bin = atob(b64), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; };
+          this.rate = data.rate; this.wave = dec(data.music); this.voice = data.voice ? dec(data.voice) : null; this.hasVoice = !!this.voice;
+        } catch (_) {}
+      },
+      off() { return +Karaoke.proj.offset || 0; },
+      size() {
+        const c = this.canvas, dpr = window.devicePixelRatio || 1, w = Math.max(200, c.clientWidth);
+        if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(170 * dpr); }
+        return {W: c.width, H: c.height, dpr, px: c.width / this.zoom};
+      },
+      tx(t, g) { return (t - this.view) * g.px; },
+      blocks(g) {
+        const out = [], p = Karaoke.proj, off = this.off(), H = g.H, d = g.dpr;
+        p.lines.forEach((units, li) => units.forEach((u, ui) => {
+          if (u.start == null || u.end == null) return;
+          const x0 = this.tx(u.start + off, g), x1 = this.tx(u.end + off, g);
+          if (x1 < -50 || x0 > g.W + 50) return;
+          const lane = li % 2, y = H * (lane ? 0.78 : 0.56), h = H * 0.19;
+          out.push({li, ui, u, x0, x1: Math.max(x1, x0 + 3 * d), y, h});
+        }));
+        return out;
+      },
+      tick() {
+        const p = Karaoke.proj; if (!p || $('#tabKaraoke').hidden) return;
+        const now = kMedia.currentTime || 0;
+        if (this.loop && !kMedia.paused && now >= this.loop.end) kMedia.currentTime = this.loop.start;
+        if (this.follow && !this.drag && (now < this.view + this.zoom * 0.08 || now > this.view + this.zoom * 0.85)) this.view = Math.max(0, now - this.zoom * 0.25);
+        this.draw(now);
+      },
+      draw(now) {
+        const g = this.size(), c = this.canvas.getContext('2d'), {W, H, dpr} = g, cs = getComputedStyle(document.documentElement);
+        const accent = Karaoke.proj.sung_color || '#36C5F0';
+        c.clearRect(0, 0, W, H);
+        // forma de onda: pista (gris) y voz guía (color)
+        const mid = H * 0.24, amp = H * 0.2;
+        const drawWave = (arr, color) => {
+          if (!arr) return; c.fillStyle = color;
+          for (let x = 0; x < W; x += Math.max(1, dpr)) {
+            const t0 = this.view + x / g.px, t1 = this.view + (x + dpr) / g.px;
+            const i0 = Math.max(0, Math.floor(t0 * this.rate)), i1 = Math.min(arr.length, Math.ceil(t1 * this.rate) + 1);
+            let m = 0; for (let i = i0; i < i1; i++) if (arr[i] > m) m = arr[i];
+            const h = Math.pow(m / 255, 2) * amp; if (h > 0.5) c.fillRect(x, mid - h, Math.max(1, dpr), h * 2);
+          }
+        };
+        drawWave(this.wave, 'rgba(160,170,180,.45)'); drawWave(this.voice, accent + 'cc');
+        // segundos
+        c.fillStyle = cs.getPropertyValue('--muted') || '#9aa3aa'; c.font = `${11 * dpr}px system-ui`; c.textBaseline = 'top';
+        const step = this.zoom > 40 ? 10 : this.zoom > 15 ? 5 : this.zoom > 6 ? 2 : 1;
+        for (let s = Math.ceil(this.view / step) * step; s < this.view + this.zoom; s += step) {
+          const x = this.tx(s, g); c.fillRect(x, H * 0.47, dpr, H * 0.04); c.fillText(hms(s) || '0:00', x + 3 * dpr, H * 0.45);
+        }
+        // bloques
+        const selLine = this.sel ? this.sel.li : -1;
+        for (const b of this.blocks(g)) {
+          const isSel = this.sel && this.sel.li === b.li && this.sel.ui === b.ui, inLine = b.li === selLine;
+          c.fillStyle = isSel ? accent : inLine ? accent + '88' : 'rgba(255,255,255,.16)';
+          c.fillRect(b.x0, b.y, b.x1 - b.x0 - dpr, b.h);
+          c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(b.x0, b.y, 2 * dpr, b.h);
+          c.save(); c.beginPath(); c.rect(b.x0 + 3 * dpr, b.y, b.x1 - b.x0 - 5 * dpr, b.h); c.clip();
+          c.fillStyle = isSel ? '#111' : '#fff'; c.font = `bold ${12 * dpr}px system-ui`; c.textBaseline = 'middle';
+          c.fillText(b.u.text, b.x0 + 4 * dpr, b.y + b.h / 2); c.restore();
+        }
+        if (this.loop) { c.fillStyle = 'rgba(255,214,0,.10)'; const a = this.tx(this.loop.start, g), b = this.tx(this.loop.end, g); c.fillRect(a, 0, b - a, H); }
+        // cursor
+        c.fillStyle = '#ff4d4d'; c.fillRect(this.tx(now, g) - dpr / 2, 0, Math.max(1, dpr), H);
+      },
+      hit(e) {
+        const g = this.size(), r = this.canvas.getBoundingClientRect(), x = (e.clientX - r.left) * g.dpr, y = (e.clientY - r.top) * g.dpr;
+        const edge = 6 * g.dpr;
+        for (const b of this.blocks(g)) {
+          if (y < b.y || y > b.y + b.h || x < b.x0 - edge / 2 || x > b.x1 + edge / 2) continue;
+          const mode = x < b.x0 + edge && b.x1 - b.x0 > edge * 2.5 ? 'left' : x > b.x1 - edge ? 'right' : 'move';
+          return {b, mode, x, g};
+        }
+        return {b: null, x, g};
+      },
+      neighbors(li, ui) {
+        const flat = Karaoke.flat(), k = flat.findIndex(f => f.li === li && f.u === Karaoke.proj.lines[li][ui]);
+        let prev = null, next = null;
+        for (let i = k - 1; i >= 0; i--) if (flat[i].u.end != null) { prev = flat[i].u; break; }
+        for (let i = k + 1; i < flat.length; i++) if (flat[i].u.start != null) { next = flat[i].u; break; }
+        return {prev, next};
+      },
+      down(e) {
+        if (Karaoke.marking) return;
+        const h = this.hit(e); this.canvas.setPointerCapture(e.pointerId);
+        if (h.b) {
+          this.sel = {li: h.b.li, ui: h.b.ui};
+          const line = Karaoke.proj.lines[h.b.li];
+          const nb = this.neighbors(h.b.li, h.b.ui), u0 = line[h.b.ui];
+          // Palabras pegadas: su orilla común se mueve junta (como en los editores de karaoke).
+          const prev = nb.prev && Math.abs(nb.prev.end - u0.start) < 0.03 ? {u: nb.prev, s: nb.prev.start, e: nb.prev.end} : null;
+          const next = nb.next && Math.abs(nb.next.start - u0.end) < 0.03 ? {u: nb.next, s: nb.next.start, e: nb.next.end} : null;
+          this.drag = {kind: e.shiftKey ? 'line' : h.mode, x: h.x, li: h.b.li, ui: h.b.ui, orig: line.map(u => [u.start, u.end]), prev, next, moved: false};
+          Karaoke.renderLines(h.b.li);
+        } else this.drag = {kind: 'pan', x: h.x, view: this.view, moved: false};
+        this.follow = false;
+      },
+      move(e) {
+        const g = this.size(), r = this.canvas.getBoundingClientRect(), x = (e.clientX - r.left) * g.dpr;
+        if (!this.drag) { const h = this.hit(e); this.canvas.style.cursor = !h.b ? 'grab' : h.mode === 'move' ? 'move' : 'ew-resize'; return; }
+        const d = this.drag, dt = (x - d.x) / g.px;
+        if (Math.abs(x - d.x) > 3 * g.dpr && !d.moved) { d.moved = true; if (d.kind !== 'pan') Karaoke.snapshot(); }
+        if (!d.moved) return;
+        if (d.kind === 'pan') { this.view = Math.max(0, d.view - dt); return; }
+        const line = Karaoke.proj.lines[d.li], u = line[d.ui], [s0, e0] = d.orig[d.ui], {prev, next} = this.neighbors(d.li, d.ui);
+        // límites: si la vecina está pegada, se puede encoger hasta 0.05 s; si no, no se encima
+        const lo = d.prev ? d.prev.s + 0.05 : prev ? prev.end : 0, hi = d.next ? d.next.e - 0.05 : next ? next.start : 1e9;
+        if (d.kind === 'left') { u.start = Math.min(e0 - 0.05, Math.max(lo, s0 + dt)); if (d.prev) d.prev.u.end = u.start; }
+        else if (d.kind === 'right') { u.end = Math.max(s0 + 0.05, Math.min(hi, e0 + dt)); if (d.next) d.next.u.start = u.end; }
+        else if (d.kind === 'move') {
+          const sh = Math.min(hi - e0, Math.max(lo - s0, dt)); u.start = s0 + sh; u.end = e0 + sh;
+          if (d.prev) d.prev.u.end = u.start; if (d.next) d.next.u.start = u.end;
+        }
+        else if (d.kind === 'line') {
+          const timed = d.orig.filter(v => v[0] != null), first = Math.min(...timed.map(v => v[0])), last = Math.max(...timed.map(v => v[1]));
+          const fl = Karaoke.flat(), idx = fl.findIndex(f => f.li === d.li);
+          let pv = null, nx = null;
+          for (let i = idx - 1; i >= 0; i--) if (fl[i].u.end != null) { pv = fl[i].u; break; }
+          for (let i = idx + line.length; i < fl.length; i++) if (fl[i].u.start != null) { nx = fl[i].u; break; }
+          const sh = Math.min((nx ? nx.start : 1e9) - last, Math.max((pv ? pv.end : 0) - first, dt));
+          line.forEach((v, i) => { if (d.orig[i][0] != null) { v.start = d.orig[i][0] + sh; v.end = d.orig[i][1] + sh; } });
+        }
+      },
+      up(e) {
+        const d = this.drag; this.drag = null; if (!d) return;
+        if (!d.moved) {
+          if (d.kind === 'pan') { const g = this.size(); kMedia.currentTime = Math.max(0, this.view + d.x / g.px); this.sel = null; Karaoke.renderLines(); }
+          else { const u = Karaoke.proj.lines[d.li][d.ui]; if (kMedia.paused) kMedia.currentTime = Math.max(0, u.start + this.off() - 0.05); }
+          this.follow = true; return;
+        }
+        if (d.kind !== 'pan') { if (Karaoke.proj.holds) Karaoke.proj.holds[d.li] = null; Karaoke.renderLines(d.li); Karaoke.save(); }
+        setTimeout(() => { this.follow = true; }, 1500);
+      },
+      lineSpan(li) {
+        const units = (Karaoke.proj.lines[li] || []).filter(u => u.start != null && u.end != null);
+        return units.length ? [Math.min(...units.map(u => u.start)), Math.max(...units.map(u => u.end))] : null;
+      },
+      shiftLine(dt) {
+        if (!this.sel) { Karaoke.msg(t('Primero haz clic en una palabra de la frase (en la línea de tiempo).')); return; }
+        Karaoke.snapshot();
+        Karaoke.proj.lines[this.sel.li].forEach(u => { if (u.start != null) { u.start = Math.max(0, u.start + dt); u.end = Math.max(u.start + 0.05, u.end + dt); } });
+        if (Karaoke.proj.holds) Karaoke.proj.holds[this.sel.li] = null;
+        Karaoke.renderLines(this.sel.li); Karaoke.save();
+      },
+      toggleLoop() {
+        if (this.loop) { this.loop = null; kMedia.pause(); $('#ktLoop').textContent = t('🔁 Oír frase'); return; }
+        const li = this.sel ? this.sel.li : null, span = li != null ? this.lineSpan(li) : null;
+        if (!span) { Karaoke.msg(t('Primero haz clic en una palabra de la frase (en la línea de tiempo).')); return; }
+        const off = this.off(); this.loop = {start: Math.max(0, span[0] + off - 0.6), end: span[1] + off + 0.5};
+        kMedia.currentTime = this.loop.start; kMedia.playbackRate = +$('#kSpeed').value; kMedia.play().catch(() => {});
+        $('#ktLoop').textContent = t('⏹ Dejar de repetir');
+      },
+      zoomBy(f, centerT) {
+        const c = centerT ?? (this.view + this.zoom / 2), z = Math.min(240, Math.max(2, this.zoom * f));
+        this.view = Math.max(0, c - (c - this.view) * z / this.zoom); this.zoom = z;
+      },
+    };
+    KT.canvas.addEventListener('pointerdown', e => KT.down(e));
+    KT.canvas.addEventListener('pointermove', e => KT.move(e));
+    KT.canvas.addEventListener('pointerup', e => KT.up(e));
+    KT.canvas.addEventListener('pointercancel', e => KT.up(e));
+    KT.canvas.addEventListener('wheel', e => {
+      e.preventDefault(); const g = KT.size(), r = KT.canvas.getBoundingClientRect();
+      if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { KT.view = Math.max(0, KT.view + (e.deltaX || e.deltaY) / g.px * g.dpr); KT.follow = false; setTimeout(() => KT.follow = true, 2000); }
+      else KT.zoomBy(e.deltaY > 0 ? 1.2 : 1 / 1.2, KT.view + (e.clientX - r.left) * g.dpr / g.px);
+    }, {passive: false});
+    $('#ktLoop').addEventListener('click', () => KT.toggleLoop());
+    $('#ktLeft').addEventListener('click', () => KT.shiftLine(-0.1));
+    $('#ktRight').addEventListener('click', () => KT.shiftLine(0.1));
+    $('#ktUndo').addEventListener('click', () => Karaoke.undoEdit());
+    $('#ktZoomIn').addEventListener('click', () => KT.zoomBy(1 / 1.5));
+    $('#ktZoomOut').addEventListener('click', () => KT.zoomBy(1.5));
+    $('#ktAuto').addEventListener('click', async () => {
+      const p = Karaoke.proj;
+      if (!p.guide || !p.source) return;
+      if (!p.lines.length) { Karaoke.msg(t('Primero escribe la letra.')); return; }
+      if (p.lines.some(l => l.some(u => u.start != null)) && !confirm(t('Esto cambia los tiempos de TODA la canción (lo puedes deshacer con ↶). ¿Seguir?'))) return;
+      Karaoke.msg(t('🤖 Escuchando la voz y acomodando la letra…'), true);
+      try {
+        const data = await api('/api/karaoke/autosync', {source_token: p.source.token, guide_token: p.guide.token, lines: p.lines.map(l => l.map(u => u.text))});
+        if (Karaoke.proj !== p) return;
+        Karaoke.snapshot();
+        let n = 0;
+        data.lines.forEach((times, li) => { if (!times) return; n++; p.lines[li].forEach((u, j) => { u.start = times[j][0]; u.end = times[j][1]; }); });
+        p.holds = [];
+        Karaoke.renderLines(); Karaoke.save();
+        Karaoke.msg(t('🤖 Borrador listo ({n} frases). Dale ▶ Vista previa y corrige en la línea de tiempo lo que no cuadre.').replace('{n}', n));
+      } catch (error) { Karaoke.msg(error.message); }
+    });
+    document.addEventListener('keydown', event => {
+      if ($('#tabKaraoke').hidden || Karaoke.marking) return;
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+      if (!typing && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); Karaoke.undoEdit(); }
+    });
+    $('#kFromSong').addEventListener('click', async () => {
+      try {
+        const data = await api('/api/karaoke/pick', {kind: 'karaoke'});
+        if (!data.media) return;
+        const song = data.media, job = await api('/api/karaoke/from-song', {token: song.token});
+        const poll = async () => {
+          const state = await api(`/api/trim/${job.id}`);
+          if (state.status === 'running') {
+            const pct = state.percent.toFixed(0);
+            $('#kSource').textContent = state.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct) : tf('Quitando la voz… {0} %', pct);
+            setTimeout(poll, 800); return;
+          }
+          if (state.status !== 'done') { Karaoke.fill(); say(t(state.error || 'No se pudo quitar la voz.')); return; }
+          const m = state.media;
+          kSetSource({token: m.token, name: m.name, video: m.kind === 'video'});
+          Karaoke.proj.guide = {token: song.token, name: song.name}; Karaoke.guideState = null; Karaoke.save(); Karaoke.checkGuide(); KT.loadWave();
+          Karaoke.quickList();
+          Karaoke.msg(t('✅ Pista sin voz lista y la canción quedó como voz guía. Escribe la letra y usa 🤖 Borrador automático, o marca tú.'));
+        };
+        $('#kSource').textContent = t('Quitando la voz… {0} %').replace('{0}', '0'); setTimeout(poll, 600);
       } catch (error) { say(error.message); }
     });
     function kSetSource(m) {

@@ -208,14 +208,14 @@ def _clean_mask(mask):
     return np.asarray(mask)
 
 
-def align_line(env, units: list[dict], start: float, end: float) -> list[tuple[float, float]] | None:
+def align_line(env, units: list[dict], start: float, end: float, pad: tuple[float, float] = (0.30, 0.45)) -> list[tuple[float, float]] | None:
     """Tiempos (inicio, fin) de cada palabra de una frase, siguiendo la voz. None si no se oye voz ahí."""
     import numpy as np
 
     if env is None or not units or end <= start:
         return None
-    a = max(0, int((start - 0.30) * ENV_RATE))
-    b = min(len(env), int((end + 0.45) * ENV_RATE))
+    a = max(0, int((start - pad[0]) * ENV_RATE))
+    b = min(len(env), int((end + pad[1]) * ENV_RATE))
     if b - a < 10:
         return None
     window = env[a:b]
@@ -267,3 +267,94 @@ def estimate_offset(guide_env, source_env, max_lag_s: float = 90.0) -> float:
     best = int(np.argmax(candidates))
     strength = candidates[best] / (np.sqrt((g ** 2).sum() * (s ** 2).sum()) + 1e-9)
     return round(lags[best] / ENV_RATE, 2) if strength > 0.15 else 0.0
+
+
+def auto_align(env, lines: list[list[str]]) -> list[list[tuple[float, float]] | None]:
+    """Borrador automático de TODA la canción, sin marcar nada.
+
+    1) Se buscan los «tramos de voz» (voz seguida, separada por silencios de ≥ 0.3 s).
+    2) Se emparejan renglones con tramos en orden (programación dinámica): un renglón puede ocupar varios
+       tramos, o varios renglones cortos un tramo; se pueden saltar tramos sueltos (coros, «uuh», adlibs).
+       Gana el emparejamiento donde lo que dura cada tramo se parece más a lo largo de su letra.
+    3) Cada renglón se afina palabra por palabra con align_line."""
+    import math
+
+    import numpy as np
+
+    out: list = [None] * len(lines)
+    real = [i for i, line in enumerate(lines) if line]
+    if env is None or not real:
+        return out
+    loud = env[env > -60]
+    if loud.size < 50:
+        return out
+    top = float(np.percentile(loud, 97))
+    mask = _clean_mask(env > max(top - 24, -55))
+    voiced = np.flatnonzero(mask)
+    if voiced.size < 20:
+        return out
+    phrases, first = [], int(voiced[0])
+    for k in range(1, voiced.size + 1):
+        if k == voiced.size or voiced[k] - voiced[k - 1] >= 30:
+            last = int(voiced[k - 1])
+            if last - first >= 8:  # tramos de menos de 0.08 s: ruido
+                phrases.append((first / ENV_RATE, (last + 1) / ENV_RATE))
+            if k < voiced.size:
+                first = int(voiced[k])
+    if not phrases:
+        return out
+    weights = [sum(_weight(x) for x in lines[i]) for i in real]
+    L, P = len(real), len(phrases)
+    rate = sum(e - s for s, e in phrases) / sum(weights)
+    INF = float("inf")
+    MAXRUN = 4
+    cost = [[INF] * (P + 1) for _ in range(L + 1)]
+    back: list[list[tuple | None]] = [[None] * (P + 1) for _ in range(L + 1)]
+    cost[0][0] = 0.0
+    for i in range(L + 1):
+        for j in range(P + 1):
+            c0 = cost[i][j]
+            if c0 == INF:
+                continue
+            if j < P and c0 + 1.2 < cost[i][j + 1]:  # saltar un tramo (voz sin letra)
+                cost[i][j + 1], back[i][j + 1] = c0 + 1.2, ("skip",)
+            if i == L:
+                continue
+            for nl in range(1, MAXRUN + 1):
+                for np_ in range(1, MAXRUN + 1):
+                    if (nl > 1 and np_ > 1) or i + nl > L or j + np_ > P:
+                        continue
+                    span = phrases[j + np_ - 1][1] - phrases[j][0]
+                    w = sum(weights[i:i + nl])
+                    c = math.log(max(span, 0.05) / (w * rate)) ** 2 + 0.6 * (nl - 1) + 0.3 * (np_ - 1)
+                    if c0 + c < cost[i + nl][j + np_]:
+                        cost[i + nl][j + np_], back[i + nl][j + np_] = c0 + c, ("pair", nl, np_)
+    j_end = min(range(P + 1), key=lambda j: cost[L][j] + 1.2 * (P - j))
+    i, j, groups = L, j_end, []
+    while i > 0 or j > 0:
+        step = back[i][j]
+        if step is None:
+            break
+        if step[0] == "skip":
+            j -= 1
+            continue
+        _, nl, np_ = step
+        groups.append((i - nl, nl, j - np_, np_))
+        i, j = i - nl, j - np_
+    for gi, nl, gj, np_ in reversed(groups):
+        start, end = phrases[gj][0], phrases[gj + np_ - 1][1]
+        idxs = real[gi:gi + nl]
+        units = [{"text": x} for k in idxs for x in lines[k]]
+        times = align_line(env, units, start, end, pad=(0.05, 0.05))
+        if not times:
+            ws = [_weight(u["text"]) for u in units]
+            tot, a, times = sum(ws), start, []
+            for w in ws:
+                b = a + (end - start) * w / tot
+                times.append((round(a, 3), round(b, 3)))
+                a = b
+        pos = 0
+        for k in idxs:
+            out[k] = times[pos:pos + len(lines[k])]
+            pos += len(lines[k])
+    return out

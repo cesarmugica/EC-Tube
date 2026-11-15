@@ -1,5 +1,18 @@
 # Historial de versiones
 
+## 2.5.0 — Karaoke: varias maneras de sincronizar + línea de tiempo
+Como los programas de karaoke (Youka, MyKaraoke, Aegisub): marcar rápido y luego corregir fácil.
+- **🎤 Desde la canción con voz…**: eliges la canción original; EC-Tube saca la pista sin voz (para el video) y deja la canción como voz guía, separando una sola vez.
+- **🤖 Borrador automático**: con voz guía, pone los tiempos de TODA la canción sin marcar nada (busca los tramos donde se canta, empareja cada renglón con su tramo, se salta «uuh»/adlibs y afina palabra por palabra). Luego corriges lo que no cuadre.
+- **🎚 Línea de tiempo** debajo de la vista previa: forma de onda de la pista (gris) y de la voz guía (color) con un bloque por palabra.
+  - Arrastra una palabra para moverla; jala sus orillas para alargarla o acortarla (si está pegada a la vecina, la orilla común se mueve junta).
+  - **Shift**+arrastrar mueve la frase completa; **◀ 0.1 s / 0.1 s ▶** la recorren poquito.
+  - **🔁 Oír frase** repite solo esa frase (a la velocidad elegida) mientras la acomodas.
+  - **↶ Deshacer** (Ctrl+Z) para marcar, ajustes, borrador y arrastres.
+  - Clic en lo vacío = ir a ese momento; arrastrar lo vacío = recorrer; rueda = acercar/alejar.
+- Siguen las dos formas de marcar (por **Frase** o por **Palabra**) con o sin voz guía; un aviso dice cuál conviene en cada caso.
+- Solo con la pista (sin voz original) se marca a mano —igual que en cualquier programa— y se corrige en la línea de tiempo.
+
 ## 2.4.0 — Karaoke: la letra sigue la voz del cantante
 - **🎤 Voz guía:** la canción original (con voz). Si la pista la hiciste con EC-Tube («… (música)»), la encuentra sola; si no, «Elegir…».
 - La primera vez EC-Tube le saca la voz (como en el editor, tarda un par de minutos) y se acuerda para la próxima.
