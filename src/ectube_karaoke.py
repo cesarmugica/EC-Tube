@@ -62,12 +62,19 @@ def layout(lines: list[list[dict]], offset: float = 0.0) -> list[dict]:
     return result
 
 
-def font_size(units: list[dict], width: int, height: int) -> int:
-    """Tamaño de letra: grande, pero que la línea quepa (estimación: 0.56 × tamaño por carácter)."""
-    base = round(min(width, height) * (0.085 if width > height else 0.075))
+def _fit(units: list[dict], width: int) -> float:
     chars = sum(len(u["text"]) + (1 if u["space"] else 0) for u in units) or 1
-    fit = (width * 0.9) / (chars * 0.56)
-    return int(max(28, min(base, fit)))
+    return (width * 0.9) / (chars * 0.56)
+
+
+def font_size(units: list[dict], width: int, height: int, all_lines: list[list[dict]] | None = None) -> int:
+    """Tamaño de letra PAREJO en todo el karaoke: el que le queda a la línea más larga (sin bajar de 60 %
+    del tamaño normal). Solo una línea que de plano no quepa a ese tamaño se achica ella sola."""
+    base = round(min(width, height) * (0.085 if width > height else 0.075))
+    common = base
+    if all_lines:
+        common = max(base * 0.6, min([base, *(_fit(line, width) for line in all_lines if line)]))
+    return int(max(28, min(common, _fit(units, width))))
 
 
 def slot_y(slot: int, width: int, height: int) -> int:
@@ -117,7 +124,7 @@ def build_ass(project: dict, fmt: str) -> str:
         out.append(f"Dialogue: 0,{_ts(0.4)},{_ts(placed[0]['appear'] - 0.2)},T,,0,0,0,,{{\\an5\\pos({width // 2},{height // 2})\\fad(400,300)}}{title}")
     for item in placed:
         units = lines[item["line"]]
-        size = font_size(units, width, height)
+        size = font_size(units, width, height, lines)
         y = slot_y(item["slot"], width, height)
         cursor = item["appear"]
         text = []

@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.2.2 — Karaoke más parejo
+- **Tamaño de letra igual en todo el karaoke** (el que le queda a la línea más larga). Solo una línea que de plano no quepa se achica ella sola.
+- Marcar: si Windows no avisa que soltaste la ESPACIADORA (pasaba al final de una frase, antes de un puente), la palabra se quedaba «sostenida» hasta la siguiente frase. Ahora el siguiente toque la cierra y sigue normal, y al cambiar de ventana también se suelta.
+- Mientras sostienes, la palabra se llena solo hasta la mitad y cambia a lleno al soltar: así se nota cuándo ya quedó marcada.
+
 ## 2.2.1 — Karaoke: ves lo que vas marcando
 - Al marcar, la vista previa ya muestra la línea en la que vas **y la que sigue**, desde antes de cantarlas.
 - La palabra que te toca marcar va en **amarillo**; al apretar ESPACIO se llena de color en vivo y al soltar queda marcada.

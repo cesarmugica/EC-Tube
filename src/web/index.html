@@ -1142,10 +1142,13 @@
         return {line: index, slot: k % 2, appear, disappear, start, end, countdown: gap >= K_GAP && start >= 3.2};
       });
     }
-    function kFont(units, w, h) {
+    // Tamaño parejo en todo el karaoke (mismo cálculo que ectube_karaoke.font_size).
+    const kFit = (units, w) => (w * 0.9) / ((units.reduce((n, u) => n + u.text.length + (u.space ? 1 : 0), 0) || 1) * 0.56);
+    function kFont(units, w, h, all) {
       const base = Math.round(Math.min(w, h) * (w > h ? 0.085 : 0.075));
-      const chars = units.reduce((n, u) => n + u.text.length + (u.space ? 1 : 0), 0) || 1;
-      return Math.max(28, Math.min(base, (w * 0.9) / (chars * 0.56)));
+      let common = base;
+      if (all && all.length) common = Math.max(base * 0.6, Math.min(base, ...all.filter(l => l.length).map(l => kFit(l, w))));
+      return Math.floor(Math.max(28, Math.min(common, kFit(units, w))));
     }
     const kSlotY = (slot, w, h) => Math.round(h * (w > h ? (slot ? 0.83 : 0.70) : (slot ? 0.71 : 0.62)));
 
@@ -1268,7 +1271,8 @@
         this.renderLines(); this.save();
       },
       keyDown() {
-        const flat = this.flat(); const item = flat[this.markIndex]; if (!item || this.holding) return;
+        if (this.holding) this.keyUp();  // por si Windows se tragó el «soltar» anterior: no perder esta palabra
+        const flat = this.flat(); const item = flat[this.markIndex]; if (!item) return;
         item.u.start = kMedia.currentTime; item.u.end = null; this.holding = true; this.renderLines(item.li);
       },
       keyUp() {
@@ -1307,12 +1311,12 @@
         }
         for (const item of placed) {
           if (item.countdown && now >= item.start - 3 && now < item.start) {
-            const n = Math.ceil(item.start - now), size = kFont(p.lines[item.line], fullW, fullH) * 0.7 * scale;
+            const n = Math.ceil(item.start - now), size = kFont(p.lines[item.line], fullW, fullH, p.lines) * 0.7 * scale;
             ctx.font = `bold ${size}px Arial`; ctx.fillStyle = p.sung_color; ctx.textAlign = 'center';
-            ctx.fillText(Array(n).fill('●').join(' '), W / 2, kSlotY(item.slot, fullW, fullH) * scale - kFont(p.lines[item.line], fullW, fullH) * 1.15 * scale); ctx.textAlign = 'left';
+            ctx.fillText(Array(n).fill('●').join(' '), W / 2, kSlotY(item.slot, fullW, fullH) * scale - kFont(p.lines[item.line], fullW, fullH, p.lines) * 1.15 * scale); ctx.textAlign = 'left';
           }
           if (now < item.appear || now >= item.disappear) continue;
-          const units = p.lines[item.line], size = kFont(units, fullW, fullH) * scale, y = kSlotY(item.slot, fullW, fullH) * scale;
+          const units = p.lines[item.line], size = kFont(units, fullW, fullH, p.lines) * scale, y = kSlotY(item.slot, fullW, fullH) * scale;
           ctx.font = `bold ${size}px Arial`;
           const pieces = units.map(u => u.text + (u.space ? ' ' : '')), widths = pieces.map(t2 => ctx.measureText(t2).width);
           let x = (W - widths.reduce((a, b) => a + b, 0)) / 2;
@@ -1342,7 +1346,7 @@
         ctx.textAlign = 'left';
         [cur, cur + 1].forEach((li, row) => {
           const units = p.lines[li]; if (!units) return;
-          const size = kFont(units, fullW, fullH) * scale * (row ? 0.8 : 1), y = kSlotY(row, fullW, fullH) * scale;
+          const size = kFont(units, fullW, fullH, p.lines) * scale, y = kSlotY(row, fullW, fullH) * scale;
           ctx.font = `bold ${size}px Arial`; ctx.globalAlpha = row ? 0.6 : 1;
           const pieces = units.map(u => u.text + (u.space ? ' ' : '')), widths = pieces.map(t2 => ctx.measureText(t2).width);
           let x = (W - widths.reduce((a, b) => a + b, 0)) / 2;
@@ -1358,7 +1362,7 @@
             ctx.fillStyle = isNext && !this.holding ? '#ffd600' : '#fff'; ctx.fillText(pieces[i], x, y);
             let f = 0;
             if (u.start != null && u.end != null) f = 1;
-            else if (isNext && this.holding && u.start != null) f = Math.min(1, 0.15 + (now - u.start) / 0.8);
+            else if (isNext && this.holding && u.start != null) f = Math.min(0.8, 0.1 + (now - u.start) / 1.2);
             if (f > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x, y - size, tw * f, size * 2); ctx.clip(); ctx.fillStyle = p.sung_color; ctx.fillText(pieces[i], x, y); ctx.restore(); }
             x += widths[i];
           });
@@ -1433,6 +1437,7 @@
       else if (event.code === 'Backspace') { event.preventDefault(); Karaoke.undo(); }
       else if (event.code === 'Escape') { event.preventDefault(); Karaoke.stopMark(); }
     }, true);
+    window.addEventListener('blur', () => { if (Karaoke.marking && Karaoke.holding) Karaoke.keyUp(); });
     document.addEventListener('keyup', event => { if (Karaoke.marking && event.code === 'Space') { event.preventDefault(); Karaoke.keyUp(); } }, true);
     $('#kPickFolder').addEventListener('click', async () => {
       try { const data = await api('/api/pick-folder', {which: 'karaoke'}); settings = data.settings; $('#kFolder').textContent = settings.karaoke_folder; } catch (error) { say(error.message); }
