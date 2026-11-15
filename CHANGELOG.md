@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.1.2
+- Editor: al elegir «Solo música» o «Solo voz», el botón cambia a **«🎵 Quitar la voz y guardar»** / **«🎤 Quitar la música y guardar»** y aparece la explicación (antes parecía que el menú no hacía nada).
+
 ## 2.1.1
 - Karaoke: aviso **⚠ IMPORTANTE** para cuando vayas a subir el karaoke a YouTube, TikTok u otras plataformas (derechos de la canción, reclamos, bloqueos, pistas con licencia, «No listado») y un texto de créditos para la descripción del video, con tu título ya puesto y botón «📋 Copiar texto».
 

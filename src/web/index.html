@@ -510,7 +510,8 @@
       'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
       'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
       'Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.': 'Installing the new version… a new window will open. This one closes by itself.',
-      'Qué guardar': 'What to save', '📋 Copiar texto': '📋 Copy text', '✅ Copiado': '✅ Copied', '[Nombre de la canción]': '[Song name]',
+      'Qué guardar': 'What to save', '🎵 Quitar la voz y guardar': '🎵 Remove vocals and save', '🎤 Quitar la música y guardar': '🎤 Remove music and save',
+      'Elige el tramo (o déjalo completo) y presiona el botón morado. La primera vez baja el separador (~65 MB); tarda un poco según la duración.': 'Choose the section (or leave it whole) and press the purple button. The first time it downloads the separator (~65 MB); it takes a while depending on the length.', '📋 Copiar texto': '📋 Copy text', '✅ Copiado': '✅ Copied', '[Nombre de la canción]': '[Song name]',
       'Esto es una orientación general, no asesoría legal.': 'This is general guidance, not legal advice.',
       'Dale «⏺ Marcar» y, mientras se canta cada palabra (o sílaba), mantén presionada la ESPACIADORA; suéltala al terminarla. ⌫ deshace la última · Esc detiene.': 'Press “⏺ Mark” and, while each word (or syllable) is sung, hold SPACE; release it when it ends. ⌫ undo last · Esc stop.',
       '🎤 Karaoke': '🎤 Karaoke', '➕ Nuevo karaoke': '➕ New karaoke', '🗑 Borrar': '🗑 Delete', 'Título': 'Title', 'Nombre de la canción': 'Song name',
@@ -748,7 +749,7 @@
       });
       el.addEventListener('error', () => trimSay(t('Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.')));
       el.addEventListener('timeupdate', () => { if (editor.previewEnd !== null && el.currentTime >= editor.previewEnd) { el.pause(); editor.previewEnd = null; } drawTrim(); });
-      $('#saveTrim').disabled = false; $('#editor').hidden = false; $('#trimMode').value = 'original';
+      $('#saveTrim').disabled = false; $('#editor').hidden = false; $('#trimMode').value = 'original'; syncTrimMode();
     }
     async function openEditorByToken(token) {
       try { openEditor((await api('/api/media-info', {token})).media); } catch (error) { say(error.message); }
@@ -771,6 +772,14 @@
       editor.el.currentTime = +$('#trimStart').value; editor.previewEnd = +$('#trimEnd').value;
       editor.el.play().catch(() => {});
     });
+    function syncTrimMode() {
+      const mode = $('#trimMode').value;
+      $('#saveTrim').textContent = t(mode === 'music' ? '🎵 Quitar la voz y guardar' : mode === 'voice' ? '🎤 Quitar la música y guardar' : '✂ Guardar recorte');
+      $('#previewTrim').hidden = mode !== 'original';
+      if (mode !== 'original') trimSay(t('Elige el tramo (o déjalo completo) y presiona el botón morado. La primera vez baja el separador (~65 MB); tarda un poco según la duración.'));
+      else trimSay(t(TRIM_HELP));
+    }
+    $('#trimMode').addEventListener('change', syncTrimMode);
     $('#saveTrim').addEventListener('click', async () => {
       if (!editor.media) return;
       if (editor.el) editor.el.pause();
