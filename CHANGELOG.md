@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.9.8 — Aviso: sugerencia de lista privada
+- En el aviso ⚠ IMPORTANTE del karaoke: si lo subes a YouTube para tu uso personal, súbelo como «Privado» y guárdalo en una lista de reproducción privada; así, si lo usas para cantar (por ejemplo en un live de TikTok), lo pones desde tu lista privada y no desde un video público de tu canal.
+
 ## 2.9.7 — Controles en un solo renglón
 - Debajo del video, en un renglón: **👁 Ver cómo quedó · ⏺ Marcar · 🐢 velocidad · ⏱ ajuste fino** (al pasar el mouse dicen qué son).
 
