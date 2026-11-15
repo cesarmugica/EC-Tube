@@ -463,6 +463,8 @@
               <label class="field">Velocidad <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
               <label class="field" title="Si la letra se ilumina tarde, muévelo a la izquierda">Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
             </div>
+            <label class="kcheck" style="margin-top:8px"><input type="checkbox" id="kMiniOn"> Mostrar pantalla auxiliar de video</label>
+            <p class="khelp" style="margin:2px 0 0">Una ventanita abajo a la derecha con el video y la letra, que aparece cuando bajas y el video de arriba ya no se ve.</p>
 
           </div>
           <div class="kside">
@@ -553,7 +555,7 @@
     <div class="kmini" id="kMini" hidden>
       <div class="kmini-head"><span id="kMiniTime">0:00.0</span><span class="grow"></span>
         <button class="link" type="button" id="kMiniUp" title="Subir al video grande">⬆</button>
-        <button class="link" type="button" id="kMiniClose" title="Ocultar el mini reproductor">✕</button></div>
+        <button class="link" type="button" id="kMiniClose" title="Ocultar por ahora (para quitarla siempre, desmarca «Mostrar pantalla auxiliar de video»)">✕</button></div>
       <canvas id="kMiniCanvas" width="480" height="270"></canvas>
       <div class="kmini-target" id="kMiniTarget"></div>
       <div class="kmini-btns">
@@ -746,6 +748,8 @@
       '⬇ Ir a marcar': '⬇ Go mark', 'Play/pausa y «Entra/Sale = ahora», escribe los tiempos, o ⏺ Marcar con la espaciadora': 'Play/pause and “Start/End = now”, type the times, or ⏺ Mark with the space bar',
       'Marcar con la espaciadora desde esta frase': 'Mark with the space bar from this line', 'Editar el texto': 'Edit the text', 'Agregar una frase debajo': 'Add a line below', 'Borrar esta frase': 'Delete this line',
       '🗑 Frase borrada (↶ Deshacer la regresa).': '🗑 Line deleted (↶ Undo brings it back).', 'Escribe la frase (con / para separar sílabas)': 'Type the line (use / to split syllables)',
+      'Mostrar pantalla auxiliar de video': 'Show the auxiliary video screen',
+      'Una ventanita abajo a la derecha con el video y la letra, que aparece cuando bajas y el video de arriba ya no se ve.': 'A small window at the bottom right with the video and lyrics that appears when you scroll down and the main video is no longer visible.',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -2006,13 +2010,16 @@
       else if (event.key === 'ArrowRight') { event.preventDefault(); $('#kFwd').click(); }
     });
     // ---------- mini reproductor flotante: cuando bajas y el video grande ya no se ve ----------
-    let kMiniClosed = false;
+    let kMiniClosed = false, kMiniOn = true;
+    try { kMiniOn = localStorage.getItem('ectube-kmini') !== '0'; } catch (_) {}
+    $('#kMiniOn').checked = kMiniOn;
+    $('#kMiniOn').addEventListener('change', () => { kMiniOn = $('#kMiniOn').checked; try { localStorage.setItem('ectube-kmini', kMiniOn ? '1' : '0'); } catch (_) {} });
     function kMiniDraw() {
       // solo cuando ya bajaste MÁS ALLÁ del video grande (no cuando todavía está abajo, en los pasos)
       const r = kCanvas.getBoundingClientRect(), s3 = $('#kExport').closest('section').getBoundingClientRect();
       const past = r.height > 0 && r.bottom < r.height * 0.35 && s3.top > window.innerHeight * 0.55;  // no tapar el paso 3
       if (!past) kMiniClosed = false;
-      const show = past && !kMiniClosed && !$('#tabKaraoke').hidden && !!Karaoke.proj && !!Karaoke.proj.source;
+      const show = past && kMiniOn && !kMiniClosed && !$('#tabKaraoke').hidden && !!Karaoke.proj && !!Karaoke.proj.source;
       if ($('#kMini').hidden === show) $('#kMini').hidden = !show;
       if (!show) return;
       const mc = $('#kMiniCanvas'), ratio = kCanvas.height / kCanvas.width;

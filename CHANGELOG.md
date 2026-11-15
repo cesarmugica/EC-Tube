@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.9.6 — Casilla para la pantalla auxiliar
+- Debajo del video: **«Mostrar pantalla auxiliar de video»** (prendida de inicio), con su nota: una ventanita abajo a la derecha con el video y la letra, que aparece cuando bajas y el video de arriba ya no se ve. Se recuerda tu elección.
+
 ## 2.9.5 — Karaoke más compacto
 - «👁 Ver cómo quedó», «⏺ Marcar», Velocidad y Ajuste fino pasan debajo del video; a la derecha quedan Play/pausa, Entra/Sale = ahora y las notas. Así 📝 Frases sube y cabe todo en la pantalla.
 - En la pestaña Karaoke ya no aparece la barra del reproductor de música (solo si de verdad está sonando algo), para que no tape las frases.
