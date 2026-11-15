@@ -1,5 +1,15 @@
 # Historial de versiones
 
+## 2.8.0 — Karaoke «🧭 Paso a paso» (recomendado)
+Para canciones con voz (video o solo audio), el flujo más limpio:
+1. **Sube la canción** con voz y música, tal cual.
+2. **Pega la letra.**
+3. **Oyendo al cantante**, marca cuándo entra y sale cada frase (espaciadora sostenida por frase, o escribe entra/sale en 📝 Frases, o arrastra en la línea de tiempo).
+4. **✅ Aceptar tiempos** para fijarlos.
+5. **🎤➜🎵 Quitar voz**: EC-Tube saca la pista sin voz para el karaoke. Tus entradas y salidas no se mueven; solo las palabras de cada frase se acomodan a la voz.
+6. **Crea el video**: 🎤 karaoke (sin voz) o 🎵 video con letra (con voz). Para el video con letra puedes saltarte el paso 5.
+- Los otros métodos (Automático, Frase + voz, A mano) siguen ahí.
+
 ## 2.7.1 — Los tiempos que escribes se respetan
 - Al escribir **entra/sale** de una frase con voz guía, las palabras se acomodaban a la voz buscando hasta 0.3 s antes, y si ahí estaba la cola de la frase anterior, te movía la entrada (escribías 0:56.8 y quedaba 0:56.4). Ahora lo que escribes es exacto: la frase entra y sale justo ahí, y la voz solo acomoda las palabras **dentro**.
 - Después de escribir, abajo te dice «✓ Frase N: entra … · sale …», o te avisa si se va a encimar con la anterior o la siguiente.

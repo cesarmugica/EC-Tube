@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.8.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -897,7 +897,7 @@ def _karaoke_path(project_id: str) -> Path:
 
 def karaoke_public(project: dict) -> dict:
     data = {k: project.get(k) for k in ("id", "title", "lyrics", "lines", "offset", "sung_color", "bg", "color1",
-                                       "color2", "format", "mark_mode", "method", "holds", "edited", "hide_unedited", "video_type", "lyrics_highlight", "updated")}
+                                       "color2", "format", "mark_mode", "method", "holds", "edited", "hide_unedited", "video_type", "lyrics_highlight", "accepted", "voice_removed", "updated")}
     for key in ("source", "image", "guide"):
         path = Path(project[key]) if project.get(key) else None
         data[key] = {"token": MEDIA.token_for(path), "name": path.name, "exists": path.is_file(),
@@ -952,11 +952,13 @@ def karaoke_save(data: dict) -> dict:
         ok = isinstance(hold, list) and len(hold) == 2 and all(isinstance(x, (int, float)) for x in hold)
         holds.append([round(float(hold[0]), 3), round(float(hold[1]), 3)] if ok else None)
     project["holds"] = holds
+    project["accepted"] = bool(data.get("accepted"))
+    project["voice_removed"] = bool(data.get("voice_removed"))
     project["video_type"] = "lyrics" if data.get("video_type") == "lyrics" else "karaoke"
     project["lyrics_highlight"] = bool(data.get("lyrics_highlight"))
     project["edited"] = [bool(x) for x in (data.get("edited") or [])[:1000]]
     project["hide_unedited"] = bool(data.get("hide_unedited"))
-    project["method"] = data.get("method") if data.get("method") in ("auto", "semi", "manual") else None
+    project["method"] = data.get("method") if data.get("method") in ("guided", "auto", "semi", "manual") else None
     project["mark_mode"] = data.get("mark_mode") if data.get("mark_mode") in ("line", "word") else "line"
     KARAOKE_DIR.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")

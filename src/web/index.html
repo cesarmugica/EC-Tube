@@ -127,7 +127,8 @@
     .klines .kl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .klines .kl.todo { color: var(--muted); }
     .kq { margin: 4px 0 10px; font-size: 1rem; }
-    .kmethods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .kmethods { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 1100px) { .kmethods { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 760px) { .kmethods { grid-template-columns: 1fr; } }
     .kmethod { position: relative; display: block; cursor: pointer; }
     .kmethod input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
@@ -365,7 +366,8 @@
         </div>
         <h3 class="kq">¿Cómo quieres poner los tiempos de la letra?</h3>
         <div class="kmethods" role="radiogroup" aria-label="Método">
-          <label class="kmethod"><input type="radio" name="kMethod" value="auto"><span><b>🤖 Automático</b><small>Tengo la canción original, con voz</small><em>Recomendado</em></span></label>
+          <label class="kmethod"><input type="radio" name="kMethod" value="guided"><span><b>🧭 Paso a paso</b><small>Tengo la canción con voz: marco oyendo al cantante y luego quito la voz</small><em>Recomendado</em></span></label>
+          <label class="kmethod"><input type="radio" name="kMethod" value="auto"><span><b>🤖 Automático</b><small>Tengo la canción con voz y quiero que lo haga solo</small></span></label>
           <label class="kmethod"><input type="radio" name="kMethod" value="semi"><span><b>🎤 Frase + voz</b><small>Tengo la pista sin voz y también la original</small></span></label>
           <label class="kmethod"><input type="radio" name="kMethod" value="manual"><span><b>✋ A mano</b><small>Solo tengo la pista, sin voz original</small></span></label>
         </div>
@@ -375,11 +377,11 @@
           <div class="folder grow"><span class="field" style="white-space:nowrap">🎤 Canción con voz</span><code id="kSongName">—</code></div>
           <button id="kFromSong" type="button">🎤 Elegir la canción con voz…</button>
         </div>
-        <div class="row" data-for="semi manual">
+        <div class="row" data-for="guided semi manual">
           <div class="folder grow"><span class="field" style="white-space:nowrap">🎵 Pista del video</span><code id="kSource">Elige la pista (sin voz)…</code></div>
-          <button class="secondary" id="kPickSource" type="button" data-for="semi manual">Elegir de otra carpeta…</button>
+          <button class="secondary" id="kPickSource" type="button" data-for="guided semi manual">Elegir de otra carpeta…</button>
         </div>
-        <div class="row" data-for="semi manual">
+        <div class="row" data-for="guided semi manual">
           <label class="field" style="flex:1 1 320px">o de tus carpetas de EC-Tube:
             <select id="kQuick" style="flex:1;min-width:0"><option value="">Elige un archivo…</option></select></label>
           <button class="secondary" id="kQuickRefresh" type="button" title="Volver a leer las carpetas">🔄</button>
@@ -673,6 +675,15 @@
       '⚠ Ojo: la frase anterior sale en {0} y esta entra en {1}; se van a encimar un momento.': '⚠ Heads up: the previous line ends at {0} and this one starts at {1}; they will overlap for a moment.',
       '⚠ Ojo: esta sale en {0} y la siguiente entra en {1}; se van a encimar un momento.': '⚠ Heads up: this line ends at {0} and the next starts at {1}; they will overlap for a moment.',
       '✓ Frase {0}: entra {1} · sale {2}': '✓ Line {0}: starts {1} · ends {2}',
+      '🧭 Paso a paso': '🧭 Step by step', 'Tengo la canción con voz: marco oyendo al cantante y luego quito la voz': 'I have the song with vocals: I mark while hearing the singer, then remove the vocals',
+      'Tengo la canción con voz y quiero que lo haga solo': 'I have the song with vocals and want it done automatically',
+      'Sube la canción con voz y música (video o solo audio)': 'Upload the song with vocals and music (video or audio only)', 'Oyendo la voz, marca cuándo entra y sale cada frase': 'While hearing the voice, mark when each line starts and ends',
+      'ESPACIADORA sostenida por frase, o escribe entra/sale en 📝 Frases': 'Hold SPACE for each line, or type start/end in 📝 Lines', 'Acepta para fijar los tiempos': 'Accept to lock the timing',
+      'Tiempos fijados (los puedes seguir ajustando)': 'Timing locked (you can still adjust it)', 'Revisa con ▶ Vista previa antes de aceptar': 'Check with ▶ Preview before accepting', '✅ Aceptar tiempos': '✅ Accept timing',
+      'Quita la voz (para el karaoke)': 'Remove the vocals (for the karaoke)', 'Pista sin voz: {0}': 'Instrumental: {0}', 'Si solo quieres un video con letra (con voz), puedes saltarte este paso': 'If you only want a lyric video (with vocals), you can skip this step',
+      '🎤➜🎵 Quitar voz': '🎤➜🎵 Remove vocals', 'Crea el video: 🎤 karaoke o 🎵 con letra': 'Create the video: 🎤 karaoke or 🎵 lyric video', 'En «3 · Fondo y video»': 'In “3 · Background and video”',
+      '✅ Tiempos fijados. Ahora quita la voz para el karaoke (o ve directo a crear un video con letra).': '✅ Timing locked. Now remove the vocals for the karaoke (or go straight to creating a lyric video).',
+      '✅ Voz quitada. Tus tiempos se quedan igual; ahora las palabras de cada frase se acomodan a la voz. Ya puedes crear el karaoke.': '✅ Vocals removed. Your timing stays the same; the words of each line now follow the voice. You can create the karaoke.',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1287,7 +1298,7 @@
     const kImg = new Image();
     const Karaoke = {
       ready: false, proj: null, saveTimer: null, undoStack: [], marking: false, markIndex: 0, holding: false, raf: 0, job: null,
-      blank() { return {id: '', title: '', lyrics: '', lines: [], offset: 0, sung_color: '#36C5F0', bg: 'color', color1: '#1B1340', color2: '#6C4CE6', format: '16:9', source: null, image: null, guide: null, holds: []}; },
+      blank() { return {id: '', title: '', lyrics: '', lines: [], offset: 0, sung_color: '#36C5F0', bg: 'color', color1: '#1B1340', color2: '#6C4CE6', format: '16:9', source: null, image: null, guide: null, holds: [], method: 'guided'}; },
       async init() {
         if (!this.ready) {
           this.ready = true;
@@ -1357,7 +1368,7 @@
         const run = async () => {
           const p = this.proj;
           const body = {id: p.id, title: p.title, lyrics: p.lyrics, lines: p.lines, offset: p.offset, sung_color: p.sung_color, bg: p.bg,
-            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, video_type: p.video_type || 'karaoke', lyrics_highlight: !!p.lyrics_highlight, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
+            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, accepted: !!p.accepted, voice_removed: !!p.voice_removed, video_type: p.video_type || 'karaoke', lyrics_highlight: !!p.lyrics_highlight, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
           if (!p.source && !p.lyrics.trim() && !p.title.trim()) return;
           try {
             const data = await api('/api/karaoke/save', body);
@@ -1379,7 +1390,7 @@
       // ---------- método ----------
       method() {
         const p = this.proj; if (p.method) return p.method;
-        return p.guide ? 'semi' : p.source ? 'manual' : 'auto';
+        return p.guide ? 'semi' : p.source ? 'manual' : 'guided';
       },
       applyMethod() {
         const m = this.method(), info = K_METHODS[m][LANG];
@@ -1388,7 +1399,7 @@
         this.renderSteps();
         document.querySelectorAll('#tabKaraoke [data-for]').forEach(el => { el.hidden = !el.dataset.for.split(' ').includes(m); });
         if (m === 'semi' && this.proj.mark_mode !== 'line') this.proj.mark_mode = 'line';
-        if (m === 'auto' && this.proj.mark_mode !== 'line') this.proj.mark_mode = 'line';
+        if ((m === 'auto' || m === 'guided') && this.proj.mark_mode !== 'line') this.proj.mark_mode = 'line';
         $('#kMode').value = this.proj.mark_mode || 'line';
         if (!this.marking) this.msg(this.lineMode()
           ? t('Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.')
@@ -1404,6 +1415,31 @@
         const guideWait = p.guide && st.state === 'preparing' ? tf('Escuchando la voz de la canción… {0} %', st.percent || 0) : '';
         const btn = (act, label, primary) => `<button type="button" class="${primary ? '' : 'secondary'}" data-act="${act}">${label}</button>`;
         const steps = [];
+        if (m === 'guided') {
+          const removed = !!p.voice_removed && !!p.guide;
+          steps.push({ok: !!p.source, title: t('Sube la canción con voz y música (video o solo audio)'), info: removed ? p.guide.name : p.source ? p.source.name : '',
+            act: removed ? '' : btn('source', p.source ? t('Cambiar…') : t('Elegir…'), !p.source)});
+          steps.push({ok: lines > 0, title: t('Pega la letra en «1 · Letra»'), info: lines ? tf('{0} renglones', lines) : t('Un renglón = una línea en pantalla'), act: btn('lyrics', t('✍ Ir a la letra'), !lines)});
+          steps.push({ok: lines > 0 && timed === lines, title: t('Oyendo la voz, marca cuándo entra y sale cada frase'),
+            info: (timed ? tf('{0} de {1} renglones con tiempo', timed, lines) + ' · ' : '') + t('ESPACIADORA sostenida por frase, o escribe entra/sale en 📝 Frases'),
+            act: btn('mark', t('⏺ Marcar'), true), need: !!p.source && lines > 0});
+          steps.push({ok: !!p.accepted, title: t('Acepta para fijar los tiempos'), info: p.accepted ? t('Tiempos fijados (los puedes seguir ajustando)') : t('Revisa con ▶ Vista previa antes de aceptar'),
+            act: p.accepted ? '' : btn('accept', t('✅ Aceptar tiempos'), true), need: timed > 0});
+          steps.push({ok: removed, wait: job ? (job.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', job.pct) : tf('Quitando la voz… {0} %', job.pct)) : guideWait,
+            title: t('Quita la voz (para el karaoke)'), info: removed ? tf('Pista sin voz: {0}', p.source.name) : t('Si solo quieres un video con letra (con voz), puedes saltarte este paso'),
+            act: removed ? '' : btn('removevoice', t('🎤➜🎵 Quitar voz'), true), need: !!p.accepted});
+          steps.push({ok: false, soft: true, title: t('Crea el video: 🎤 karaoke o 🎵 con letra'), info: t('En «3 · Fondo y video»'), act: btn('export', t('🎬 Ir a crear el video'), true), need: timed > 0});
+          let nextFound2 = false;
+          $('#kSteps').innerHTML = steps.map((st2, i) => {
+            let cls = 'todo', icon = '⬜';
+            if (st2.ok) { cls = 'done'; icon = '✅'; }
+            else if (st2.wait) { cls = 'next'; icon = '⏳'; nextFound2 = true; }
+            else if (!nextFound2) { cls = 'next'; icon = '👉'; nextFound2 = true; }
+            const act = st2.act && !st2.wait ? st2.act.replace('<button', st2.need === false ? '<button disabled' : '<button') : '';
+            return `<li class="${cls}"><span class="ks-icon">${icon}</span><span class="ks-text"><b>${i + 1}. ${esc(st2.title)}</b>${st2.wait ? `<small>${esc(st2.wait)}</small>` : st2.info ? `<small>${esc(st2.info)}</small>` : ''}</span>${act}</li>`;
+          }).join('');
+          return;
+        }
         if (m === 'auto') {
           steps.push({ok: !!p.guide || !!job, title: t('Elige la canción original (con voz)'), info: p.guide ? p.guide.name : job ? job.name : '', act: btn('song', p.guide ? t('Cambiar…') : t('🎤 Elegir la canción con voz…'), !p.guide)});
           steps.push({ok: !!p.source && !job, wait: job ? (job.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', job.pct) : tf('Quitando la voz… {0} %', job.pct)) : '',
@@ -1460,6 +1496,12 @@
           if (data.guide && data.guide.state === 'preparing') this.guideTimer = setTimeout(() => this.checkGuide(), 1500);
           if (data.guide && data.guide.state === 'ready' && !KT.hasVoice) KT.loadWave();
           if (data.guide && data.guide.state === 'ready' && this.pendingAlign) { this.pendingAlign = false; this.align(null); }
+          if (data.guide && data.guide.state === 'ready' && this.refineAfterRemove) {
+            // Paso a paso: tus entradas/salidas se quedan EXACTAS; la voz solo acomoda las palabras dentro.
+            this.refineAfterRemove = false;
+            p.holds = p.lines.map((_, i) => KT.lineSpan(i));
+            this.align(null, true).then(() => this.renderLines());
+          }
         } catch (error) {
           if (seq === this.guideSeq && this.proj === p && p.guide) this.guideTimer = setTimeout(() => this.checkGuide(), 3000);  // reintentar
         }
@@ -1747,6 +1789,12 @@
       } catch (error) { say(error.message); }
     });
     const K_METHODS = {
+      guided: {
+        es: `<p><b>Cómo trabaja:</b> subes la canción tal cual (video o audio, con voz y música). Marcas cuándo entra y sale cada frase <b>oyendo al cantante</b>, que es lo más fácil. Cuando aceptas los tiempos, EC-Tube le quita la voz para el karaoke, sin mover tus tiempos: solo acomoda las palabras de cada frase siguiendo la voz.</p>
+          <p class="khelp">Sirve igual para un video con letra (con voz): en ese caso puedes saltarte «Quitar voz».</p>`,
+        en: `<p><b>How it works:</b> you upload the song as it is (video or audio, with vocals and music). You mark when each line starts and ends <b>while hearing the singer</b>, which is the easiest. When you accept the timing, EC-Tube removes the vocals for the karaoke without moving your timing: it only places the words of each line following the voice.</p>
+          <p class="khelp">It also works for a lyric video (with vocals): in that case you can skip “Remove vocals”.</p>`,
+      },
       auto: {
         es: `<p><b>Cómo trabaja:</b> le das la canción original (con voz). EC-Tube le quita la voz para hacer la pista del video, escucha al cantante y pone los tiempos de cada palabra él solo. Tú solo revisas y corriges.</p>
           <ol><li>«🎤 Elegir la canción con voz…» y espera a que termine de quitar la voz (un par de minutos la primera vez).</li>
@@ -1804,6 +1852,8 @@
         case 'mark': go(step2); setTimeout(() => { if (!Karaoke.marking) Karaoke.startMark(0); }, 500); break;
         case 'preview': go(step2); setTimeout(() => { kMedia.currentTime = 0; kMedia.play().catch(() => {}); }, 400); break;
         case 'export': go(step3); break;
+        case 'accept': Karaoke.proj.accepted = true; Karaoke.save(); Karaoke.renderSteps(); Karaoke.msg(t('✅ Tiempos fijados. Ahora quita la voz para el karaoke (o ve directo a crear un video con letra).')); break;
+        case 'removevoice': kRemoveVoice({token: Karaoke.proj.source.token, name: Karaoke.proj.source.name}, 'guided'); break;
       }
     });
     // ---------- línea de tiempo (como los editores de karaoke: bloques por palabra sobre la forma de onda) ----------
@@ -2016,8 +2066,14 @@
     $('#kFromSong').addEventListener('click', async () => {
       try {
         const data = await api('/api/karaoke/pick', {kind: 'karaoke'});
-        if (!data.media) return;
-        const song = data.media, job = await api('/api/karaoke/from-song', {token: song.token});
+        if (data.media) kRemoveVoice(data.media, 'auto');
+      } catch (error) { say(error.message); }
+    });
+    // Quitar la voz de la canción: la pista sin voz queda para el video y la canción como voz guía.
+    async function kRemoveVoice(song, method) {
+      const p = Karaoke.proj;
+      try {
+        const job = await api('/api/karaoke/from-song', {token: song.token});
         const poll = async () => {
           const state = await api(`/api/trim/${job.id}`);
           if (state.status === 'running') {
@@ -2028,21 +2084,25 @@
           }
           Karaoke.songJob = null;
           if (state.status !== 'done') { Karaoke.fill(); say(t(state.error || 'No se pudo quitar la voz.')); return; }
+          if (Karaoke.proj !== p) return;
           const m = state.media;
           kSetSource({token: m.token, name: m.name, video: m.kind === 'video'});
-          Karaoke.proj.guide = {token: song.token, name: song.name}; Karaoke.proj.method = 'auto'; Karaoke.guideState = null; Karaoke.applyMethod(); Karaoke.save(); Karaoke.checkGuide(); KT.loadWave();
+          p.guide = {token: song.token, name: song.name}; p.method = method; Karaoke.guideState = null;
+          if (method === 'guided') { p.voice_removed = true; Karaoke.refineAfterRemove = true; }
+          Karaoke.applyMethod(); Karaoke.save(); Karaoke.checkGuide(); KT.loadWave();
           Karaoke.quickList();
-          Karaoke.msg(t('✅ Listo: ya tienes la pista sin voz. Pega la letra (paso 1) y presiona 🤖 Poner tiempos solo.'));
+          Karaoke.msg(method === 'guided' ? t('✅ Voz quitada. Tus tiempos se quedan igual; ahora las palabras de cada frase se acomodan a la voz. Ya puedes crear el karaoke.')
+            : t('✅ Listo: ya tienes la pista sin voz. Pega la letra (paso 1) y presiona 🤖 Poner tiempos solo.'));
         };
         Karaoke.songJob = {pct: '0', phase: 'separate', name: song.name}; Karaoke.renderSteps();
         $('#kSongName').textContent = song.name; $('#kSource').textContent = t('Quitando la voz… {0} %').replace('{0}', '0'); setTimeout(poll, 600);
-      } catch (error) { say(error.message); }
-    });
+      } catch (error) { Karaoke.songJob = null; Karaoke.renderSteps(); say(error.message); }
+    }
     function kSetSource(m) {
       Karaoke.proj.source = {token: m.token, name: m.name || m.file, exists: true, video: !!m.video};
       if (!Karaoke.proj.title) Karaoke.proj.title = (m.name || m.file).replace(/\.[^.]+$/, '').replace(/\s*\((música|music|recorte|trim)[^)]*\)/gi, '').trim();
       if (Karaoke.proj.source.video && Karaoke.proj.bg === 'color') Karaoke.proj.bg = 'video';
-      Karaoke.proj.guide = null; Karaoke.fill(); Karaoke.save();
+      Karaoke.proj.guide = null; if (!Karaoke.refineAfterRemove) { Karaoke.proj.voice_removed = false; } Karaoke.fill(); Karaoke.save();
     }
     $('#kQuick').addEventListener('change', () => { const item = Karaoke.quick[+$('#kQuick').value]; if (item) kSetSource({token: item.token, name: item.file, video: item.video}); $('#kQuick').value = ''; });
     $('#kQuickRefresh').addEventListener('click', () => Karaoke.quickList());
