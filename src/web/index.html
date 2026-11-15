@@ -803,19 +803,30 @@
     let settings = {}, saving = null;
 
     // ---------- Actualizar EC-Tube ----------
-    let installing = false;
+    let installing = false, oldVersion = '', waitingNew = false;
+    function waitNewVersion() {
+      if (waitingNew) return; waitingNew = true;
+      const t0 = Date.now();
+      const tick = async () => {
+        try {
+          const r = await fetch('/api/info', {cache: 'no-store'});
+          if (r.ok && (await r.json()).version !== oldVersion) { location.reload(); return; }
+        } catch (_) {}
+        if (Date.now() - t0 < 180000) setTimeout(tick, 1500);
+      };
+      setTimeout(tick, 1500);
+    }
     async function pollUpdate() {
       let u = null;
       try { u = await api('/api/update'); } catch (_) {
         if (installing) {
-          // EC-Tube se cerró para actualizarse: la versión nueva abre su propia ventana; esta ya no sirve.
-          $('#updateText').textContent = t('Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.');
+          // EC-Tube se cerró para actualizarse: esta misma ventana espera a la versión nueva y se recarga con ella.
           try { audio.pause(); } catch (_) {}
-          setTimeout(() => window.close(), 1500);
+          waitNewVersion();
           return;
         }
       }
-      if (u) installing = u.state === 'installing';
+      if (u) { installing = u.state === 'installing'; oldVersion = u.current; }
       if (u) {
         const show = ['available', 'downloading', 'installing'].includes(u.state);
         $('#updateBox').hidden = !show;
