@@ -1,8 +1,7 @@
 # Historial de versiones
 
-## 3.0.1 — Actualizar sin dejar la versión vieja abierta
-- Al darle **Actualizar**, la versión vieja ahora se cierra sola en cuanto arranca el instalador (antes a veces se quedaba en memoria junto a la nueva).
-- La ventana de EC-Tube que tenías abierta se recarga sola con la versión nueva, en lugar de quedarse colgada y abrirse otra.
+## 3.0.2
+- El botón «⬆ Actualizar» vuelve a funcionar como en la 3.0.0 (se deshace un cambio de la 3.0.1 que no hacía falta).
 
 ## 3.0.0 — Karaoke completo
 Versión grande: todo lo del karaoke de la serie 2.x junto y pulido.

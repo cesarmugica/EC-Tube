@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "3.0.1"
+APP_VERSION = "3.0.2"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1891,7 +1891,6 @@ def main() -> int:
     parser.add_argument("--port", type=int, help=f"puerto (por defecto {DEFAULT_PORT})")
     parser.add_argument("--no-browser", action="store_true", help="no abrir la ventana")
     parser.add_argument("--stay", action="store_true", help="no cerrarse al cerrar la ventana")
-    parser.add_argument("--after-update", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--version", action="version", version=f"EC-Tube {APP_VERSION} {BUILD_DATE}".strip())
     args = parser.parse_args()
 
@@ -1912,12 +1911,7 @@ def main() -> int:
     threading.Thread(target=ENGINE.update, daemon=True).start()
     if not args.stay:
         threading.Thread(target=_idle_watch, args=(server,), daemon=True).start()
-    if not args.no_browser and args.after_update:
-        # Tras actualizar, la ventana vieja se recarga sola con la versión nueva:
-        # solo abrir otra si en unos segundos ninguna se reporta.
-        started = time.time()
-        threading.Timer(7, lambda: None if LAST_PING > started else open_app_window(url)).start()
-    elif not args.no_browser:
+    if not args.no_browser:
         threading.Timer(0.6, open_app_window, args=(url,)).start()
     threading.Timer(8, UPDATER.check).start()  # ¿hay versión nueva de EC-Tube?
     try:

@@ -135,9 +135,6 @@ class Updater:
             subprocess.Popen([str(target), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", *self.extra_args()],
                              close_fds=True,
                              creationflags=flags)
-            # Cerrar esta versión ya, sin esperar a que el instalador la mate: si no, a
-            # veces se quedaba abierta en memoria junto a la nueva.
-            threading.Timer(2.5, lambda: os._exit(0)).start()
         except Exception as exc:  # noqa: BLE001
             self.state, self.error, self.percent = "available", str(exc), None
             self.log(f"Actualizar: {exc}")
