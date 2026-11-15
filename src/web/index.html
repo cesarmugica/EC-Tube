@@ -1405,16 +1405,21 @@
       async checkGuide(guess = false) {
         clearTimeout(this.guideTimer);
         const p = this.proj; if (!p || !p.source) { this.guideState = null; this.showGuide(); return; }
+        // Solo cuenta la respuesta de la ÚLTIMA consulta (antes una respuesta vieja podía apagar el botón).
+        const seq = this.guideSeq = (this.guideSeq || 0) + 1, sentGuide = p.guide ? p.guide.token : null;
         try {
-          const data = await api('/api/karaoke/guide', {source_token: p.source.token, guide_token: p.guide ? p.guide.token : null, guess: guess && !p.guide});
-          if (this.proj !== p) return;
+          const data = await api('/api/karaoke/guide', {source_token: p.source.token, guide_token: sentGuide, guess: guess && !sentGuide});
+          if (this.proj !== p || seq !== this.guideSeq) return;
+          if (!data.guide && p.guide && p.guide.token !== sentGuide) { this.checkGuide(); return; }
           if (data.guide) { if (!p.guide || p.guide.token !== data.guide.token) { p.guide = {token: data.guide.token, name: data.guide.name}; this.save(); } this.guideState = data.guide; }
           else this.guideState = null;
           this.showGuide();
           if (data.guide && data.guide.state === 'preparing') this.guideTimer = setTimeout(() => this.checkGuide(), 1500);
           if (data.guide && data.guide.state === 'ready' && !KT.hasVoice) KT.loadWave();
           if (data.guide && data.guide.state === 'ready' && this.pendingAlign) { this.pendingAlign = false; this.align(null); }
-        } catch (error) { /* sin voz guía: se queda el reparto parejo */ }
+        } catch (error) {
+          if (seq === this.guideSeq && this.proj === p && p.guide) this.guideTimer = setTimeout(() => this.checkGuide(), 3000);  // reintentar
+        }
       },
       // Acomodar las frases a la voz (li = lista de renglones, o null = todos los marcados por frase).
       async align(lis) {

@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 2.5.3 — Arreglo: «🤖 Poner tiempos solo» se quedaba apagado
+- Al terminar de quitar la voz, una consulta vieja (la que intenta adivinar la canción original en tus carpetas) podía llegar al último y apagar el botón para siempre, aunque la voz ya estuviera lista. Ahora solo cuenta la respuesta más reciente, y si algo falla se vuelve a intentar.
+- Para adivinar la canción original también se busca en la carpeta de la pista y en las carpetas de antes (`Música\EC-Tube`, `Videos\EC-Tube`…).
+
 ## 2.5.2 — Karaoke: siempre sabes qué sigue
 - Debajo del método elegido hay una **lista de pasos en vivo**: ✅ lo que ya está, ⏳ lo que EC-Tube está haciendo (con su %), 👉 lo que te toca ahora, y el botón para hacerlo ahí mismo.
 - Automático: 1 canción con voz → 2 quitar la voz → 3 escuchar la voz → 4 pegar la letra → 5 🤖 Poner tiempos solo → 6 revisar y corregir → 7 crear el video.

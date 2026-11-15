@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.5.2"
+APP_VERSION = "2.5.3"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1097,8 +1097,10 @@ def guess_guide(source: Path) -> Path | None:
     if not match:
         return None
     stem = match.group(1)
-    for key in ("audio_folder", "video_folder", "audio_edited_folder", "video_edited_folder"):
-        folder = Path(CONFIG.get(key) or "")
+    folders = [Path(CONFIG.get(key) or "") for key in ("audio_folder", "video_folder", "audio_edited_folder", "video_edited_folder")]
+    folders += [source.parent, *(Path.home() / base / name for base in ("Music", "Videos", "Downloads")
+                                 for name in ("EC-Tube", "EC-Tube Editados"))]  # también las carpetas de antes
+    for folder in folders:
         if folder.is_dir():
             for ext in sorted(AUDIO_EXTS | VIDEO_EXTS):
                 candidate = folder / f"{stem}{ext}"
