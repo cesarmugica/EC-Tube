@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 2.9.0 — Karaoke: escuchar, pausar y marcar «ahora»
+- Debajo del video: **▶ Play / ⏸ Pausa**, **⟲ 3 s / 3 s ⟳** y el tiempo exacto (0:25.3).
+- **⤓ Entra = ahora** y **⤒ Sale = ahora**: ponen el momento actual a la frase elegida (resaltada en amarillo en 📝 Frases). Al poner la salida pasa sola a la siguiente frase. Haz clic en una frase para elegirla.
+- Teclas (cuando no estás escribiendo): **K** play/pausa · **I** entra = ahora · **O** sale = ahora · **← / →** 3 s atrás/adelante.
+- Así puedes oír una frase, pausar y anotar sus tiempos con calma. Sigue existiendo ⏺ Marcar con la espaciadora.
+- Paso a paso, paso 3: el botón ahora es **⬇ Ir a marcar** (ya no arranca el marcado con espaciadora de golpe).
+
 ## 2.8.1 — Paso a paso: revisar y regresar
 - Nuevo paso **4 · Revisa y ajusta** con botón **▶ Vista previa**: te lleva abajo y empieza a reproducir desde la primera frase.
 - Abajo, junto a la línea de tiempo, **✅ Aceptar tiempos y regresar a los pasos**: fija los tiempos y te sube de nuevo a la lista. También hay **⬆ Regresar a los pasos** junto al título del paso 2.

@@ -149,6 +149,11 @@
     .ksteps li.todo { opacity: .55; }
     .kmethod-info ol { margin: 6px 0 0; padding-left: 20px; }
     .kmethod-info p { margin: 0; }
+    .kplayer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+    .kplayer .know { font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); }
+    .kplayer .ktarget { flex: 1 1 100%; font-size: .88rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .kplayer .ktarget b { color: var(--text); }
+    .klines li.target { box-shadow: inset 4px 0 0 #ffd600; background: color-mix(in srgb, #ffd600 10%, var(--bg)); }
     .kreturn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
     .ktl-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
     .ktl-bar .grow { flex: 1; }
@@ -432,6 +437,18 @@
             <canvas id="kCanvas" width="960" height="540"></canvas>
             <video id="kMedia" preload="auto" playsinline hidden></video>
             <div class="pb-seek" style="margin-top:8px"><span id="kCur">0:00</span><input type="range" id="kSeek" min="0" max="1" step="0.05" value="0" aria-label="Posición"><span id="kDur">0:00</span></div>
+            <div class="kplayer">
+              <button type="button" id="kPP" title="Play / pausa (tecla K)">▶ Play</button>
+              <button class="secondary" type="button" id="kBack" title="Regresar 3 s (tecla ←)">⟲ 3 s</button>
+              <button class="secondary" type="button" id="kFwd" title="Adelantar 3 s (tecla →)">3 s ⟳</button>
+              <span class="know" id="kNow">0:00.0</span>
+            </div>
+            <div class="kplayer">
+              <span class="ktarget" id="kTarget">—</span>
+              <button class="secondary" type="button" id="kSetIn" title="La frase marcada empieza en este momento (tecla I)">⤓ Entra = ahora</button>
+              <button class="secondary" type="button" id="kSetOut" title="La frase marcada termina en este momento y pasa a la siguiente (tecla O)">⤒ Sale = ahora</button>
+            </div>
+            <p class="khelp" style="margin:4px 0 0">Escucha, pon <b>pausa</b> (K) cuando termine una frase y usa <b>Entra/Sale = ahora</b> (I / O), o escribe los tiempos en 📝 Frases. Clic en una frase para elegirla.</p>
           </div>
           <div class="kside">
             <div class="row" style="margin-top:0">
@@ -693,6 +710,8 @@
       'Te lleva abajo; cuando termines, «✅ Aceptar tiempos y regresar a los pasos»': 'Takes you below; when you finish, “✅ Accept timing and go back to the steps”',
       '⬆ Regresar a los pasos': '⬆ Back to the steps', '✅ Aceptar tiempos y regresar a los pasos': '✅ Accept timing and go back to the steps',
       '¿Ya quedó? Revisaste con ▶ Vista previa y ajustaste en la línea de tiempo o en 📝 Frases:': 'All good? Checked with ▶ Preview and adjusted in the timeline or 📝 Lines:',
+      '▶ Play': '▶ Play', '⤓ Entra = ahora': '⤓ Start = now', '⤒ Sale = ahora': '⤒ End = now', 'Frase': 'Line', 'Primero pega la letra.': 'Paste the lyrics first.',
+      '⬇ Ir a marcar': '⬇ Go mark', 'Play/pausa y «Entra/Sale = ahora», escribe los tiempos, o ⏺ Marcar con la espaciadora': 'Play/pause and “Start/End = now”, type the times, or ⏺ Mark with the space bar',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1430,8 +1449,8 @@
             act: removed ? '' : btn('source', p.source ? t('Cambiar…') : t('Elegir…'), !p.source)});
           steps.push({ok: lines > 0, title: t('Pega la letra en «1 · Letra»'), info: lines ? tf('{0} renglones', lines) : t('Un renglón = una línea en pantalla'), act: btn('lyrics', t('✍ Ir a la letra'), !lines)});
           steps.push({ok: lines > 0 && timed === lines, title: t('Oyendo la voz, marca cuándo entra y sale cada frase'),
-            info: (timed ? tf('{0} de {1} renglones con tiempo', timed, lines) + ' · ' : '') + t('ESPACIADORA sostenida por frase, o escribe entra/sale en 📝 Frases'),
-            act: btn('mark', t('⏺ Marcar'), true), need: !!p.source && lines > 0});
+            info: (timed ? tf('{0} de {1} renglones con tiempo', timed, lines) + ' · ' : '') + t('Play/pausa y «Entra/Sale = ahora», escribe los tiempos, o ⏺ Marcar con la espaciadora'),
+            act: btn('goto', t('⬇ Ir a marcar'), true), need: !!p.source && lines > 0});
           steps.push({ok: !!p.reviewed || !!p.accepted, title: t('Revisa y ajusta: vista previa, línea de tiempo y 📝 Frases'),
             info: t('Te lleva abajo; cuando termines, «✅ Aceptar tiempos y regresar a los pasos»'), act: btn('review', t('▶ Vista previa'), true), need: timed > 0});
           steps.push({ok: !!p.accepted, title: t('Acepta para fijar los tiempos'), info: p.accepted ? t('Tiempos fijados (los puedes seguir ajustando)') : t('Revisa con ▶ Vista previa antes de aceptar'),
@@ -1565,6 +1584,28 @@
           : p.guide ? tf('Video con letra: suena la canción con voz («{0}»), sin cuenta regresiva y la letra aparece y se desvanece suave. (La vista previa suena con la pista; el video final lleva la voz.)', p.guide.name)
           : tf('Video con letra: se usará el audio de «{0}». Si esa pista no tiene voz, elige la canción con voz (método 🤖 Automático o 🎤 Frase + voz).', p.source ? p.source.name : '—');
       },
+      // Frase «elegida» para los botones Entra/Sale = ahora: la que tocaste, o la primera que falta.
+      target: null,
+      targetLine() {
+        const n = this.proj.lines.length; if (!n) return -1;
+        if (this.target != null && this.target < n) return this.target;
+        const k = this.proj.lines.findIndex((_, i) => !KT.lineSpan(i)); return k < 0 ? n - 1 : k;
+      },
+      setTarget(li) { this.target = li; this.renderLines(); this.showTarget(); },
+      showTarget() {
+        const li = this.targetLine(), units = this.proj.lines[li], span = li >= 0 ? KT.lineSpan(li) : null;
+        $('#kTarget').innerHTML = li < 0 ? t('Primero pega la letra.')
+          : `${t('Frase')} ${li + 1}: <b>${esc(units.map(u => u.text + (u.space ? ' ' : '')).join(''))}</b>` + (span ? ` · ${kTime(span[0])} → ${kTime(span[1])}` : '');
+      },
+      setNow(edge) {
+        const li = this.targetLine(); if (li < 0) return;
+        const input = $(`#kLines input.kin[data-li="${li}"][data-edge="${edge}"]`); if (!input) return;
+        input.value = kTime(kMedia.currentTime || 0);
+        input.dispatchEvent(new Event('change', {bubbles: true}));
+        if (edge === 'end') this.target = Math.min(li + 1, this.proj.lines.length - 1);  // sigue la siguiente frase
+        else this.target = li;
+        this.renderLines(); this.showTarget();
+      },
       markEdited(li) {
         const p = this.proj; if (!p.lines[li]) return;
         p.edited = p.edited || []; while (p.edited.length < p.lines.length) p.edited.push(false);
@@ -1593,9 +1634,10 @@
           const body = i === nowLine && this.marking ? units.map(u => `<span class="${u === flatNext || lineNext ? 'knext' : u.end != null ? 'kdone' : ''}">${esc(u.text)}</span>${u.space ? ' ' : ''}`).join('') : esc(text);
           const span = KT.lineSpan(i);
           const edited = !!(this.proj.edited || [])[i];
-          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''} ${edited ? 'edited' : this.proj.hide_unedited ? 'hidden-line' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${edited ? '✓ ' : ''}${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
+          const tgt2 = !this.marking && i === this.targetLine() ? 'target' : '';
+          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''} ${tgt2} ${edited ? 'edited' : this.proj.hide_unedited ? 'hidden-line' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${edited ? '✓ ' : ''}${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
         }).join('') : `<li><span></span><span class="kl todo">${t('Primero escribe la letra arriba.')}</span></li>`;
-        $('#kLines').scrollTop = scroll;
+        $('#kLines').scrollTop = scroll; if (!this.marking) this.showTarget();
         if (keep) { const el = $(`#kLines input.kin[data-li="${keep.li}"][data-edge="${keep.edge}"]`); if (el) { el.value = keep.value; el.focus(); } }
       },
       // ---------- marcar ----------
@@ -1768,6 +1810,7 @@
         if (!this.seeking) { $('#kSeek').max = kMedia.duration || 1; $('#kSeek').value = now; }
         $('#kCur').textContent = hms(now) || '0:00'; $('#kDur').textContent = hms(kMedia.duration) || '0:00';
         $('#kPlay').textContent = kMedia.paused || this.marking ? t('▶ Vista previa') : t('⏸ Pausa');
+        $('#kNow').textContent = kTime(now); $('#kPP').textContent = kMedia.paused ? t('▶ Play') : t('⏸ Pausa');
       },
     };
     $('#kProjects').addEventListener('change', async () => { if (Karaoke.marking) Karaoke.stopMark(); kMedia.pause(); await Karaoke.open($('#kProjects').value); });
@@ -1850,6 +1893,21 @@
       Karaoke.proj.method = i.value; Karaoke.applyMethod(); Karaoke.save();
     }));
     $('#kAutoTop').addEventListener('click', () => $('#ktAuto').click());
+    $('#kPP').addEventListener('click', () => { if (Karaoke.marking) Karaoke.stopMark(); if (kMedia.paused) { kMedia.playbackRate = +$('#kSpeed').value; kMedia.play().catch(() => {}); } else kMedia.pause(); });
+    $('#kBack').addEventListener('click', () => { kMedia.currentTime = Math.max(0, kMedia.currentTime - 3); });
+    $('#kFwd').addEventListener('click', () => { kMedia.currentTime = Math.min(kMedia.duration || 1e9, kMedia.currentTime + 3); });
+    $('#kSetIn').addEventListener('click', () => Karaoke.setNow('start'));
+    $('#kSetOut').addEventListener('click', () => Karaoke.setNow('end'));
+    document.addEventListener('keydown', event => {
+      if ($('#tabKaraoke').hidden || Karaoke.marking || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+      const k = event.key.toLowerCase();
+      if (k === 'k') { event.preventDefault(); $('#kPP').click(); }
+      else if (k === 'i') { event.preventDefault(); Karaoke.setNow('start'); }
+      else if (k === 'o') { event.preventDefault(); Karaoke.setNow('end'); }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); $('#kBack').click(); }
+      else if (event.key === 'ArrowRight') { event.preventDefault(); $('#kFwd').click(); }
+    });
     const kBackToSteps = () => { kMedia.pause(); $('#tabKaraoke section.panel').scrollIntoView({behavior: 'smooth', block: 'start'}); };
     $('#kBackTop').addEventListener('click', kBackToSteps);
     $('#kAcceptBack').addEventListener('click', () => {
@@ -1866,6 +1924,7 @@
         case 'guide': $('#kPickGuide').click(); break;
         case 'lyrics': go($('#kLyrics').closest('section')); setTimeout(() => $('#kLyrics').focus(), 400); break;
         case 'auto': go(step2); $('#ktAuto').click(); break;
+        case 'goto': go(step2); break;
         case 'mark': go(step2); setTimeout(() => { if (!Karaoke.marking) Karaoke.startMark(0); }, 500); break;
         case 'preview': go(step2); setTimeout(() => { kMedia.currentTime = 0; kMedia.play().catch(() => {}); }, 400); break;
         case 'export': go(step3); break;
@@ -2161,6 +2220,7 @@
       else { end = value; if (start == null) { Karaoke.msg(t('Primero escribe a qué hora entra la frase.')); return; } }
       Karaoke.setLineSpan(li, start, end);
     });
+    $('#kLines').addEventListener('focusin', event => { const input = event.target.closest('input.kin'); if (input) { Karaoke.target = +input.dataset.li; Karaoke.showTarget(); } });
     $('#kLines').addEventListener('keydown', event => {
       if (event.target.matches('input.kin') && event.key === 'Enter') {
         event.preventDefault();
@@ -2173,6 +2233,7 @@
       if (event.target.closest('input')) return;
       const from = event.target.dataset.from; if (from !== undefined) { Karaoke.startMark(+from); return; }
       const li = event.target.closest('li[data-i]'); if (!li) return;
+      Karaoke.setTarget(+li.dataset.i);
       const units = Karaoke.proj.lines[+li.dataset.i]; if (units && units[0].start != null) { kMedia.currentTime = Math.max(0, units[0].start - 1.5); kMedia.play().catch(() => {}); }
     });
     kMedia.addEventListener('ended', () => { if (Karaoke.marking) Karaoke.stopMark(Karaoke.markIndex >= Karaoke.flat().length); });
