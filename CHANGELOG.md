@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.9.7 — Controles en un solo renglón
+- Debajo del video, en un renglón: **👁 Ver cómo quedó · ⏺ Marcar · 🐢 velocidad · ⏱ ajuste fino** (al pasar el mouse dicen qué son).
+
 ## 2.9.6 — Casilla para la pantalla auxiliar
 - Debajo del video: **«Mostrar pantalla auxiliar de video»** (prendida de inicio), con su nota: una ventanita abajo a la derecha con el video y la letra, que aparece cuando bajas y el video de arriba ya no se ve. Se recuerda tu elección.
 
