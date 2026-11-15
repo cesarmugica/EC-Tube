@@ -110,7 +110,7 @@
     #kCanvas { width: 100%; max-height: 62vh; object-fit: contain; border-radius: 12px; background: #000; display: block; }
     .kmsg { color: var(--muted); font-size: .88rem; margin: 12px 0 0; }
     .kmsg.rec { color: var(--danger); font-weight: 600; }
-    .klines { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); max-height: 40vh; overflow: auto; font-size: .88rem; }
+    .klines { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); max-height: 252px; position: relative; overflow: auto; font-size: .88rem; }
     .klines li { display: grid; grid-template-columns: 74px minmax(0, 1fr) 74px auto; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
     .klines li:last-child { border-bottom: 0; }
     .klines li:hover { background: var(--surface-2); }
@@ -149,6 +149,7 @@
     .ksteps li.todo { opacity: .55; }
     .kmethod-info ol { margin: 6px 0 0; padding-left: 20px; }
     .kmethod-info p { margin: 0; }
+    .ksep { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
     .kplayer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .kplayer .know { font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); }
     .kplayer .ktarget { flex: 1 1 100%; font-size: .88rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -445,6 +446,9 @@
             <canvas id="kCanvas" width="960" height="540"></canvas>
             <video id="kMedia" preload="auto" playsinline hidden></video>
             <div class="pb-seek" style="margin-top:8px"><span id="kCur">0:00</span><input type="range" id="kSeek" min="0" max="1" step="0.05" value="0" aria-label="Posición"><span id="kDur">0:00</span></div>
+
+          </div>
+          <div class="kside">
             <div class="kplayer">
               <button type="button" id="kPP" title="Play / pausa (tecla K)">▶ Play</button>
               <button class="secondary" type="button" id="kBack" title="Regresar 3 s (tecla ←)">⟲ 3 s</button>
@@ -457,8 +461,7 @@
               <button class="secondary" type="button" id="kSetOut" title="La frase marcada termina en este momento y pasa a la siguiente (tecla O)">⤒ Sale = ahora</button>
             </div>
             <p class="khelp" style="margin:4px 0 0">Escucha, pon <b>pausa</b> (K) cuando termine una frase y usa <b>Entra/Sale = ahora</b> (I / O), o escribe los tiempos en 📝 Frases. Clic en una frase para elegirla.</p>
-          </div>
-          <div class="kside">
+            <hr class="ksep">
             <div class="row" style="margin-top:0">
               <button class="secondary" id="kPlay" type="button" title="Ver el resultado desde la primera frase, como va a quedar el video">👁 Ver cómo quedó</button>
               <button id="kAutoTop" type="button" data-for="auto">🤖 Poner tiempos solo</button>
@@ -1626,7 +1629,12 @@
         input.dispatchEvent(new Event('change', {bubbles: true}));
         if (edge === 'end') this.target = Math.min(li + 1, this.proj.lines.length - 1);  // sigue la siguiente frase
         else this.target = li;
-        this.renderLines(); this.showTarget();
+        this.renderLines(); this.showTarget(); this.revealTarget();
+      },
+      revealTarget() {  // que la frase elegida se vea en la lista (sin mover la página)
+        const list = $('#kLines'), row = list.querySelector('li.target'); if (!row) return;
+        if (row.offsetTop < list.scrollTop) list.scrollTop = row.offsetTop - 4;
+        else if (row.offsetTop + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = row.offsetTop + row.offsetHeight - list.clientHeight + 4;
       },
       markEdited(li) {
         const p = this.proj; if (!p.lines[li]) return;

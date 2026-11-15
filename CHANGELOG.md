@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 2.9.3 — Todo en una pantalla
+- Play/pausa, el tiempo y **Entra/Sale = ahora** pasan a la columna de la derecha, junto al video.
+- 📝 Frases queda pegada debajo del video y muestra unas 5 frases con scroll; al poner una salida, la lista se recorre sola para que veas la siguiente frase.
+
 ## 2.9.2 — Mini reproductor flotante
 - Cuando bajas a 📝 Frases o a la línea de tiempo y el video grande ya no se ve, aparece abajo a la derecha un **mini reproductor** con el video y la letra iluminándose, el tiempo exacto, ▶/⏸, ⟲ 3 s y **⤓ Entra / ⤒ Sale = ahora** para la frase elegida.
 - ⬆ te sube al video grande; ✕ lo esconde (vuelve a salir la próxima vez que bajes). No aparece en el paso 3 para no tapar el botón de crear.
