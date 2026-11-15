@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.6.1 — Karaoke: ocultar lo que no has editado
+- Casilla **«Ocultar en la vista previa las que no he editado»** en 📝 Frases: así lo que ya estaba no se mezcla con lo que estás arreglando. Todas se ocultan y van apareciendo conforme las editas.
+- Cuenta como editada (✓ verde en la lista) una frase a la que le escribes entra/sale, la marcas con la espaciadora o la mueves en la línea de tiempo. En la línea de tiempo las no editadas se ven atenuadas.
+- **↺ empezar de nuevo** quita todas las ✓. Solo afecta la vista previa: el video final lleva todas las frases.
+
 ## 2.6.0 — Karaoke: escribir a qué hora entra y sale cada frase
 - La lista **📝 Frases** ahora va a todo lo ancho y cada frase tiene dos casillas: **entra** y **sale**. Escribe el tiempo (`0:29`, `0:34.5`, `29`…) y presiona Enter; pasa sola a la siguiente casilla.
 - Es una forma más, no reemplaza nada: funciona junto con marcar con la espaciadora, el borrador automático y la línea de tiempo.

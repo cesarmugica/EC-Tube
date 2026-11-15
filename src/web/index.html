@@ -116,6 +116,9 @@
     .klines li:hover { background: var(--surface-2); }
     .klines li.now { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
     .klist-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; margin-top: 16px; }
+    .kcheck { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; font-size: .88rem; }
+    .klines li.hidden-line .kl { opacity: .45; }
+    .klines li.edited .kl { color: var(--ok); }
     .klines .kin { width: 74px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: .82rem; font-variant-numeric: tabular-nums; text-align: center; }
     .klines .kin:focus { outline: 2px solid var(--accent); }
     .klines .kin.bad { outline: 2px solid var(--danger); }
@@ -447,7 +450,9 @@
             <p class="kmsg" id="kMsg">Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.</p>
           </div>
         </div>
-        <div class="klist-head"><strong>📝 Frases</strong><span class="khelp">Puedes escribir a qué hora entra y sale cada frase (ej. 0:29 y 0:34.5) y presionar Enter. Clic en la frase = oírla.</span></div>
+        <div class="klist-head"><strong>📝 Frases</strong>
+          <label class="kcheck" title="Para que lo que ya estaba no se mezcle con lo que estás arreglando: en la vista previa solo salen las frases que ya editaste (✓)"><input type="checkbox" id="kHideUnedited"> Ocultar en la vista previa las que no he editado</label>
+          <button class="link" type="button" id="kResetEdited" title="Quitar todas las ✓ (se vuelven a ocultar)">↺ empezar de nuevo</button><span class="khelp">Puedes escribir a qué hora entra y sale cada frase (ej. 0:29 y 0:34.5) y presionar Enter. Clic en la frase = oírla.</span></div>
         <ol class="klines" id="kLines"></ol>
         <div class="ktl-bar">
           <strong>🎚 Línea de tiempo</strong>
@@ -651,6 +656,7 @@
       'entra': 'start', 'sale': 'end', 'A qué hora entra (ej. 0:29)': 'When it starts (e.g. 0:29)', 'A qué hora termina (ej. 0:34)': 'When it ends (e.g. 0:34)',
       'La frase debe terminar después de que entra (al menos 0.2 s).': 'The line must end after it starts (at least 0.2 s).', 'Escribe el tiempo así: 0:29 o 0:29.5': 'Type the time like this: 0:29 or 0:29.5',
       'Primero escribe a qué hora entra la frase.': 'First type when the line starts.',
+      'Ocultar en la vista previa las que no he editado': 'Hide the lines I have not edited in the preview', '↺ empezar de nuevo': '↺ start over',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1314,7 +1320,7 @@
         document.querySelectorAll('input[name=kBg]').forEach(i => { i.checked = i.value === p.bg; });
         document.querySelectorAll('input[name=kFormat]').forEach(i => { i.checked = i.value === p.format; });
         $('#kColor1').value = p.color1; $('#kColor2').value = p.color2; $('#kSung').value = p.sung_color;
-        $('#kMode').value = p.mark_mode || 'line';
+        $('#kMode').value = p.mark_mode || 'line'; $('#kHideUnedited').checked = !!p.hide_unedited;
         this.showGuide(); this.checkGuide(true); this.undoStack = []; KT.loadWave(); this.applyMethod();
         $('#kOffset').value = p.offset || 0; $('#kOffsetText').textContent = `${(+p.offset || 0).toFixed(2)} s`;
         $('#kDelete').disabled = !p.id;
@@ -1333,7 +1339,7 @@
         const run = async () => {
           const p = this.proj;
           const body = {id: p.id, title: p.title, lyrics: p.lyrics, lines: p.lines, offset: p.offset, sung_color: p.sung_color, bg: p.bg,
-            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
+            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
           if (!p.source && !p.lyrics.trim() && !p.title.trim()) return;
           try {
             const data = await api('/api/karaoke/save', body);
@@ -1348,6 +1354,7 @@
         // Conservar los tiempos de lo que no cambió
         const old = this.proj.lines, lines = kParse(text);
         lines.forEach((units, i) => units.forEach((u, j) => { const o = old[i] && old[i][j]; if (o && o.text === u.text) { u.start = o.start; u.end = o.end; } }));
+        this.proj.edited = lines.map((l, i) => !!((this.proj.edited || [])[i] && old[i] && old[i].map(u => u.text).join(' ') === l.map(u => u.text).join(' ')));
         this.proj.holds = (this.proj.holds || []).map((h, i) => h && old[i] && lines[i] && old[i].map(u => u.text).join(' ') === lines[i].map(u => u.text).join(' ') ? h : null);
         this.proj.lyrics = text; this.proj.lines = lines; this.renderLines(); this.save();
       },
@@ -1467,10 +1474,15 @@
           const k = (end - start) / (span[1] - span[0]);  // estirar/encoger lo que ya tenía, conservando su ritmo
           units.forEach(u => { u.start = start + (u.start - span[0]) * k; u.end = start + (u.end - span[0]) * k; });
         } else this.spread(li, start, end);
-        (this.proj.holds = this.proj.holds || [])[li] = [start, end];
+        (this.proj.holds = this.proj.holds || [])[li] = [start, end]; this.markEdited(li);
         if (this.proj.guide && this.guideState && this.guideState.state === 'ready') this.align([li]).then(() => this.renderLines());
         this.renderLines(); this.save();
         return true;
+      },
+      markEdited(li) {
+        const p = this.proj; if (!p.lines[li]) return;
+        p.edited = p.edited || []; while (p.edited.length < p.lines.length) p.edited.push(false);
+        p.edited[li] = true;
       },
       lineMode() { return (this.proj.mark_mode || 'line') === 'line'; },
       // Por frase: un solo toque largo por renglón; las palabras se reparten según su largo (barrido parejo).
@@ -1494,7 +1506,8 @@
           const tgt = this.marking ? (this.flat()[this.markIndex] || {}) : {}, flatNext = tgt.u, lineNext = this.lineMode() && tgt.li === i;
           const body = i === nowLine && this.marking ? units.map(u => `<span class="${u === flatNext || lineNext ? 'knext' : u.end != null ? 'kdone' : ''}">${esc(u.text)}</span>${u.space ? ' ' : ''}`).join('') : esc(text);
           const span = KT.lineSpan(i);
-          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
+          const edited = !!(this.proj.edited || [])[i];
+          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''} ${edited ? 'edited' : this.proj.hide_unedited ? 'hidden-line' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${edited ? '✓ ' : ''}${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
         }).join('') : `<li><span></span><span class="kl todo">${t('Primero escribe la letra arriba.')}</span></li>`;
         $('#kLines').scrollTop = scroll;
         if (keep) { const el = $(`#kLines input.kin[data-li="${keep.li}"][data-edge="${keep.edge}"]`); if (el) { el.value = keep.value; el.focus(); } }
@@ -1537,11 +1550,11 @@
         if (this.lineMode()) {
           const end = Math.max(this.lineStart + 0.3, kMedia.currentTime);
           this.spread(item.li, this.lineStart, end);
-          (this.proj.holds = this.proj.holds || [])[item.li] = [this.lineStart, end];
+          (this.proj.holds = this.proj.holds || [])[item.li] = [this.lineStart, end]; this.markEdited(item.li);
           this.align([item.li]);
           while (this.markIndex < flat.length && flat[this.markIndex].li === item.li) this.markIndex++;
         } else {
-          item.u.end = Math.max(item.u.start + 0.08, kMedia.currentTime);
+          item.u.end = Math.max(item.u.start + 0.08, kMedia.currentTime); this.markEdited(item.li);
           this.markIndex++;
         }
         const next = flat[this.markIndex]; this.renderLines(next ? next.li : item.li);
@@ -1571,7 +1584,8 @@
         ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
         const fullW = K_SIZES[p.format][0], fullH = K_SIZES[p.format][1];
         if (this.marking) { this.drawMarking(ctx, W, H, scale, fullW, fullH, now); ctx.restore(); this.drawBar(now); return; }
-        const placed = kLayout(p.lines, +p.offset || 0);
+        const ed = p.edited || [], hideOthers = !!p.hide_unedited;
+        const placed = kLayout(hideOthers ? p.lines.map((l, i) => ed[i] ? l : []) : p.lines, +p.offset || 0);
         if (p.title && placed.length && placed[0].appear > 1.5 && now >= 0.4 && now < placed[0].appear - 0.2) {
           ctx.font = `bold ${Math.round(Math.min(fullW, fullH) * 0.08 * scale)}px Arial`; ctx.textAlign = 'center';
           ctx.lineWidth = Math.max(3, Math.min(fullW, fullH) * 0.006) * scale * 2; ctx.strokeStyle = '#101010'; ctx.strokeText(p.title, W / 2, H / 2);
@@ -1824,12 +1838,14 @@
         const selLine = this.sel ? this.sel.li : -1;
         for (const b of this.blocks(g)) {
           const isSel = this.sel && this.sel.li === b.li && this.sel.ui === b.ui, inLine = b.li === selLine;
+          const dim = Karaoke.proj.hide_unedited && !(Karaoke.proj.edited || [])[b.li];
+          c.globalAlpha = dim ? 0.35 : 1;
           c.fillStyle = isSel ? accent : inLine ? accent + '88' : 'rgba(255,255,255,.16)';
           c.fillRect(b.x0, b.y, b.x1 - b.x0 - dpr, b.h);
           c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(b.x0, b.y, 2 * dpr, b.h);
           c.save(); c.beginPath(); c.rect(b.x0 + 3 * dpr, b.y, b.x1 - b.x0 - 5 * dpr, b.h); c.clip();
           c.fillStyle = isSel ? '#111' : '#fff'; c.font = `bold ${12 * dpr}px system-ui`; c.textBaseline = 'middle';
-          c.fillText(b.u.text, b.x0 + 4 * dpr, b.y + b.h / 2); c.restore();
+          c.fillText(b.u.text, b.x0 + 4 * dpr, b.y + b.h / 2); c.restore(); c.globalAlpha = 1;
         }
         if (this.loop) { c.fillStyle = 'rgba(255,214,0,.10)'; const a = this.tx(this.loop.start, g), b = this.tx(this.loop.end, g); c.fillRect(a, 0, b - a, H); }
         // cursor
@@ -1900,7 +1916,7 @@
           else { const u = Karaoke.proj.lines[d.li][d.ui]; if (kMedia.paused) kMedia.currentTime = Math.max(0, u.start + this.off() - 0.05); }
           this.follow = true; return;
         }
-        if (d.kind !== 'pan') { if (Karaoke.proj.holds) Karaoke.proj.holds[d.li] = null; Karaoke.renderLines(d.li); Karaoke.save(); }
+        if (d.kind !== 'pan') { if (Karaoke.proj.holds) Karaoke.proj.holds[d.li] = null; Karaoke.markEdited(d.li); Karaoke.renderLines(d.li); Karaoke.save(); }
         setTimeout(() => { this.follow = true; }, 1500);
       },
       lineSpan(li) {
@@ -1911,7 +1927,7 @@
         if (!this.sel) { Karaoke.msg(t('Primero haz clic en una palabra de la frase (en la línea de tiempo).')); return; }
         Karaoke.snapshot();
         Karaoke.proj.lines[this.sel.li].forEach(u => { if (u.start != null) { u.start = Math.max(0, u.start + dt); u.end = Math.max(u.start + 0.05, u.end + dt); } });
-        if (Karaoke.proj.holds) Karaoke.proj.holds[this.sel.li] = null;
+        if (Karaoke.proj.holds) Karaoke.proj.holds[this.sel.li] = null; Karaoke.markEdited(this.sel.li);
         Karaoke.renderLines(this.sel.li); Karaoke.save();
       },
       toggleLoop() {
@@ -2020,6 +2036,8 @@
     $('#kSpeed').addEventListener('change', () => { if (Karaoke.marking) kMedia.playbackRate = +$('#kSpeed').value; });
     $('#kSeek').addEventListener('input', () => { Karaoke.seeking = true; });
     $('#kSeek').addEventListener('change', () => { kMedia.currentTime = +$('#kSeek').value; Karaoke.seeking = false; });
+    $('#kHideUnedited').addEventListener('change', () => { Karaoke.proj.hide_unedited = $('#kHideUnedited').checked; Karaoke.renderLines(); Karaoke.save(); });
+    $('#kResetEdited').addEventListener('click', () => { Karaoke.proj.edited = []; Karaoke.renderLines(); Karaoke.save(); });
     $('#kLines').addEventListener('change', event => {
       const input = event.target.closest('input.kin'); if (!input) return;
       const li = +input.dataset.li, units = Karaoke.proj.lines[li], span = KT.lineSpan(li);
