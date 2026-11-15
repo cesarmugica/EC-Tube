@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.5.2 — Karaoke: siempre sabes qué sigue
+- Debajo del método elegido hay una **lista de pasos en vivo**: ✅ lo que ya está, ⏳ lo que EC-Tube está haciendo (con su %), 👉 lo que te toca ahora, y el botón para hacerlo ahí mismo.
+- Automático: 1 canción con voz → 2 quitar la voz → 3 escuchar la voz → 4 pegar la letra → 5 🤖 Poner tiempos solo → 6 revisar y corregir → 7 crear el video.
+- Antes, mientras EC-Tube terminaba de escuchar la voz, «🤖 Poner tiempos solo» se veía apagado sin decir por qué; ahora el paso 3 muestra el avance.
+
 ## 2.5.1 — Karaoke: eliges cómo sincronizar
 - Arriba del karaoke: **«¿Cómo quieres poner los tiempos de la letra?»** con tres opciones y la explicación de cómo trabaja cada una, paso a paso:
   - **🤖 Automático** (tengo la canción con voz): EC-Tube saca la pista y pone los tiempos solo; tú corriges.

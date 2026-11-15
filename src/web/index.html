@@ -130,6 +130,14 @@
     .kmethod input:checked + span { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
     .kmethod input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
     .kmethod-info { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); font-size: .9rem; line-height: 1.45; }
+    .ksteps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+    .ksteps li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+    .ksteps li .ks-icon { font-size: 1.1rem; text-align: center; }
+    .ksteps li .ks-text small { display: block; color: var(--muted); }
+    .ksteps li.done { opacity: .72; }
+    .ksteps li.next { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--bg)); }
+    .ksteps li.next .ks-text b { color: #fff; }
+    .ksteps li.todo { opacity: .55; }
     .kmethod-info ol { margin: 6px 0 0; padding-left: 20px; }
     .kmethod-info p { margin: 0; }
     .ktl-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
@@ -354,11 +362,12 @@
           <label class="kmethod"><input type="radio" name="kMethod" value="manual"><span><b>✋ A mano</b><small>Solo tengo la pista, sin voz original</small></span></label>
         </div>
         <div class="kmethod-info" id="kMethodInfo"></div>
-        <div class="row" data-for="auto">
+        <ol class="ksteps" id="kSteps"></ol>
+        <div class="row" data-for="none">
           <div class="folder grow"><span class="field" style="white-space:nowrap">🎤 Canción con voz</span><code id="kSongName">—</code></div>
           <button id="kFromSong" type="button">🎤 Elegir la canción con voz…</button>
         </div>
-        <div class="row">
+        <div class="row" data-for="semi manual">
           <div class="folder grow"><span class="field" style="white-space:nowrap">🎵 Pista del video</span><code id="kSource">Elige la pista (sin voz)…</code></div>
           <button class="secondary" id="kPickSource" type="button" data-for="semi manual">Elegir de otra carpeta…</button>
         </div>
@@ -621,6 +630,17 @@
       '✋ A mano': '✋ By hand', 'Solo tengo la pista, sin voz original': 'I only have the instrumental, no original vocals', '🎤 Canción con voz': '🎤 Song with vocals',
       '🎤 Elegir la canción con voz…': '🎤 Choose the song with vocals…', '🎵 Pista del video': '🎵 Video track', '🤖 Poner tiempos solo': '🤖 Time it automatically',
       '— (todavía no la eliges)': '— (not chosen yet)', '✅ Listo: ya tienes la pista sin voz. Pega la letra (paso 1) y presiona 🤖 Poner tiempos solo.': '✅ Done: the instrumental is ready. Paste the lyrics (step 1) and press 🤖 Time it automatically.',
+      'Escuchando la voz de la canción… {0} %': 'Listening to the song vocals… {0} %', 'Elige la canción original (con voz)': 'Choose the original song (with vocals)',
+      'Cambiar…': 'Change…', 'EC-Tube le quita la voz para hacer la pista del video': 'EC-Tube removes the vocals to make the video track',
+      'EC-Tube escucha la voz para saber cuándo se canta': 'EC-Tube listens to the vocals to know when each part is sung', 'Lista': 'Ready',
+      'Elige la pista sin voz': 'Choose the instrumental track', 'Elige la canción original como voz guía': 'Choose the original song as guide vocal',
+      'Pega la letra en «1 · Letra»': 'Paste the lyrics in “1 · Lyrics”', '{0} renglones': '{0} lines', 'Un renglón = una línea en pantalla': 'One line of text = one line on screen',
+      '✍ Ir a la letra': '✍ Go to the lyrics', 'Presiona «🤖 Poner tiempos solo»': 'Press “🤖 Time it automatically”', '{0} de {1} renglones con tiempo': '{0} of {1} lines timed',
+      'Pone los tiempos de toda la canción en segundos': 'Times the whole song in seconds',
+      'Marca cada frase: sostén la ESPACIADORA mientras se canta': 'Mark each line: hold SPACE while it is sung', 'Marca cada palabra: sostén la ESPACIADORA mientras se canta': 'Mark each word: hold SPACE while it is sung',
+      'Presiona ⏺ Marcar y sigue la canción': 'Press ⏺ Mark and follow the song', '⏺ Marcar': '⏺ Mark',
+      'Revisa con ▶ Vista previa y corrige en la 🎚 línea de tiempo': 'Check with ▶ Preview and fix in the 🎚 timeline', 'Arrastra palabras, 🔁 oye la frase, ↶ deshace': 'Drag words, 🔁 hear the line, ↶ undo',
+      '▶ Ver cómo quedó': '▶ See how it looks', 'Crea el video en «3 · Fondo y video»': 'Create the video in “3 · Background and video”', '🎬 Ir a crear el video': '🎬 Go create the video',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1321,7 +1341,8 @@
       applyMethod() {
         const m = this.method(), info = K_METHODS[m][LANG];
         document.querySelectorAll('input[name=kMethod]').forEach(i => { i.checked = i.value === m; });
-        $('#kMethodInfo').innerHTML = info;
+        $('#kMethodInfo').innerHTML = info.replace(/<ol>[\s\S]*?<\/ol>/, '');
+        this.renderSteps();
         document.querySelectorAll('#tabKaraoke [data-for]').forEach(el => { el.hidden = !el.dataset.for.split(' ').includes(m); });
         if (m === 'semi' && this.proj.mark_mode !== 'line') this.proj.mark_mode = 'line';
         if (m === 'auto' && this.proj.mark_mode !== 'line') this.proj.mark_mode = 'line';
@@ -1330,6 +1351,43 @@
           ? t('Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.')
           : t('Dale «⏺ Marcar» y, mientras se canta cada palabra (o sílaba), mantén presionada la ESPACIADORA; suéltala al terminarla. ⌫ deshace la última · Esc detiene.'));
         $('#kSongName').textContent = this.proj.guide ? this.proj.guide.name : t('— (todavía no la eliges)');
+      },
+      // ---------- pasos (qué sigue) ----------
+      renderSteps() {
+        const p = this.proj; if (!p) return;
+        const m = this.method(), st = this.guideState || {}, job = this.songJob;
+        const lines = p.lines.length, timed = p.lines.filter(l => l.length && l.every(u => u.start != null && u.end != null)).length;
+        const guideOk = !!(p.guide && st.state === 'ready');
+        const guideWait = p.guide && st.state === 'preparing' ? tf('Escuchando la voz de la canción… {0} %', st.percent || 0) : '';
+        const btn = (act, label, primary) => `<button type="button" class="${primary ? '' : 'secondary'}" data-act="${act}">${label}</button>`;
+        const steps = [];
+        if (m === 'auto') {
+          steps.push({ok: !!p.guide || !!job, title: t('Elige la canción original (con voz)'), info: p.guide ? p.guide.name : job ? job.name : '', act: btn('song', p.guide ? t('Cambiar…') : t('🎤 Elegir la canción con voz…'), !p.guide)});
+          steps.push({ok: !!p.source && !job, wait: job ? (job.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', job.pct) : tf('Quitando la voz… {0} %', job.pct)) : '',
+            title: t('EC-Tube le quita la voz para hacer la pista del video'), info: !job && p.source ? p.source.name : ''});
+          steps.push({ok: guideOk, wait: guideWait, title: t('EC-Tube escucha la voz para saber cuándo se canta'),
+            info: st.state === 'error' ? '⚠ ' + (st.error || '') : guideOk ? t('Lista') : ''});
+        } else {
+          steps.push({ok: !!p.source, title: t('Elige la pista sin voz'), info: p.source ? p.source.name : '', act: btn('source', p.source ? t('Cambiar…') : t('Elegir…'), !p.source)});
+          if (m === 'semi') steps.push({ok: guideOk, wait: guideWait, title: t('Elige la canción original como voz guía'),
+            info: p.guide ? p.guide.name + (st.state === 'error' ? ' ⚠ ' + (st.error || '') : '') : '', act: btn('guide', p.guide ? t('Cambiar…') : t('Elegir…'), !p.guide)});
+        }
+        steps.push({ok: lines > 0, title: t('Pega la letra en «1 · Letra»'), info: lines ? tf('{0} renglones', lines) : t('Un renglón = una línea en pantalla'), act: btn('lyrics', t('✍ Ir a la letra'), !lines)});
+        if (m === 'auto') steps.push({ok: lines > 0 && timed === lines, title: t('Presiona «🤖 Poner tiempos solo»'),
+          info: timed ? tf('{0} de {1} renglones con tiempo', timed, lines) : t('Pone los tiempos de toda la canción en segundos'), act: btn('auto', t('🤖 Poner tiempos solo'), true), need: guideOk && lines > 0});
+        else steps.push({ok: lines > 0 && timed === lines, title: m === 'semi' || this.lineMode() ? t('Marca cada frase: sostén la ESPACIADORA mientras se canta') : t('Marca cada palabra: sostén la ESPACIADORA mientras se canta'),
+          info: timed ? tf('{0} de {1} renglones con tiempo', timed, lines) : t('Presiona ⏺ Marcar y sigue la canción'), act: btn('mark', t('⏺ Marcar'), true), need: !!p.source && lines > 0});
+        steps.push({ok: false, soft: true, title: t('Revisa con ▶ Vista previa y corrige en la 🎚 línea de tiempo'), info: t('Arrastra palabras, 🔁 oye la frase, ↶ deshace'), act: btn('preview', t('▶ Ver cómo quedó'), false), need: timed > 0});
+        steps.push({ok: false, soft: true, title: t('Crea el video en «3 · Fondo y video»'), act: btn('export', t('🎬 Ir a crear el video'), false), need: timed > 0});
+        let nextFound = false;
+        $('#kSteps').innerHTML = steps.map((st2, i) => {
+          let cls = 'todo', icon = '⬜';
+          if (st2.ok) { cls = 'done'; icon = '✅'; }
+          else if (st2.wait) { cls = 'next'; icon = '⏳'; nextFound = true; }
+          else if (!nextFound && (!st2.soft || timed > 0)) { cls = 'next'; icon = '👉'; nextFound = true; }
+          const act = st2.act && !st2.wait ? st2.act.replace('<button', st2.need === false ? '<button disabled' : '<button') : '';
+          return `<li class="${cls}"><span class="ks-icon">${icon}</span><span class="ks-text"><b>${i + 1}. ${esc(st2.title)}</b>${st2.wait ? `<small>${esc(st2.wait)}</small>` : st2.info ? `<small>${esc(st2.info)}</small>` : ''}</span>${act}</li>`;
+        }).join('');
       },
       // ---------- voz guía ----------
       showGuide() {
@@ -1342,6 +1400,7 @@
         const ready = !!(g && st.state === 'ready');
         $('#kAlign').disabled = !ready; $('#ktAuto').disabled = !ready; $('#kAutoTop').disabled = !ready;
         if ($('#kSongName')) $('#kSongName').textContent = g ? text : t('— (todavía no la eliges)');
+        this.renderSteps();
       },
       async checkGuide(guess = false) {
         clearTimeout(this.guideTimer);
@@ -1389,6 +1448,7 @@
       flat() { const out = []; this.proj.lines.forEach((units, li) => units.forEach(u => out.push({li, u}))); return out; },
       renderLines(nowLine = -1) {
         const lines = this.proj.lines;
+        if (!this.marking) this.renderSteps();
         $('#kLines').innerHTML = lines.length ? lines.map((units, i) => {
           const done = units.every(u => u.start != null), text = units.map(u => u.text + (u.space ? ' ' : '')).join('');
           const tgt = this.marking ? (this.flat()[this.markIndex] || {}) : {}, flatNext = tgt.u, lineNext = this.lineMode() && tgt.li === i;
@@ -1638,6 +1698,21 @@
       Karaoke.proj.method = i.value; Karaoke.applyMethod(); Karaoke.save();
     }));
     $('#kAutoTop').addEventListener('click', () => $('#ktAuto').click());
+    $('#kSteps').addEventListener('click', event => {
+      const b = event.target.closest('button[data-act]'); if (!b) return;
+      const go = el => el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      const step2 = $('#kCanvas').closest('section'), step3 = $('#kExport').closest('section');
+      switch (b.dataset.act) {
+        case 'song': $('#kFromSong').click(); break;
+        case 'source': $('#kPickSource').click(); break;
+        case 'guide': $('#kPickGuide').click(); break;
+        case 'lyrics': go($('#kLyrics').closest('section')); setTimeout(() => $('#kLyrics').focus(), 400); break;
+        case 'auto': go(step2); $('#ktAuto').click(); break;
+        case 'mark': go(step2); setTimeout(() => { if (!Karaoke.marking) Karaoke.startMark(0); }, 500); break;
+        case 'preview': go(step2); setTimeout(() => { kMedia.currentTime = 0; kMedia.play().catch(() => {}); }, 400); break;
+        case 'export': go(step3); break;
+      }
+    });
     // ---------- línea de tiempo (como los editores de karaoke: bloques por palabra sobre la forma de onda) ----------
     const KT = {
       canvas: $('#kTimeline'), view: 0, zoom: 10, wave: null, voice: null, rate: 100, hasVoice: false,
@@ -1852,9 +1927,11 @@
           const state = await api(`/api/trim/${job.id}`);
           if (state.status === 'running') {
             const pct = state.percent.toFixed(0);
+            Karaoke.songJob = {pct, phase: state.phase, name: song.name}; Karaoke.renderSteps();
             $('#kSource').textContent = state.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct) : tf('Quitando la voz… {0} %', pct);
             setTimeout(poll, 800); return;
           }
+          Karaoke.songJob = null;
           if (state.status !== 'done') { Karaoke.fill(); say(t(state.error || 'No se pudo quitar la voz.')); return; }
           const m = state.media;
           kSetSource({token: m.token, name: m.name, video: m.kind === 'video'});
@@ -1862,6 +1939,7 @@
           Karaoke.quickList();
           Karaoke.msg(t('✅ Listo: ya tienes la pista sin voz. Pega la letra (paso 1) y presiona 🤖 Poner tiempos solo.'));
         };
+        Karaoke.songJob = {pct: '0', phase: 'separate', name: song.name}; Karaoke.renderSteps();
         $('#kSongName').textContent = song.name; $('#kSource').textContent = t('Quitando la voz… {0} %').replace('{0}', '0'); setTimeout(poll, 600);
       } catch (error) { say(error.message); }
     });
