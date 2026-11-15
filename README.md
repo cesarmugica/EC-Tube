@@ -7,6 +7,7 @@ Descarga **audio y video** de YouTube (y de los demás sitios que soporta yt-dlp
 - Varias descargas a la vez, con progreso, cancelar y reintentar.
 - **✂ Editor para recortar** el inicio y el final de un audio o video (lo que bajaste o cualquier archivo de tu PC). Guarda una copia «(recorte)» en la carpeta de editados y no toca el original.
 - **🎵 / 🎤 Separar:** en el editor puedes guardar **solo la música** (sin voz, para cantar encima) o **solo la voz** (sin música). Usa el modelo MDX-Net «Kim Vocal 2» de [UVR](https://github.com/TRvlvr/model_repo) con ONNX Runtime + DirectML (tarjeta de video NVIDIA/AMD/Intel, o procesador).
+- **🎤 Karaoke:** escribe la letra, márcala con la espaciadora mientras suena la música y crea un video (16:9 o 9:16) con la letra iluminándose sobre el video original, una imagen o un degradado.
 - **🎵 Reproductor** tipo Winamp con varias listas guardadas, tomando canciones de las carpetas de descargas y de editados.
 - Listas de reproducción completas (opcional), en una carpeta con el nombre de la lista.
 - El motor (yt-dlp) se actualiza solo una vez al día, para que siga funcionando cuando YouTube cambia algo. También hay un botón **Actualizar motor**.

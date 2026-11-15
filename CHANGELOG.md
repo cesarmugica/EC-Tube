@@ -1,5 +1,15 @@
 # Historial de versiones
 
+## 2.1.0 — 🎤 Karaoke
+- **Pestaña nueva «🎤 Karaoke»** para hacer videos de karaoke con la letra iluminándose:
+  1. **Música:** eliges la pista (audio o video). Tip: quítale la voz a una canción con «🎵 Solo música» del editor.
+  2. **Letra:** un renglón = una línea en pantalla; con «/» una palabra se ilumina por sílabas (*co/ra/zón*).
+  3. **Marcar:** suena la música y **mantienes la ESPACIADORA** mientras se canta cada palabra o sílaba (sueltas al terminarla). ⌫ deshace, Esc detiene, «⏺ desde aquí» vuelve a marcar desde cualquier línea, velocidad 50–100 % para marcar con calma y «Ajuste fino» para adelantar o atrasar toda la letra.
+  4. **Vista previa** igual al video final: dos líneas a la vez, la palabra se va llenando de color, título al inicio y cuenta regresiva ● ● ● antes de entrar a cantar después de una pausa larga.
+  5. **Fondo:** el video original, una imagen tuya o un degradado de colores; también eliges el color de la letra cantada.
+  6. **Video:** horizontal 16:9 o vertical 9:16 (TikTok), MP4 1080p, en la carpeta nueva `Videos\EC-Tube Karaoke`.
+- Los karaokes se guardan solos como proyectos: puedes volver a abrirlos, corregir tiempos y volver a crear el video.
+
 ## 2.0.1
 - Al actualizar con «⬆ Actualizar», la ventana vieja se cierra sola (antes se quedaba abierta atrás de la nueva, sin funcionar).
 

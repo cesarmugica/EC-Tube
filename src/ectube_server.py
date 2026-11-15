@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.1.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -201,6 +201,7 @@ DEFAULT_CONFIG = {
     "video_folder": "",
     "audio_edited_folder": "",   # recortes de audio (aparte de las descargas)
     "video_edited_folder": "",   # recortes de video
+    "karaoke_folder": "",        # videos de karaoke terminados
     "playlist": False,
     "language": "",  # "es" o "en"; vacío = el del instalador o el de Windows
 }
@@ -220,6 +221,7 @@ def load_config() -> dict:
     config["video_folder"] = config["video_folder"] or _default_folder("video")
     config["audio_edited_folder"] = config["audio_edited_folder"] or _default_folder("audio", edited=True)
     config["video_edited_folder"] = config["video_edited_folder"] or _default_folder("video", edited=True)
+    config["karaoke_folder"] = config["karaoke_folder"] or str(Path(_default_folder("video")).with_name("EC-Tube Karaoke"))
     return config
 
 
@@ -533,7 +535,8 @@ DOWNLOADS = Downloads()
 # ---------------------------------------------------------------------------
 AUDIO_EXTS = {".mp3", ".m4a", ".aac", ".wav", ".ogg", ".opus", ".flac"}
 VIDEO_EXTS = {".mp4", ".m4v", ".mov", ".webm", ".mkv"}
-MEDIA_TYPES = {".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav",
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+MEDIA_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".bmp": "image/bmp",".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav",
                ".ogg": "audio/ogg", ".opus": "audio/ogg", ".flac": "audio/flac", ".mp4": "video/mp4",
                ".m4v": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm", ".mkv": "video/x-matroska"}
 
@@ -844,6 +847,184 @@ def save_playlists(incoming: dict) -> dict:
     return playlists_public(data)
 
 
+# ---------------------------------------------------------------------------
+# Karaoke: proyectos (música + letra con tiempos) y exportar el video
+# ---------------------------------------------------------------------------
+KARAOKE_DIR = HOME / "karaoke"
+HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def _karaoke_path(project_id: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{12}", project_id or ""):
+        raise ValueError("Proyecto inválido.")
+    return KARAOKE_DIR / f"{project_id}.json"
+
+
+def karaoke_public(project: dict) -> dict:
+    data = {k: project.get(k) for k in ("id", "title", "lyrics", "lines", "offset", "sung_color", "bg", "color1",
+                                       "color2", "format", "updated")}
+    for key in ("source", "image"):
+        path = Path(project[key]) if project.get(key) else None
+        data[key] = {"token": MEDIA.token_for(path), "name": path.name, "exists": path.is_file(),
+                     "video": path.suffix.lower() in VIDEO_EXTS} if path else None
+    return data
+
+
+def karaoke_list() -> list[dict]:
+    items = []
+    if KARAOKE_DIR.is_dir():
+        for path in KARAOKE_DIR.glob("*.json"):
+            with contextlib.suppress(OSError, json.JSONDecodeError):
+                data = json.loads(path.read_text(encoding="utf-8"))
+                items.append({"id": data.get("id"), "title": data.get("title") or "", "updated": data.get("updated", 0)})
+    return sorted(items, key=lambda item: item["updated"], reverse=True)
+
+
+def karaoke_load(project_id: str) -> dict:
+    return json.loads(_karaoke_path(project_id).read_text(encoding="utf-8"))
+
+
+def karaoke_save(data: dict) -> dict:
+    project_id = str(data.get("id") or "") or uuid.uuid4().hex[:12]
+    path = _karaoke_path(project_id)
+    project = {"id": project_id, "title": str(data.get("title") or "").strip()[:120],
+               "lyrics": str(data.get("lyrics") or "")[:20000], "updated": int(time.time())}
+    for key in ("source", "image"):
+        token = data.get(f"{key}_token")
+        found = MEDIA.path(str(token)) if token else None
+        project[key] = str(found) if found else None
+    lines = []
+    for line in (data.get("lines") or [])[:1000]:
+        units = []
+        for unit in (line or [])[:200]:
+            if not isinstance(unit, dict):
+                continue
+            start, end = unit.get("start"), unit.get("end")
+            units.append({"text": str(unit.get("text") or "")[:80], "space": bool(unit.get("space")),
+                          "start": round(float(start), 3) if isinstance(start, (int, float)) else None,
+                          "end": round(float(end), 3) if isinstance(end, (int, float)) else None})
+        lines.append(units)
+    project["lines"] = lines
+    offset = data.get("offset", 0)
+    project["offset"] = float(min(2, max(-2, offset))) if isinstance(offset, (int, float)) else 0.0
+    project["sung_color"] = data.get("sung_color") if HEX_COLOR.fullmatch(str(data.get("sung_color") or "")) else "#36C5F0"
+    project["color1"] = data.get("color1") if HEX_COLOR.fullmatch(str(data.get("color1") or "")) else "#1B1340"
+    project["color2"] = data.get("color2") if HEX_COLOR.fullmatch(str(data.get("color2") or "")) else "#6C4CE6"
+    project["bg"] = data.get("bg") if data.get("bg") in ("video", "image", "color") else "color"
+    project["format"] = data.get("format") if data.get("format") in ("16:9", "9:16") else "16:9"
+    KARAOKE_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(project, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(path)
+    return karaoke_public(project)
+
+
+def _media_duration(path: Path) -> float:
+    probe = _tool("ffprobe") or (str(Path(FFMPEG).with_name("ffprobe" + (".exe" if IS_WINDOWS else ""))) if FFMPEG else None)
+    with contextlib.suppress(Exception):
+        result = subprocess.run([probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                                capture_output=True, text=True, timeout=30, creationflags=_no_window_flags())
+        return float(result.stdout.strip())
+    return 0.0
+
+
+class KaraokeExport:
+    """Arma el video: fondo (video, imagen o color) + letra (ASS con \\kf) + el audio de la música."""
+
+    def __init__(self, project: dict, fmt: str) -> None:
+        from ectube_karaoke import SIZES
+
+        self.id = uuid.uuid4().hex[:12]
+        self.project, self.fmt = project, fmt if fmt in SIZES else "16:9"
+        self.width, self.height = SIZES[self.fmt]
+        source = Path(project.get("source") or "")
+        if not source.is_file():
+            raise RuntimeError("La música del karaoke ya no está en su carpeta.")
+        self.source = source
+        folder = Path(CONFIG["karaoke_folder"])
+        folder.mkdir(parents=True, exist_ok=True)
+        name = re.sub(r'[<>:"/\\|?*]+', "", project.get("title") or source.stem).strip() or "Karaoke"
+        suffix = " (vertical)" if self.fmt == "9:16" else ""
+        output = folder / f"{name} (karaoke){suffix}.mp4"
+        n = 2
+        while output.exists():
+            output = folder / f"{name} (karaoke {n}){suffix}.mp4"
+            n += 1
+        self.output = output
+        self.status, self.percent, self.error = "running", 0.0, ""
+        self.process: subprocess.Popen | None = None
+        self.cancelled = False
+
+    def command(self, work: Path) -> list[str]:
+        if not FFMPEG:
+            raise RuntimeError("No se encontró FFmpeg.")
+        w, h = self.width, self.height
+        bg = self.project.get("bg")
+        is_video = self.source.suffix.lower() in VIDEO_EXTS
+        fit = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1"
+        args = [FFMPEG, "-hide_banner", "-nostdin", "-y"]
+        if bg == "video" and is_video:
+            args += ["-i", str(self.source)]
+            chain = f"[0:v]{fit},eq=brightness=-0.10:saturation=0.9,fps=30"
+            audio = "0:a:0"
+        elif bg == "image" and self.project.get("image") and Path(self.project["image"]).is_file():
+            args += ["-loop", "1", "-framerate", "30", "-i", self.project["image"], "-i", str(self.source)]
+            chain = f"[0:v]{fit},eq=brightness=-0.08"
+            audio = "1:a:0"
+        else:
+            c1, c2 = self.project.get("color1", "#1B1340"), self.project.get("color2", "#6C4CE6")
+            args += ["-f", "lavfi", "-i", f"gradients=s={w}x{h}:c0=0x{c1[1:]}:c1=0x{c2[1:]}:x0=0:y0=0:x1={w}:y1={h}:speed=0.002:rate=30",
+                     "-i", str(self.source)]
+            chain = "[0:v]setsar=1"
+            audio = "1:a:0"
+        args += ["-filter_complex", f"{chain},ass=karaoke.ass,format=yuv420p[v]", "-map", "[v]", "-map", audio,
+                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "192k",
+                 "-movflags", "+faststart", "-shortest", "-progress", "pipe:1", "-nostats", str(self.output)]
+        return args
+
+    def run(self) -> None:
+        from ectube_karaoke import build_ass
+
+        work = KARAOKE_DIR / f"render-{self.id}"
+        try:
+            work.mkdir(parents=True, exist_ok=True)
+            (work / "karaoke.ass").write_text(build_ass(self.project, self.fmt), encoding="utf-8")
+            duration = max(1.0, _media_duration(self.source))
+            log(f"[karaoke {self.id}] {self.output.name} ({self.fmt}, fondo {self.project.get('bg')})")
+            # Se corre DENTRO de la carpeta de trabajo: así el filtro «ass» no tiene que lidiar con rutas de Windows.
+            self.process = subprocess.Popen(self.command(work), cwd=str(work), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            text=True, encoding="utf-8", errors="replace", creationflags=_no_window_flags())
+            errors: list[str] = []
+            threading.Thread(target=lambda: errors.extend(self.process.stderr.readlines()), daemon=True).start()  # type: ignore[union-attr]
+            for line in self.process.stdout:  # type: ignore[union-attr]
+                if line.startswith("out_time_us=") or line.startswith("out_time_ms="):
+                    with contextlib.suppress(ValueError):
+                        self.percent = min(99.0, int(line.split("=", 1)[1]) / 1e6 / duration * 100)
+            code = self.process.wait()
+            if self.cancelled:
+                self.status = "cancelled"
+            elif code == 0 and self.output.exists():
+                self.status, self.percent = "done", 100.0
+            else:
+                self.status = "error"
+                self.error = friendly_error("".join(errors[-20:])) if errors else "No se pudo crear el video."
+                log(f"[karaoke {self.id}] error: {''.join(errors[-8:])[:800]}")
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+        if self.status != "done":
+            with contextlib.suppress(OSError):
+                self.output.unlink()
+
+    def public(self) -> dict:
+        return {"id": self.id, "status": self.status, "percent": round(self.percent, 1), "error": self.error,
+                "output": self.output.name}
+
+
+KARAOKE_JOBS: dict[str, KaraokeExport] = {}
+
+
 def pick_files(initial: str) -> list[str]:
     """Elegir varias canciones para el reproductor."""
     if not IS_WINDOWS:
@@ -867,19 +1048,24 @@ def pick_files(initial: str) -> list[str]:
             if line.strip() and Path(line.strip()).suffix.lower() in AUDIO_EXTS | VIDEO_EXTS]
 
 
-def pick_file() -> str | None:
-    """Diálogo nativo de Windows para elegir un archivo de audio o video."""
+def pick_file(kind: str = "media") -> str | None:
+    """Diálogo nativo de Windows para elegir un archivo de audio o video (o una imagen)."""
     if not IS_WINDOWS:
         return None
-    patterns = ";".join("*" + ext for ext in sorted(AUDIO_EXTS | VIDEO_EXTS))
+    exts = IMAGE_EXTS if kind == "image" else AUDIO_EXTS | VIDEO_EXTS
+    patterns = ";".join("*" + ext for ext in sorted(exts))
     english = current_language() == "en"
-    initial = CONFIG.get("audio_folder") or str(Path.home())
+    initial = (str(Path.home() / "Pictures") if kind == "image" else
+               CONFIG.get("audio_edited_folder") if kind == "karaoke" else CONFIG.get("audio_folder")) or str(Path.home())
+    titles = {"image": ("Choose the background image", "Elige la imagen de fondo"),
+              "karaoke": ("Choose the music (audio or video)", "Elige la música (audio o video)")}
+    title = titles.get(kind, ("Choose the audio or video to trim", "Elige el audio o video que quieres recortar"))[0 if english else 1]
     script = (
         "Add-Type -AssemblyName System.Windows.Forms;"
         "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
         "$d = New-Object System.Windows.Forms.OpenFileDialog;"
-        f"$d.Title = '{english and 'Choose the audio or video to trim' or 'Elige el audio o video que quieres recortar'}';"
-        f"$d.Filter = '{english and 'Audio and video' or 'Audio y video'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
+        f"$d.Title = '{title}';"
+        f"$d.Filter = '{english and ('Images' if kind == 'image' else 'Audio and video') or ('Imágenes' if kind == 'image' else 'Audio y video')}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
         f"$d.InitialDirectory = '{initial.replace(chr(39), chr(39) * 2)}';"
         "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.FileName }"
     )
@@ -1075,6 +1261,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, **library("edited" if where == "edited" else "downloads")})
         elif path == "/api/playlists":
             self.send_json({"ok": True, **playlists_public(load_playlists())})
+        elif path == "/api/karaoke/projects":
+            self.send_json({"ok": True, "projects": karaoke_list()})
+        elif path == "/api/karaoke/project":
+            try:
+                self.send_json({"ok": True, "project": karaoke_public(karaoke_load(parse_qs(urlsplit(self.path).query).get("id", [""])[0]))})
+            except (ValueError, OSError, json.JSONDecodeError):
+                self.send_json({"ok": False, "error": "No se encontró ese karaoke."}, 404)
+        elif path.startswith("/api/karaoke/export/"):
+            job = KARAOKE_JOBS.get(path.rsplit("/", 1)[-1])
+            self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
         elif path.startswith("/img/") or path in ("/app.js", "/style.css", "/favicon.ico"):
             target = (WEB_ROOT / path.lstrip("/")).resolve()
             if WEB_ROOT.resolve() in target.parents and target.is_file():
@@ -1108,7 +1304,8 @@ class Handler(BaseHTTPRequestHandler):
             self._job_action(match.group(1), match.group(2))
         elif path == "/api/pick-folder":
             kind = "video" if data.get("kind") == "video" else "audio"
-            key = f"{kind}_edited_folder" if data.get("which") == "edited" else f"{kind}_folder"
+            key = ("karaoke_folder" if data.get("which") == "karaoke" else
+                   f"{kind}_edited_folder" if data.get("which") == "edited" else f"{kind}_folder")
             chosen = pick_folder(CONFIG[key])
             if chosen:
                 CONFIG[key] = chosen
@@ -1117,7 +1314,8 @@ class Handler(BaseHTTPRequestHandler):
                             "settings": {k: v for k, v in CONFIG.items() if k != "port"}})
         elif path == "/api/open-folder":
             kind = "video" if data.get("kind") == "video" else "audio"
-            key = f"{kind}_edited_folder" if data.get("which") == "edited" else f"{kind}_folder"
+            key = ("karaoke_folder" if data.get("which") == "karaoke" else
+                   f"{kind}_edited_folder" if data.get("which") == "edited" else f"{kind}_folder")
             folder = Path(CONFIG[key])
             folder.mkdir(parents=True, exist_ok=True)
             open_in_explorer(folder)
@@ -1130,6 +1328,45 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "error": "Ese archivo no es de audio o video compatible."}, 400)
             else:
                 self.send_json({"ok": True, "media": media_info(Path(chosen))})
+        elif path == "/api/karaoke/save":
+            try:
+                self.send_json({"ok": True, "project": karaoke_save(data)})
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
+        elif path == "/api/karaoke/delete":
+            with contextlib.suppress(ValueError, OSError):
+                _karaoke_path(str(data.get("id") or "")).unlink()
+            self.send_json({"ok": True})
+        elif path == "/api/karaoke/pick":
+            kind = "image" if data.get("kind") == "image" else "karaoke"
+            chosen = pick_file(kind)
+            if not chosen:
+                self.send_json({"ok": True, "media": None})
+            elif Path(chosen).suffix.lower() not in (IMAGE_EXTS if kind == "image" else AUDIO_EXTS | VIDEO_EXTS):
+                self.send_json({"ok": False, "error": "Ese archivo no es compatible."}, 400)
+            else:
+                self.send_json({"ok": True, "media": media_info(Path(chosen))})
+        elif path == "/api/karaoke/export":
+            try:
+                job = KaraokeExport(karaoke_load(str(data.get("id") or "")), str(data.get("format") or "16:9"))
+            except (ValueError, OSError, json.JSONDecodeError, RuntimeError) as exc:
+                self.send_json({"ok": False, "error": str(exc) if isinstance(exc, RuntimeError) else "Guarda el karaoke primero."}, 400)
+                return
+            KARAOKE_JOBS[job.id] = job
+            threading.Thread(target=job.run, daemon=True).start()
+            self.send_json({"ok": True, **job.public()})
+        elif re.fullmatch(r"/api/karaoke/export/[0-9a-f]{12}/(cancel|reveal)", path):
+            job = KARAOKE_JOBS.get(path.split("/")[4])
+            if not job:
+                self.send_json({"ok": False, "error": "No existe esa exportación."}, 404)
+            elif path.endswith("cancel"):
+                job.cancelled = True
+                if job.process:
+                    _kill_tree(job.process)
+                self.send_json({"ok": True})
+            else:
+                open_in_explorer(job.output if job.output.exists() else Path(CONFIG["karaoke_folder"]), select=True)
+                self.send_json({"ok": True})
         elif path == "/api/pick-songs":
             chosen = pick_files(CONFIG["audio_folder"])
             self.send_json({"ok": True, "items": [{"token": MEDIA.token_for(Path(p)), "name": Path(p).stem} for p in chosen]})
@@ -1305,7 +1542,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _update_blocker() -> str:
-    trimming = any(job.status == "running" for job in TRIMS.values())
+    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values()])
     return "Espera a que terminen las descargas y recortes." if DOWNLOADS.active() or trimming else ""
 
 
@@ -1319,7 +1556,7 @@ def _idle_watch(server: ThreadingHTTPServer) -> None:
     """Cerrar el servidor si la ventana se cerró y no hay descargas pendientes."""
     while True:
         time.sleep(15)
-        trimming = any(job.status == "running" for job in TRIMS.values())
+        trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values()])
         if time.time() - LAST_PING > IDLE_EXIT_SECONDS and not DOWNLOADS.active() and not trimming:
             log("Sin ventana abierta ni descargas: EC-Tube se cierra.")
             threading.Thread(target=server.shutdown, daemon=True).start()

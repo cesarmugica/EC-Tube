@@ -73,6 +73,7 @@ Invoke-Checked $python ($pythonArgs + @(
   '--hidden-import', 'ectube_build',
   '--hidden-import', 'ectube_update',
   '--hidden-import', 'ectube_separate',
+  '--hidden-import', 'ectube_karaoke',
   '--collect-all', 'onnxruntime',
   '--exclude-module', 'tkinter',
   '--distpath', $distDir,
