@@ -1,7 +1,15 @@
 # Historial de versiones
 
-## 2.9.10 — Un renglón también en Automático
-- El botón «🤖 Poner tiempos solo» de debajo del video ahora dice **🤖 Auto** (al pasar el mouse explica qué hace), así los controles caben en un renglón en todos los métodos.
+## 3.0.0 — Karaoke completo
+Versión grande: todo lo del karaoke de la serie 2.x junto y pulido.
+- **Cuatro maneras de poner los tiempos**, con explicación y lista de pasos en vivo: 🧭 Paso a paso (recomendado), 🤖 Automático, 🎤 Frase + voz y ✋ A mano.
+- **Marcar** con ▶ Play/⏸ y «Entra/Sale = ahora» (teclas K · I · O), con la espaciadora (por frase o por palabra), escribiendo los tiempos o arrastrando en la 🎚 línea de tiempo.
+- **Quitar la voz** de la canción y que las palabras sigan al cantante.
+- **📝 Frases**: editar, agregar y borrar frases; ocultar las no editadas; deshacer todo.
+- **Pantalla auxiliar** flotante y controles compactos para que todo quepa en la pantalla.
+- **Dos tipos de video**: 🎤 karaoke (sin voz) o 🎵 video con letra (con voz).
+- Carpeta **EC-Tube Outputs** con MUSIC / VIDEO / KARAOKE.
+- En este número: el botón de debajo del video ahora dice **🤖 Auto**, para que los controles quepan en un renglón en todos los métodos.
 
 ## 2.9.9 — Ahora sí, un renglón
 - Debajo del video: **👁 Ver cómo quedó · ⏺ Marcar · por frase/por palabra · 🐢 velocidad**. El **⏱ Ajuste fino** (de toda la letra) pasa a la columna derecha.
