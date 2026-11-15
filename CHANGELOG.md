@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.2.1 — Karaoke: ves lo que vas marcando
+- Al marcar, la vista previa ya muestra la línea en la que vas **y la que sigue**, desde antes de cantarlas.
+- La palabra que te toca marcar va en **amarillo**; al apretar ESPACIO se llena de color en vivo y al soltar queda marcada.
+- Arriba dice qué hacer («aprieta ESPACIO…» / «SOSTÉN… suelta…») y en la lista de líneas también se ve palabra por palabra en cuál vas.
+
 ## 2.2.0 — Carpeta «EC-Tube Outputs»
 - Todo queda ordenado en tu carpeta de usuario, en **`EC-Tube Outputs`**:
   - `MUSIC\Downloaded` (audio que bajas) y `MUSIC\Edited` (recortes, solo música, solo voz)

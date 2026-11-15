@@ -118,6 +118,8 @@
     .klines .kt { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .78rem; }
     .klines .kl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .klines .kl.todo { color: var(--muted); }
+    .klines .kl .kdone { color: var(--accent, #36c5f0); }
+    .klines .kl .knext { background: #ffd600; color: #111; border-radius: 4px; padding: 0 3px; }
     .klines button { padding: 3px 8px; font-size: .75rem; }
     .kcode { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: .82rem; }
     input[type=color] { width: 38px; height: 30px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 2px; cursor: pointer; }
@@ -551,6 +553,7 @@
       '🎬 Crear video de karaoke': '🎬 Create karaoke video', '✕ Cancelar': '✕ Cancel', '(sin título)': '(untitled)', '(nuevo karaoke)': '(new karaoke)',
       'desde aquí': 'from here', 'Primero escribe la letra arriba.': 'First type the lyrics above.', 'Primero elige la música.': 'First choose the music.',
       'Primero escribe la letra.': 'First type the lyrics.', 'Primero marca los tiempos de la letra.': 'First mark the lyrics timing.',
+      '● SOSTÉN… suelta al terminar la palabra': '● HOLD… release when the word ends', '● MARCANDO — aprieta ESPACIO cuando empiece la palabra amarilla': '● MARKING — press SPACE when the yellow word starts',
       '⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada palabra. ⌫ deshace · Esc detiene.': '⏺ MARKING: hold SPACE while each word is sung. ⌫ undo · Esc stop.',
       '✅ ¡Listo! Revisa con «Vista previa». Si algo quedó mal, usa «⏺ desde aquí» en esa línea.': '✅ Done! Check it with “Preview”. If something is off, use “⏺ from here” on that line.',
       'Marcado detenido. Puedes seguir con «⏺ desde aquí» en la línea que sigue.': 'Marking stopped. Continue with “⏺ from here” on the next line.',
@@ -1238,7 +1241,9 @@
         const lines = this.proj.lines;
         $('#kLines').innerHTML = lines.length ? lines.map((units, i) => {
           const done = units.every(u => u.start != null), text = units.map(u => u.text + (u.space ? ' ' : '')).join('');
-          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''}"><span class="kt">${units[0].start != null ? hms(units[0].start) : '—'}</span><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${esc(text)}</span><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
+          const flatNext = this.marking ? (this.flat()[this.markIndex] || {}).u : null;
+          const body = i === nowLine && this.marking ? units.map(u => `<span class="${u === flatNext ? 'knext' : u.end != null ? 'kdone' : ''}">${esc(u.text)}</span>${u.space ? ' ' : ''}`).join('') : esc(text);
+          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''}"><span class="kt">${units[0].start != null ? hms(units[0].start) : '—'}</span><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${body}</span><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
         }).join('') : `<li><span></span><span class="kl todo">${t('Primero escribe la letra arriba.')}</span></li>`;
       },
       // ---------- marcar ----------
@@ -1271,6 +1276,7 @@
         const flat = this.flat(); const item = flat[this.markIndex]; if (!item) return;
         item.u.end = Math.max(item.u.start + 0.08, kMedia.currentTime);
         this.markIndex++;
+        const next = flat[this.markIndex]; this.renderLines(next ? next.li : item.li);
         if (this.markIndex >= flat.length) setTimeout(() => this.stopMark(true), 600);
       },
       undo() {
@@ -1292,6 +1298,7 @@
         else { const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, p.color1); g.addColorStop(1, p.color2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
         ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
         const fullW = K_SIZES[p.format][0], fullH = K_SIZES[p.format][1];
+        if (this.marking) { this.drawMarking(ctx, W, H, scale, fullW, fullH, now); ctx.restore(); this.drawBar(now); return; }
         const placed = kLayout(p.lines, +p.offset || 0);
         if (p.title && placed.length && placed[0].appear > 1.5 && now >= 0.4 && now < placed[0].appear - 0.2) {
           ctx.font = `bold ${Math.round(Math.min(fullW, fullH) * 0.08 * scale)}px Arial`; ctx.textAlign = 'center';
@@ -1319,6 +1326,46 @@
           });
         }
         ctx.restore();
+        this.drawBar(now);
+      },
+      // Mientras marcas: la línea en la que vas y la que sigue, ya visibles; lo marcado en color,
+      // la palabra que estás sosteniendo se llena en vivo y la que toca marcar va en recuadro amarillo.
+      drawMarking(ctx, W, H, scale, fullW, fullH, now) {
+        const p = this.proj, flat = this.flat(), item = flat[Math.min(this.markIndex, flat.length - 1)];
+        if (!item) return;
+        const cur = this.markIndex >= flat.length ? p.lines.length - 1 : item.li;
+        const head = Math.round(Math.min(fullW, fullH) * 0.045 * scale);
+        ctx.font = `bold ${head}px Arial`; ctx.textAlign = 'center';
+        const blink = Math.floor(now * 2.5) % 2 === 0;
+        ctx.fillStyle = this.holding ? p.sung_color : (blink ? '#ff4d4d' : '#ffb3b3');
+        ctx.fillText(this.holding ? t('● SOSTÉN… suelta al terminar la palabra') : t('● MARCANDO — aprieta ESPACIO cuando empiece la palabra amarilla'), W / 2, H * 0.12);
+        ctx.textAlign = 'left';
+        [cur, cur + 1].forEach((li, row) => {
+          const units = p.lines[li]; if (!units) return;
+          const size = kFont(units, fullW, fullH) * scale * (row ? 0.8 : 1), y = kSlotY(row, fullW, fullH) * scale;
+          ctx.font = `bold ${size}px Arial`; ctx.globalAlpha = row ? 0.6 : 1;
+          const pieces = units.map(u => u.text + (u.space ? ' ' : '')), widths = pieces.map(t2 => ctx.measureText(t2).width);
+          let x = (W - widths.reduce((a, b) => a + b, 0)) / 2;
+          ctx.lineWidth = Math.max(3, Math.min(fullW, fullH) * 0.006) * scale * 2; ctx.strokeStyle = '#101010';
+          units.forEach((u, i) => {
+            const tw = ctx.measureText(u.text).width, isNext = row === 0 && flat[this.markIndex] && flat[this.markIndex].u === u;
+            if (isNext) {
+              ctx.fillStyle = this.holding ? 'rgba(255,255,255,.18)' : 'rgba(255,214,0,.30)';
+              ctx.fillRect(x - size * 0.12, y - size * 0.66, tw + size * 0.24, size * 1.32);
+              ctx.fillStyle = this.holding ? p.sung_color : '#ffd600'; ctx.fillRect(x, y + size * 0.55, tw, Math.max(3, size * 0.08));
+            }
+            ctx.strokeText(pieces[i], x, y);
+            ctx.fillStyle = isNext && !this.holding ? '#ffd600' : '#fff'; ctx.fillText(pieces[i], x, y);
+            let f = 0;
+            if (u.start != null && u.end != null) f = 1;
+            else if (isNext && this.holding && u.start != null) f = Math.min(1, 0.15 + (now - u.start) / 0.8);
+            if (f > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x, y - size, tw * f, size * 2); ctx.clip(); ctx.fillStyle = p.sung_color; ctx.fillText(pieces[i], x, y); ctx.restore(); }
+            x += widths[i];
+          });
+          ctx.globalAlpha = 1;
+        });
+      },
+      drawBar(now) {
         if (!this.seeking) { $('#kSeek').max = kMedia.duration || 1; $('#kSeek').value = now; }
         $('#kCur').textContent = hms(now) || '0:00'; $('#kDur').textContent = hms(kMedia.duration) || '0:00';
         $('#kPlay').textContent = kMedia.paused || this.marking ? t('▶ Vista previa') : t('⏸ Pausa');
