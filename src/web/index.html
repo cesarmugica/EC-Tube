@@ -394,6 +394,12 @@
               <label class="field">Velocidad <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
               <label class="field" title="Si la letra se ilumina tarde, muévelo a la izquierda">Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
             </div>
+            <div class="row kguide">
+              <span class="field" style="white-space:nowrap" title="La canción original, CON voz. Con ella la letra se ilumina siguiendo al cantante.">🎤 Voz guía</span>
+              <code id="kGuide" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</code>
+              <button class="secondary" id="kPickGuide" type="button">Elegir…</button>
+              <button class="secondary" id="kAlign" type="button" title="Volver a acomodar todas las frases según la voz">✨ Ajustar a la voz</button>
+            </div>
             <p class="kmsg" id="kMsg">Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.</p>
             <ol class="klines" id="kLines"></ol>
           </div>
@@ -557,7 +563,9 @@
       '● SOSTÉN… suelta al terminar la frase': '● HOLD… release when the line ends', '● MARCANDO — aprieta ESPACIO cuando empiece la frase amarilla': '● MARKING — press SPACE when the yellow line starts',
       '⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada frase. ⌫ deshace · Esc detiene.': '⏺ MARKING: hold SPACE while each line is sung. ⌫ undo · Esc stop.',
       'Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.': 'Press “⏺ Mark”. When a line starts being sung, press and hold SPACE; release it when the line ends. The next one is ready. ⌫ undo · Esc stop.',
-      'Marcar por': 'Mark by', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
+      'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
+      '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
+      'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
       '● SOSTÉN… suelta al terminar la palabra': '● HOLD… release when the word ends', '● MARCANDO — aprieta ESPACIO cuando empiece la palabra amarilla': '● MARKING — press SPACE when the yellow word starts',
       '⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada palabra. ⌫ deshace · Esc detiene.': '⏺ MARKING: hold SPACE while each word is sung. ⌫ undo · Esc stop.',
       '✅ ¡Listo! Revisa con «Vista previa». Si algo quedó mal, usa «⏺ desde aquí» en esa línea.': '✅ Done! Check it with “Preview”. If something is off, use “⏺ from here” on that line.',
@@ -1161,7 +1169,7 @@
     const kImg = new Image();
     const Karaoke = {
       ready: false, proj: null, saveTimer: null, marking: false, markIndex: 0, holding: false, raf: 0, job: null,
-      blank() { return {id: '', title: '', lyrics: '', lines: [], offset: 0, sung_color: '#36C5F0', bg: 'color', color1: '#1B1340', color2: '#6C4CE6', format: '16:9', source: null, image: null}; },
+      blank() { return {id: '', title: '', lyrics: '', lines: [], offset: 0, sung_color: '#36C5F0', bg: 'color', color1: '#1B1340', color2: '#6C4CE6', format: '16:9', source: null, image: null, guide: null, holds: []}; },
       async init() {
         if (!this.ready) {
           this.ready = true;
@@ -1211,6 +1219,7 @@
         document.querySelectorAll('input[name=kFormat]').forEach(i => { i.checked = i.value === p.format; });
         $('#kColor1').value = p.color1; $('#kColor2').value = p.color2; $('#kSung').value = p.sung_color;
         $('#kMode').value = p.mark_mode || 'line';
+        this.showGuide(); this.checkGuide(true);
         $('#kOffset').value = p.offset || 0; $('#kOffsetText').textContent = `${(+p.offset || 0).toFixed(2)} s`;
         $('#kDelete').disabled = !p.id;
         this.syncBg(); this.sizeCanvas(); this.renderLines(); kDisclaimer();
@@ -1228,7 +1237,7 @@
         const run = async () => {
           const p = this.proj;
           const body = {id: p.id, title: p.title, lyrics: p.lyrics, lines: p.lines, offset: p.offset, sung_color: p.sung_color, bg: p.bg,
-            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
+            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
           if (!p.source && !p.lyrics.trim() && !p.title.trim()) return;
           try {
             const data = await api('/api/karaoke/save', body);
@@ -1243,7 +1252,48 @@
         // Conservar los tiempos de lo que no cambió
         const old = this.proj.lines, lines = kParse(text);
         lines.forEach((units, i) => units.forEach((u, j) => { const o = old[i] && old[i][j]; if (o && o.text === u.text) { u.start = o.start; u.end = o.end; } }));
+        this.proj.holds = (this.proj.holds || []).map((h, i) => h && old[i] && lines[i] && old[i].map(u => u.text).join(' ') === lines[i].map(u => u.text).join(' ') ? h : null);
         this.proj.lyrics = text; this.proj.lines = lines; this.renderLines(); this.save();
+      },
+      // ---------- voz guía ----------
+      showGuide() {
+        const g = this.proj.guide, st = this.guideState || {};
+        let text = g ? g.name : t('— (elige la canción original, con voz)');
+        if (g && st.state === 'preparing') text += ` · ${t('preparando')} ${st.percent || 0}%`;
+        else if (g && st.state === 'ready') text += ' · ✓';
+        else if (g && st.state === 'error') text += ' · ⚠ ' + (st.error || '');
+        $('#kGuide').textContent = text; $('#kGuide').title = text;
+        $('#kAlign').disabled = !(g && st.state === 'ready');
+      },
+      async checkGuide(guess = false) {
+        clearTimeout(this.guideTimer);
+        const p = this.proj; if (!p || !p.source) { this.guideState = null; this.showGuide(); return; }
+        try {
+          const data = await api('/api/karaoke/guide', {source_token: p.source.token, guide_token: p.guide ? p.guide.token : null, guess: guess && !p.guide});
+          if (this.proj !== p) return;
+          if (data.guide) { if (!p.guide || p.guide.token !== data.guide.token) { p.guide = {token: data.guide.token, name: data.guide.name}; this.save(); } this.guideState = data.guide; }
+          else this.guideState = null;
+          this.showGuide();
+          if (data.guide && data.guide.state === 'preparing') this.guideTimer = setTimeout(() => this.checkGuide(), 1500);
+          else if (data.guide && data.guide.state === 'ready' && this.pendingAlign) { this.pendingAlign = false; this.align(null); }
+        } catch (error) { /* sin voz guía: se queda el reparto parejo */ }
+      },
+      // Acomodar las frases a la voz (li = lista de renglones, o null = todos los marcados por frase).
+      async align(lis) {
+        const p = this.proj; if (!p.guide || !p.source) return;
+        if (!this.guideState || this.guideState.state !== 'ready') { this.pendingAlign = true; return; }
+        const holds = p.holds || [];
+        const pick = (lis || p.lines.map((_, i) => i)).filter(i => holds[i] && p.lines[i] && p.lines[i].length);
+        if (!pick.length) { if (!lis) this.msg(t('No hay frases marcadas «por frase» para ajustar.')); return; }
+        try {
+          const data = await api('/api/karaoke/align', {source_token: p.source.token, guide_token: p.guide.token,
+            lines: pick.map(i => ({start: holds[i][0], end: holds[i][1], units: p.lines[i].map(u => ({text: u.text}))}))});
+          if (this.proj !== p) return;
+          let done = 0;
+          pick.forEach((li, k) => { const times = data.lines[k]; if (!times) return; p.lines[li].forEach((u, j) => { u.start = times[j][0]; u.end = times[j][1]; }); done++; });
+          if (!lis) this.msg(t('✨ Listo: {n} frases acomodadas a la voz.').replace('{n}', done));
+          this.save();
+        } catch (error) { if (!lis) this.msg(error.message); }
       },
       lineMode() { return (this.proj.mark_mode || 'line') === 'line'; },
       // Por frase: un solo toque largo por renglón; las palabras se reparten según su largo (barrido parejo).
@@ -1273,6 +1323,7 @@
         if (!p.lines.length) { this.msg(t('Primero escribe la letra.')); return; }
         const flat = this.flat(); const first = flat.findIndex(x => x.li === fromLine);
         flat.slice(first).forEach(x => { x.u.start = null; x.u.end = null; });
+        this.proj.holds = (this.proj.holds || []).map((h, i) => i >= fromLine ? null : h);
         this.markIndex = first; this.marking = true; this.holding = false;
         const prev = first > 0 ? flat[first - 1].u.end : null;
         kMedia.currentTime = prev != null ? Math.max(0, prev - 2) : 0;
@@ -1300,7 +1351,10 @@
         if (!this.holding) return; this.holding = false;
         const flat = this.flat(); const item = flat[this.markIndex]; if (!item) return;
         if (this.lineMode()) {
-          this.spread(item.li, this.lineStart, Math.max(this.lineStart + 0.3, kMedia.currentTime));
+          const end = Math.max(this.lineStart + 0.3, kMedia.currentTime);
+          this.spread(item.li, this.lineStart, end);
+          (this.proj.holds = this.proj.holds || [])[item.li] = [this.lineStart, end];
+          this.align([item.li]);
           while (this.markIndex < flat.length && flat[this.markIndex].li === item.li) this.markIndex++;
         } else {
           item.u.end = Math.max(item.u.start + 0.08, kMedia.currentTime);
@@ -1316,7 +1370,7 @@
         if (this.lineMode()) while (this.markIndex > 0 && flat[this.markIndex - 1].li === item.li) this.markIndex--;
         const back = flat[this.markIndex].u.start;
         const clear = this.lineMode() ? this.proj.lines[item.li] : [item.u];
-        clear.forEach(u => { u.start = null; u.end = null; }); this.holding = false;
+        clear.forEach(u => { u.start = null; u.end = null; }); this.holding = false; if (this.proj.holds) this.proj.holds[item.li] = null;
         if (back != null) kMedia.currentTime = Math.max(0, back - 2);
         this.renderLines(item.li);
       },
@@ -1451,10 +1505,17 @@
       Karaoke.proj.source = {token: m.token, name: m.name || m.file, exists: true, video: !!m.video};
       if (!Karaoke.proj.title) Karaoke.proj.title = (m.name || m.file).replace(/\.[^.]+$/, '').replace(/\s*\((música|music|recorte|trim)[^)]*\)/gi, '').trim();
       if (Karaoke.proj.source.video && Karaoke.proj.bg === 'color') Karaoke.proj.bg = 'video';
-      Karaoke.fill(); Karaoke.save();
+      Karaoke.proj.guide = null; Karaoke.fill(); Karaoke.save();
     }
     $('#kQuick').addEventListener('change', () => { const item = Karaoke.quick[+$('#kQuick').value]; if (item) kSetSource({token: item.token, name: item.file, video: item.video}); $('#kQuick').value = ''; });
     $('#kQuickRefresh').addEventListener('click', () => Karaoke.quickList());
+    $('#kPickGuide').addEventListener('click', async () => {
+      try {
+        const data = await api('/api/karaoke/pick', {kind: 'karaoke'});
+        if (data.media) { Karaoke.proj.guide = {token: data.media.token, name: data.media.name}; Karaoke.guideState = null; Karaoke.save(); Karaoke.checkGuide(); }
+      } catch (error) { say(error.message); }
+    });
+    $('#kAlign').addEventListener('click', () => Karaoke.align(null));
     $('#kPickImage').addEventListener('click', async () => {
       try { const data = await api('/api/karaoke/pick', {kind: 'image'}); if (data.media) { Karaoke.proj.image = {token: data.media.token, name: data.media.name}; Karaoke.fill(); Karaoke.save(); } }
       catch (error) { say(error.message); }

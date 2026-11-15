@@ -1,5 +1,13 @@
 # Historial de versiones
 
+## 2.4.0 — Karaoke: la letra sigue la voz del cantante
+- **🎤 Voz guía:** la canción original (con voz). Si la pista la hiciste con EC-Tube («… (música)»), la encuentra sola; si no, «Elegir…».
+- La primera vez EC-Tube le saca la voz (como en el editor, tarda un par de minutos) y se acuerda para la próxima.
+- Al marcar **por frase**, en cuanto sueltas la ESPACIADORA la frase se acomoda a la voz: cada palabra se ilumina cuando el cantante la canta. Si canta rápido, se ilumina rápido; si termina antes de que sueltes, la frase termina con su voz.
+- Si la pista y la canción original no empiezan igual (una recortada), se detecta el corrimiento solo.
+- **✨ Ajustar a la voz** vuelve a acomodar todas las frases (por ejemplo, si eliges la voz guía después de marcar).
+- Sin voz guía, funciona como antes (reparto parejo).
+
 ## 2.3.0 — Karaoke: marcar por frase (como Apple Music)
 - Nuevo **«Marcar por: Frase»** (viene puesto): cuando empieza la frase aprietas la ESPACIADORA, la mantienes mientras se canta y la sueltas al terminar. La frase se ilumina de corrido de principio a fin y la siguiente queda lista.
 - Mientras sostienes, la frase se va iluminando en la vista previa; al soltar queda con sus tiempos.

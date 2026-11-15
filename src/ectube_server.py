@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import ipaddress
 import json
 import mimetypes
@@ -26,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -888,8 +889,8 @@ def _karaoke_path(project_id: str) -> Path:
 
 def karaoke_public(project: dict) -> dict:
     data = {k: project.get(k) for k in ("id", "title", "lyrics", "lines", "offset", "sung_color", "bg", "color1",
-                                       "color2", "format", "mark_mode", "updated")}
-    for key in ("source", "image"):
+                                       "color2", "format", "mark_mode", "holds", "updated")}
+    for key in ("source", "image", "guide"):
         path = Path(project[key]) if project.get(key) else None
         data[key] = {"token": MEDIA.token_for(path), "name": path.name, "exists": path.is_file(),
                      "video": path.suffix.lower() in VIDEO_EXTS} if path else None
@@ -915,7 +916,7 @@ def karaoke_save(data: dict) -> dict:
     path = _karaoke_path(project_id)
     project = {"id": project_id, "title": str(data.get("title") or "").strip()[:120],
                "lyrics": str(data.get("lyrics") or "")[:20000], "updated": int(time.time())}
-    for key in ("source", "image"):
+    for key in ("source", "image", "guide"):
         token = data.get(f"{key}_token")
         found = MEDIA.path(str(token)) if token else None
         project[key] = str(found) if found else None
@@ -938,6 +939,11 @@ def karaoke_save(data: dict) -> dict:
     project["color2"] = data.get("color2") if HEX_COLOR.fullmatch(str(data.get("color2") or "")) else "#6C4CE6"
     project["bg"] = data.get("bg") if data.get("bg") in ("video", "image", "color") else "color"
     project["format"] = data.get("format") if data.get("format") in ("16:9", "9:16") else "16:9"
+    holds = []
+    for hold in (data.get("holds") or [])[:1000]:
+        ok = isinstance(hold, list) and len(hold) == 2 and all(isinstance(x, (int, float)) for x in hold)
+        holds.append([round(float(hold[0]), 3), round(float(hold[1]), 3)] if ok else None)
+    project["holds"] = holds
     project["mark_mode"] = data.get("mark_mode") if data.get("mark_mode") in ("line", "word") else "line"
     KARAOKE_DIR.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -1050,6 +1056,133 @@ class KaraokeExport:
 
 
 KARAOKE_JOBS: dict[str, KaraokeExport] = {}
+
+
+# ---------- voz guía (para «ajustar a la voz») ----------
+GUIDES: dict[str, dict] = {}
+GUIDES_LOCK = threading.Lock()
+
+
+def _decode_audio(path: Path, channels: int = 2):
+    import numpy as np
+
+    if not FFMPEG:
+        raise RuntimeError("No se encontró FFmpeg.")
+    result = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-i", str(path), "-vn",
+                             "-f", "f32le", "-ac", str(channels), "-ar", "44100", "pipe:1"],
+                            capture_output=True, creationflags=_no_window_flags(), timeout=600)
+    if result.returncode != 0 or not result.stdout:
+        raise RuntimeError("No se pudo leer el audio de " + path.name)
+    data = np.frombuffer(result.stdout, dtype="<f4")
+    return data.reshape(-1, channels).T.copy() if channels > 1 else data.copy()
+
+
+def _guide_key(path: Path) -> str:
+    stat = path.stat()
+    return hashlib.sha1(f"{path}|{stat.st_size}|{int(stat.st_mtime)}".encode()).hexdigest()[:16]
+
+
+def guess_guide(source: Path) -> Path | None:
+    """Si la pista del karaoke la hiciste con EC-Tube («X (música).mp3»), buscar la canción original «X.*»."""
+    match = re.match(r"^(.*) \((?:música|music)(?: \d+)?\)$", source.stem)
+    if not match:
+        return None
+    stem = match.group(1)
+    for key in ("audio_folder", "video_folder", "audio_edited_folder", "video_edited_folder"):
+        folder = Path(CONFIG.get(key) or "")
+        if folder.is_dir():
+            for ext in sorted(AUDIO_EXTS | VIDEO_EXTS):
+                candidate = folder / f"{stem}{ext}"
+                if candidate.is_file() and candidate != source:
+                    return candidate
+    return None
+
+
+class Guide:
+    """Separa la voz de la canción original una vez y guarda solo su «volumen en el tiempo» (pesa poquito)."""
+
+    def __init__(self, path: Path) -> None:
+        self.path, self.key = path, _guide_key(path)
+        self.state, self.percent, self.error = "preparing", 0.0, ""
+        self.env = None
+        self.offsets: dict[str, float] = {}
+        self.mix_env = None
+
+    def public(self) -> dict:
+        return {"state": self.state, "percent": round(self.percent), "error": self.error, "name": self.path.name}
+
+    def run(self) -> None:
+        import numpy as np
+
+        from ectube_karaoke import voice_envelope
+
+        cache = KARAOKE_DIR / "guides" / f"{self.key}.npz"
+        try:
+            if cache.is_file():
+                data = np.load(cache)
+                self.env, self.mix_env = data["env"], data["mix"]
+            else:
+                mix = _decode_audio(self.path)
+                self.percent = 5
+                if mix.shape[1] > 15 * 60 * 44100:
+                    raise RuntimeError("La canción guía dura más de 15 minutos.")
+                mdx = _separator(lambda f: setattr(self, "percent", 5 + f * 5), lambda: False)
+                vocals = mdx.vocals(mix, progress=lambda f: setattr(self, "percent", 10 + f * 88))
+                self.env = voice_envelope(vocals.mean(axis=0))
+                self.mix_env = voice_envelope(mix.mean(axis=0))
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                np.savez_compressed(cache, env=self.env, mix=self.mix_env)
+            self.state, self.percent = "ready", 100
+            log(f"[karaoke] voz guía lista: {self.path.name}")
+        except Exception as exc:  # noqa: BLE001
+            self.state, self.error = "error", str(exc)
+            log(f"[karaoke] voz guía: {exc}")
+
+    def offset_for(self, source: Path) -> float:
+        """Corrimiento entre la canción guía y la pista del karaoke (0 si son la misma o no se puede saber)."""
+        from ectube_karaoke import estimate_offset, voice_envelope
+
+        if source == self.path:
+            return 0.0
+        key = str(source)
+        if key not in self.offsets:
+            try:
+                self.offsets[key] = estimate_offset(self.mix_env, voice_envelope(_decode_audio(source, 1)))
+            except Exception as exc:  # noqa: BLE001
+                log(f"[karaoke] corrimiento: {exc}")
+                self.offsets[key] = 0.0
+            log(f"[karaoke] corrimiento guía→pista: {self.offsets[key]:+.2f} s")
+        return self.offsets[key]
+
+
+def guide_for(path: Path) -> Guide:
+    with GUIDES_LOCK:
+        guide = GUIDES.get(str(path))
+        if guide is None or guide.key != _guide_key(path) or guide.state == "error":
+            guide = Guide(path)
+            GUIDES[str(path)] = guide
+            threading.Thread(target=guide.run, daemon=True).start()
+        return guide
+
+
+def karaoke_align(guide_path: Path, source: Path, lines: list[dict]) -> list:
+    from ectube_karaoke import align_line
+
+    guide = guide_for(guide_path)
+    if guide.state != "ready":
+        raise RuntimeError("La voz guía todavía se está preparando.")
+    shift = guide.offset_for(source)
+    result = []
+    for line in lines[:1000]:
+        units = [{"text": str(u.get("text") or "")} for u in (line.get("units") or [])[:200]]
+        try:
+            start, end = float(line.get("start")), float(line.get("end"))
+        except (TypeError, ValueError):
+            result.append(None)
+            continue
+        times = align_line(guide.env, units, start - shift, end - shift)
+        result.append([[round(float(s + shift), 3), round(float(e + shift), 3)] for s, e in times] if times else None)
+    return result
 
 
 def pick_files(initial: str) -> list[str]:
@@ -1376,6 +1509,27 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "error": "Ese archivo no es compatible."}, 400)
             else:
                 self.send_json({"ok": True, "media": media_info(Path(chosen))})
+        elif path == "/api/karaoke/guide":
+            # Preparar (o ver cómo va) la voz guía. Si no se da, adivinarla a partir de la pista.
+            source = MEDIA.path(str(data.get("source_token") or "")) if data.get("source_token") else None
+            guide_path = MEDIA.path(str(data.get("guide_token") or "")) if data.get("guide_token") else None
+            if guide_path is None and source is not None and data.get("guess"):
+                guide_path = guess_guide(source)
+            if guide_path is None or not guide_path.is_file():
+                self.send_json({"ok": True, "guide": None})
+            else:
+                guide = guide_for(guide_path) if data.get("prepare", True) else None
+                self.send_json({"ok": True, "guide": {**media_info(guide_path), **(guide.public() if guide else {})}})
+        elif path == "/api/karaoke/align":
+            source = MEDIA.path(str(data.get("source_token") or ""))
+            guide_path = MEDIA.path(str(data.get("guide_token") or ""))
+            if not source or not guide_path:
+                self.send_json({"ok": False, "error": "Falta la pista o la voz guía."}, 400)
+                return
+            try:
+                self.send_json({"ok": True, "lines": karaoke_align(guide_path, source, data.get("lines") or [])})
+            except RuntimeError as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 409)
         elif path == "/api/karaoke/export":
             try:
                 job = KaraokeExport(karaoke_load(str(data.get("id") or "")), str(data.get("format") or "16:9"))

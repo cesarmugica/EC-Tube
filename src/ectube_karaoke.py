@@ -146,3 +146,124 @@ def build_ass(project: dict, fmt: str) -> str:
                 out.append(f"Dialogue: 2,{_ts(start)},{_ts(start + 1)},K,,0,0,0,,"
                            f"{{\\an5\\pos({width // 2},{cy})\\fs{round(size * 0.7)}\\1c{sung}}}" + " ".join(["●"] * n))
     return "\n".join(out) + "\n"
+
+
+# ---------- ajustar a la voz ----------
+# Con la voz sola de la canción (separada con el modelo), cada frase que marcaste con un toque largo se
+# reparte según CUÁNDO suena la voz de verdad: si el cantante acelera, la iluminación acelera; si termina
+# antes de que sueltes, la frase termina cuando termina su voz.
+
+ENV_RATE = 100  # cuadros por segundo de la envolvente de la voz
+VOWELS = set("aeiouáéíóúüAEIOUÁÉÍÓÚÜyY")
+
+
+def voice_envelope(vocals_mono, rate: int = 44100):
+    """Voz (mono) → volumen en dB, 100 veces por segundo."""
+    import numpy as np
+
+    hop = rate // ENV_RATE
+    usable = vocals_mono[: len(vocals_mono) // hop * hop].reshape(-1, hop)
+    rms = np.sqrt(np.mean(usable.astype(np.float64) ** 2, axis=1) + 1e-12)
+    db = 20 * np.log10(rms)
+    kernel = np.ones(3) / 3
+    return np.convolve(db, kernel, mode="same").astype(np.float32)
+
+
+def _weight(text: str) -> float:
+    """Cuánto «dura» al cantarse: sílabas (grupos de vocales) y un poco por letra."""
+    groups, prev = 0, False
+    for ch in text:
+        is_vowel = ch in VOWELS
+        if is_vowel and not prev:
+            groups += 1
+        prev = is_vowel
+    return max(1, groups) + 0.08 * len(text)
+
+
+def _clean_mask(mask):
+    """Rellenar huecos de menos de 70 ms y quitar ruiditos de menos de 50 ms."""
+    import numpy as np
+
+    mask = mask.copy()
+    n = len(mask)
+
+    def runs(value):
+        i = 0
+        while i < n:
+            if mask[i] == value:
+                j = i
+                while j < n and mask[j] == value:
+                    j += 1
+                yield i, j
+                i = j
+            else:
+                i += 1
+
+    for i, j in list(runs(False)):
+        if 0 < i and j < n and j - i < 7:
+            mask[i:j] = True
+    for i, j in list(runs(True)):
+        if j - i < 5:
+            mask[i:j] = False
+    return np.asarray(mask)
+
+
+def align_line(env, units: list[dict], start: float, end: float) -> list[tuple[float, float]] | None:
+    """Tiempos (inicio, fin) de cada palabra de una frase, siguiendo la voz. None si no se oye voz ahí."""
+    import numpy as np
+
+    if env is None or not units or end <= start:
+        return None
+    a = max(0, int((start - 0.30) * ENV_RATE))
+    b = min(len(env), int((end + 0.45) * ENV_RATE))
+    if b - a < 10:
+        return None
+    window = env[a:b]
+    top = float(np.percentile(window, 97))
+    if top < -50:  # casi silencio: no hay voz que seguir
+        return None
+    mask = _clean_mask(window > max(top - 22, -55))
+    voiced = np.flatnonzero(mask)
+    if voiced.size < 8:
+        return None
+    # La frase empieza y termina donde suena voz (cerca de tu toque, no en otra frase).
+    s_idx = int(np.round((start - a / ENV_RATE) * ENV_RATE))
+    first = int(voiced[voiced >= max(0, s_idx - 30)][0]) if np.any(voiced >= max(0, s_idx - 30)) else int(voiced[0])
+    last = int(voiced[-1])
+    if last <= first:
+        return None
+    mask[:first] = False
+    cum = np.cumsum(mask[: last + 1])
+    total = float(cum[-1])
+    weights = [_weight(u["text"]) for u in units]
+    whole = sum(weights)
+    out, acc = [], 0.0
+    for w in weights:
+        f0, f1 = acc / whole, (acc + w) / whole
+        acc += w
+        i0 = int(np.searchsorted(cum, f0 * total + 0.5))  # primer cuadro con voz de esta palabra
+        i1 = int(np.searchsorted(cum, f1 * total - 0.5))  # último cuadro con voz de esta palabra
+        i0, i1 = min(i0, last), min(max(i1, i0), last)
+        out.append(((a + i0) / ENV_RATE, (a + i1 + 1) / ENV_RATE))
+    return [(round(s, 3), round(max(e, s + 0.06), 3)) for s, e in out]
+
+
+def estimate_offset(guide_env, source_env, max_lag_s: float = 90.0) -> float:
+    """Cuántos segundos está corrida la canción con voz respecto a la pista del karaoke (por si una está recortada).
+    Regresa d tal que tiempo_en_pista = tiempo_en_guía + d."""
+    import numpy as np
+
+    def onset(env):
+        env = np.maximum(env, -60)
+        x = np.maximum(0, np.diff(env, prepend=env[:1]))  # subidas de volumen (golpes, notas)
+        return (x - x.mean()) / (x.std() + 1e-9)
+
+    g, s = onset(guide_env), onset(source_env)
+    n = 1 << int(np.ceil(np.log2(len(g) + len(s))))
+    corr = np.fft.irfft(np.fft.rfft(s, n) * np.conj(np.fft.rfft(g, n)), n)
+    lag_max = int(max_lag_s * ENV_RATE)
+    candidates = np.concatenate([corr[: lag_max + 1], corr[-lag_max:]])
+    lags = np.concatenate([np.arange(lag_max + 1), np.arange(-lag_max, 0)])
+    best = int(np.argmax(candidates))
+    strength = candidates[best] / (np.sqrt((g ** 2).sum() * (s ** 2).sum()) + 1e-9)
+    return round(lags[best] / ENV_RATE, 2) if strength > 0.15 else 0.0
