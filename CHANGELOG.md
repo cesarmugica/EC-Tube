@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 2.5.1 — Karaoke: eliges cómo sincronizar
+- Arriba del karaoke: **«¿Cómo quieres poner los tiempos de la letra?»** con tres opciones y la explicación de cómo trabaja cada una, paso a paso:
+  - **🤖 Automático** (tengo la canción con voz): EC-Tube saca la pista y pone los tiempos solo; tú corriges.
+  - **🎤 Frase + voz** (tengo la pista y la original): marcas cada frase con la espaciadora y la voz acomoda las palabras.
+  - **✋ A mano** (solo tengo la pista): marcas por palabra o por frase.
+- Solo se ven los botones del método elegido. Se guarda con cada proyecto y lo puedes cambiar cuando quieras.
+
 ## 2.5.0 — Karaoke: varias maneras de sincronizar + línea de tiempo
 Como los programas de karaoke (Youka, MyKaraoke, Aegisub): marcar rápido y luego corregir fácil.
 - **🎤 Desde la canción con voz…**: eliges la canción original; EC-Tube saca la pista sin voz (para el video) y deja la canción como voz guía, separando una sola vez.
