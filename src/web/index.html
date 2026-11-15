@@ -156,8 +156,9 @@
     .kctl button { padding: 8px 12px; font-size: .9rem; }
     .kctl .field { gap: 4px; font-size: .88rem; }
     .kctl select { padding: 6px 8px; }
-    .kctl #kOffset { width: 64px; }
-    .kctl #kOffsetText { font-size: .8rem; color: var(--muted); }
+    .kofs { gap: 6px; font-size: .88rem; white-space: nowrap; }
+    .kofs #kOffset { width: 110px; }
+    .kofs #kOffsetText { font-size: .8rem; color: var(--muted); }
     .ksep { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
     .kplayer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .kplayer .know { font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); }
@@ -464,9 +465,8 @@
               <button class="secondary" id="kPlay" type="button" title="Ver el resultado desde la primera frase, como va a quedar el video">👁 Ver cómo quedó</button>
               <button id="kAutoTop" type="button" data-for="auto">🤖 Poner tiempos solo</button>
               <button id="kMark" type="button" title="Marcar con la espaciadora desde el inicio">⏺ Marcar</button>
-              <label class="field" data-for="manual">Marcar por <select id="kMode"><option value="line">Frase (como Apple Music)</option><option value="word">Palabra</option></select></label>
+              <label class="field" data-for="manual" title="Con ⏺ Marcar: sostener la espaciadora por cada frase o por cada palabra"><select id="kMode"><option value="line">por frase</option><option value="word">por palabra</option></select></label>
               <label class="field" title="Velocidad de reproducción (para marcar con calma)">🐢 <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
-              <label class="field" title="Ajuste fino de toda la letra: si se ilumina tarde, muévelo a la izquierda">⏱ <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
             </div>
             <label class="kcheck" style="margin-top:8px"><input type="checkbox" id="kMiniOn"> Mostrar pantalla auxiliar de video</label>
             <p class="khelp" style="margin:2px 0 0">Una ventanita abajo a la derecha con el video y la letra, que aparece cuando bajas y el video de arriba ya no se ve.</p>
@@ -486,6 +486,7 @@
             </div>
             <p class="khelp" style="margin:4px 0 0">Escucha, pon <b>pausa</b> (K) cuando termine una frase y usa <b>Entra/Sale = ahora</b> (I / O), o escribe los tiempos en 📝 Frases. Clic en una frase para elegirla.</p>
             <hr class="ksep">
+            <label class="field kofs" title="Si TODA la letra se ilumina tarde (o temprano), muévelo: a la izquierda la adelanta">⏱ Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
             <div class="row kguide" data-for="semi auto">
               <span class="field" style="white-space:nowrap" title="La canción original, CON voz. Con ella la letra se ilumina siguiendo al cantante.">🎤 Voz guía</span>
               <code id="kGuide" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</code>
@@ -756,6 +757,8 @@
       'Mostrar pantalla auxiliar de video': 'Show the auxiliary video screen',
       'Una ventanita abajo a la derecha con el video y la letra, que aparece cuando bajas y el video de arriba ya no se ve.': 'A small window at the bottom right with the video and lyrics that appears when you scroll down and the main video is no longer visible.',
       'Ajuste': 'Fine tune', 'Marcar con la espaciadora desde el inicio': 'Mark with the space bar from the start',
+      'por frase': 'by line', 'por palabra': 'by word', 'Con ⏺ Marcar: sostener la espaciadora por cada frase o por cada palabra': 'With ⏺ Mark: hold the space bar for each line or for each word',
+      '⏱ Ajuste fino de toda la letra': '⏱ Fine-tune all the lyrics',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1985,12 +1988,12 @@
       manual: {
         es: `<p><b>Cómo trabaja:</b> como no hay voz que escuchar, tú marcas todo con la espaciadora. Así trabajan todos los programas de karaoke cuando solo hay pista.</p>
           <ol><li>Elige la pista.</li>
-          <li>Elige «Marcar por»: <b>Palabra</b> (lo más exacto: sostienes la espaciadora mientras se canta cada palabra) o <b>Frase</b> (más rápido: una vez por frase y las palabras se reparten parejo).</li>
+          <li>Junto a ⏺ Marcar elige <b>por palabra</b> (lo más exacto: sostienes la espaciadora mientras se canta cada palabra) o <b>por frase</b> (más rápido: una vez por frase y las palabras se reparten parejo).</li>
           <li>Pega la letra y presiona <b>⏺ Marcar</b>. Baja la velocidad a 70 % si se te va.</li>
           <li>Corrige en la 🎚 línea de tiempo: arrastra palabras y orillas, oye la frase en repetición.</li></ol>`,
         en: `<p><b>How it works:</b> since there is no voice to listen to, you mark everything with the space bar. That is how every karaoke program works when there is only an instrumental.</p>
           <ol><li>Choose the track.</li>
-          <li>Pick “Mark by”: <b>Word</b> (most precise: hold the space bar while each word is sung) or <b>Line</b> (faster: once per line, words spread evenly).</li>
+          <li>Next to ⏺ Mark pick <b>by word</b> (most precise: hold the space bar while each word is sung) or <b>by line</b> (faster: once per line, words spread evenly).</li>
           <li>Paste the lyrics and press <b>⏺ Mark</b>. Lower the speed to 70% if you can't keep up.</li>
           <li>Fix in the 🎚 timeline: drag words and edges, hear the line on repeat.</li></ol>`,
       },
