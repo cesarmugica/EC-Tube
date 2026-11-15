@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 2.2.0 — Carpeta «EC-Tube Outputs»
+- Todo queda ordenado en tu carpeta de usuario, en **`EC-Tube Outputs`**:
+  - `MUSIC\Downloaded` (audio que bajas) y `MUSIC\Edited` (recortes, solo música, solo voz)
+  - `VIDEO\Downloaded` y `VIDEO\Edited`
+  - `KARAOKE\Downloaded` y `KARAOKE\Edited` (los videos de karaoke que creas)
+- Si tenías las carpetas de antes por defecto (`Música\EC-Tube`, `Videos\EC-Tube`, `… Editados`, `… Karaoke`), cambian solas a las nuevas. Si tú habías elegido otra carpeta, se respeta. Los archivos que ya tenías se quedan donde estaban.
+
 ## 2.1.4
 - Karaoke: la música se puede elegir **directo de tus carpetas de EC-Tube** (editados y descargas, audio y video) desde una lista, sin la ventana de Windows. «Elegir de otra carpeta…» sigue para cualquier otro lugar y ahora abre en una carpeta que sí existe.
 

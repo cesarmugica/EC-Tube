@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.1.4"
+APP_VERSION = "2.2.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -183,11 +183,32 @@ ENGINE = Engine()
 # ---------------------------------------------------------------------------
 # Configuración
 # ---------------------------------------------------------------------------
+OUTPUTS = Path.home() / "EC-Tube Outputs"
+# Todo lo que hace EC-Tube, ordenado debajo de tu carpeta de usuario:
+#   EC-Tube Outputs\MUSIC\Downloaded | Edited   ·   VIDEO\Downloaded | Edited   ·   KARAOKE\Downloaded | Edited
+NEW_FOLDERS = {
+    "audio_folder": OUTPUTS / "MUSIC" / "Downloaded", "audio_edited_folder": OUTPUTS / "MUSIC" / "Edited",
+    "video_folder": OUTPUTS / "VIDEO" / "Downloaded", "video_edited_folder": OUTPUTS / "VIDEO" / "Edited",
+    "karaoke_folder": OUTPUTS / "KARAOKE" / "Edited",
+}
+EXTRA_FOLDERS = [OUTPUTS / "KARAOKE" / "Downloaded"]
+
+
+def _old_default_folders() -> dict:
+    """Carpetas que EC-Tube usaba antes por defecto (si siguen así, se cambian a EC-Tube Outputs)."""
+    old = {}
+    for key, kind, name in (("audio_folder", "audio", "EC-Tube"), ("video_folder", "video", "EC-Tube"),
+                            ("audio_edited_folder", "audio", "EC-Tube Editados"), ("video_edited_folder", "video", "EC-Tube Editados"),
+                            ("karaoke_folder", "video", "EC-Tube Karaoke")):
+        options = set()
+        for base in (Path.home() / ("Music" if kind == "audio" else "Videos"), Path.home() / "Downloads"):
+            options.add(os.path.normcase(str(base / name)))
+        old[key] = options
+    return old
+
+
 def _default_folder(kind: str, edited: bool = False) -> str:
-    base = Path.home() / ("Music" if kind == "audio" else "Videos")
-    if not base.is_dir():
-        base = Path.home() / "Downloads"
-    return str(base / ("EC-Tube Editados" if edited else "EC-Tube"))
+    return str(NEW_FOLDERS[f"{kind}_edited_folder" if edited else f"{kind}_folder"])
 
 
 CONFIG_PATH = HOME / "config.json"
@@ -217,11 +238,14 @@ def load_config() -> dict:
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         if isinstance(data, dict):
             config.update({k: v for k, v in data.items() if k in DEFAULT_CONFIG})
-    config["audio_folder"] = config["audio_folder"] or _default_folder("audio")
-    config["video_folder"] = config["video_folder"] or _default_folder("video")
-    config["audio_edited_folder"] = config["audio_edited_folder"] or _default_folder("audio", edited=True)
-    config["video_edited_folder"] = config["video_edited_folder"] or _default_folder("video", edited=True)
-    config["karaoke_folder"] = config["karaoke_folder"] or str(Path(_default_folder("video")).with_name("EC-Tube Karaoke"))
+    old = _old_default_folders()
+    for key, folder in NEW_FOLDERS.items():
+        value = config.get(key) or ""
+        if not value or os.path.normcase(value) in old[key]:
+            config[key] = str(folder)  # vacío o el de antes por defecto → EC-Tube Outputs (si lo cambiaste tú, se respeta)
+    with contextlib.suppress(OSError):
+        for folder in [*NEW_FOLDERS.values(), *EXTRA_FOLDERS]:
+            folder.mkdir(parents=True, exist_ok=True)
     return config
 
 

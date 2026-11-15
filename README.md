@@ -19,7 +19,7 @@ Descarga **audio y video** de YouTube (y de los demás sitios que soporta yt-dlp
 1. Descarga `EC-Tube-Setup-x.y.z.exe` de [Releases](../../releases/latest) y ejecútalo (no pide permisos de administrador).
 2. Abre **EC-Tube** desde el escritorio.
 
-Las descargas van por defecto a `Música\EC-Tube` (audio) y `Videos\EC-Tube` (video); se cambian con **Cambiar…**.
+Todo se guarda por defecto en tu carpeta de usuario, en `EC-Tube Outputs`: `MUSIC\Downloaded` y `MUSIC\Edited`, `VIDEO\Downloaded` y `VIDEO\Edited`, `KARAOKE\Downloaded` y `KARAOKE\Edited` (ahí quedan los videos de karaoke). Cada carpeta se cambia con **Cambiar…**.
 
 ## Cómo está hecho
 
