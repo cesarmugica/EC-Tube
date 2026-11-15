@@ -329,7 +329,12 @@
         </div>
         <div class="row">
           <div class="folder grow"><span class="field" style="white-space:nowrap">🎵 Música</span><code id="kSource">Elige la pista (sin voz)…</code></div>
-          <button class="secondary" id="kPickSource" type="button">Elegir música…</button>
+          <button class="secondary" id="kPickSource" type="button">Elegir de otra carpeta…</button>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1 1 320px">o de tus carpetas de EC-Tube:
+            <select id="kQuick" style="flex:1;min-width:0"><option value="">Elige un archivo…</option></select></label>
+          <button class="secondary" id="kQuickRefresh" type="button" title="Volver a leer las carpetas">🔄</button>
         </div>
         <p class="khelp">Tip: para quitarle la voz a una canción, ábrela en «✂ Recortar» y guarda «🎵 Solo música»; queda en tu carpeta de editados.</p>
       </section>
@@ -526,7 +531,9 @@
       'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
       'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
       'Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.': 'Installing the new version… a new window will open. This one closes by itself.',
-      'Qué guardar': 'What to save', '📁 Tus archivos': '📁 Your files', '🔄 Volver a leer la carpeta': '🔄 Re-read the folder', 'Editar': 'Edit',
+      'Qué guardar': 'What to save', 'Elegir de otra carpeta…': 'Choose from another folder…', 'o de tus carpetas de EC-Tube:': 'or from your EC-Tube folders:',
+      'Elige un archivo…': 'Choose a file…', 'Volver a leer las carpetas': 'Re-read the folders', '✂🎵 Editados · audio': '✂🎵 Edited · audio',
+      '✂🎬 Editados · video': '✂🎬 Edited · video', '⬇🎵 Descargas · audio': '⬇🎵 Downloads · audio', '⬇🎬 Descargas · video': '⬇🎬 Downloads · video', '📁 Tus archivos': '📁 Your files', '🔄 Volver a leer la carpeta': '🔄 Re-read the folder', 'Editar': 'Edit',
       'Abrir con el reproductor de Windows': 'Open with the Windows player', 'No hay archivos en esta carpeta todavía.': 'No files in this folder yet.',
       'Buscar archivo': 'Search file', 'Tipo': 'Type', '🎵 Quitar la voz y guardar': '🎵 Remove vocals and save', '🎤 Quitar la música y guardar': '🎤 Remove music and save',
       'Elige el tramo (o déjalo completo) y presiona el botón morado. La primera vez baja el separador (~65 MB); tarda un poco según la duración.': 'Choose the section (or leave it whole) and press the purple button. The first time it downloads the separator (~65 MB); it takes a while depending on the length.', '📋 Copiar texto': '📋 Copy text', '✅ Copiado': '✅ Copied', '[Nombre de la canción]': '[Song name]',
@@ -1153,7 +1160,21 @@
           this.fill();
         }
         $('#kFolder').textContent = settings.karaoke_folder || '…'; $('#kFolder').title = settings.karaoke_folder || '';
+        this.quickList();
         cancelAnimationFrame(this.raf); const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); }; loop();
+      },
+      async quickList() {
+        const groups = [['edited', 'audio', '✂🎵 Editados · audio'], ['edited', 'video', '✂🎬 Editados · video'], ['downloads', 'audio', '⬇🎵 Descargas · audio'], ['downloads', 'video', '⬇🎬 Descargas · video']];
+        this.quick = [];
+        let html = `<option value="">${t('Elige un archivo…')}</option>`;
+        for (const [where, kind, label] of groups) {
+          try {
+            const items = (await api(`/api/library?where=${where}&kind=${kind}`)).items.slice(0, 300);
+            if (!items.length) continue;
+            html += `<optgroup label="${esc(t(label))}">` + items.map(item => { this.quick.push({...item, video: kind === 'video'}); return `<option value="${this.quick.length - 1}">${esc(item.file)}</option>`; }).join('') + '</optgroup>';
+          } catch (_) {}
+        }
+        $('#kQuick').innerHTML = html;
       },
       leave() { cancelAnimationFrame(this.raf); if (this.marking) this.stopMark(); if (!kMedia.paused) kMedia.pause(); },
       async loadList(select) {
@@ -1329,14 +1350,17 @@
       say(t('Elige el archivo en la ventana que se abrió…'));
       try {
         const data = await api('/api/karaoke/pick', {kind: 'media'}); say('');
-        if (data.media) {
-          const m = data.media; Karaoke.proj.source = {token: m.token, name: m.name, exists: true, video: m.kind === 'video'};
-          if (!Karaoke.proj.title) Karaoke.proj.title = m.name.replace(/\.[^.]+$/, '').replace(/\s*\((música|music|recorte|trim)[^)]*\)/gi, '').trim();
-          if (Karaoke.proj.source.video && Karaoke.proj.bg === 'color') Karaoke.proj.bg = 'video';
-          Karaoke.fill(); Karaoke.save();
-        }
+        if (data.media) kSetSource({token: data.media.token, name: data.media.name, video: data.media.kind === 'video'});
       } catch (error) { say(error.message); }
     });
+    function kSetSource(m) {
+      Karaoke.proj.source = {token: m.token, name: m.name || m.file, exists: true, video: !!m.video};
+      if (!Karaoke.proj.title) Karaoke.proj.title = (m.name || m.file).replace(/\.[^.]+$/, '').replace(/\s*\((música|music|recorte|trim)[^)]*\)/gi, '').trim();
+      if (Karaoke.proj.source.video && Karaoke.proj.bg === 'color') Karaoke.proj.bg = 'video';
+      Karaoke.fill(); Karaoke.save();
+    }
+    $('#kQuick').addEventListener('change', () => { const item = Karaoke.quick[+$('#kQuick').value]; if (item) kSetSource({token: item.token, name: item.file, video: item.video}); $('#kQuick').value = ''; });
+    $('#kQuickRefresh').addEventListener('click', () => Karaoke.quickList());
     $('#kPickImage').addEventListener('click', async () => {
       try { const data = await api('/api/karaoke/pick', {kind: 'image'}); if (data.media) { Karaoke.proj.image = {token: data.media.token, name: data.media.name}; Karaoke.fill(); Karaoke.save(); } }
       catch (error) { say(error.message); }

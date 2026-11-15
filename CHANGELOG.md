@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.1.4
+- Karaoke: la música se puede elegir **directo de tus carpetas de EC-Tube** (editados y descargas, audio y video) desde una lista, sin la ventana de Windows. «Elegir de otra carpeta…» sigue para cualquier otro lugar y ahora abre en una carpeta que sí existe.
+
 ## 2.1.3
 - **📁 Tus archivos** (en «Descargar y recortar»): lista lo que hay de verdad en tus carpetas de descargas o editados (audio o video), aunque EC-Tube se haya cerrado o actualizado, con buscador y botones **✂ Editar**, ▶ abrir y 📂 ver en la carpeta. «🔄 Volver a leer la carpeta» la actualiza (también se actualiza sola al terminar una descarga o un recorte).
 - Las ventanas de Windows para elegir archivo o carpeta ahora salen al frente (antes podían abrirse detrás de EC-Tube).

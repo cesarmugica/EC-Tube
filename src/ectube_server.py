@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.1.3"
+APP_VERSION = "2.1.4"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1057,8 +1057,10 @@ def pick_file(kind: str = "media") -> str | None:
     exts = IMAGE_EXTS if kind == "image" else AUDIO_EXTS | VIDEO_EXTS
     patterns = ";".join("*" + ext for ext in sorted(exts))
     english = current_language() == "en"
-    initial = (str(Path.home() / "Pictures") if kind == "image" else
-               CONFIG.get("audio_edited_folder") if kind == "karaoke" else CONFIG.get("audio_folder")) or str(Path.home())
+    candidates = ([Path.home() / "Pictures"] if kind == "image" else
+                  [CONFIG.get("audio_edited_folder"), CONFIG.get("video_edited_folder"), CONFIG.get("audio_folder"),
+                   CONFIG.get("video_folder")] if kind == "karaoke" else [CONFIG.get("audio_folder")])
+    initial = next((str(c) for c in candidates if c and Path(c).is_dir()), str(Path.home()))
     titles = {"image": ("Choose the background image", "Elige la imagen de fondo"),
               "karaoke": ("Choose the music (audio or video)", "Elige la música (audio o video)")}
     title = titles.get(kind, ("Choose the audio or video to trim", "Elige el audio o video que quieres recortar"))[0 if english else 1]
