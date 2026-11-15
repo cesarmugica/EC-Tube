@@ -390,10 +390,11 @@
               <button id="kMark" type="button">⏺ Marcar desde el inicio</button>
             </div>
             <div class="row">
+              <label class="field">Marcar por <select id="kMode"><option value="line">Frase (como Apple Music)</option><option value="word">Palabra</option></select></label>
               <label class="field">Velocidad <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
               <label class="field" title="Si la letra se ilumina tarde, muévelo a la izquierda">Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
             </div>
-            <p class="kmsg" id="kMsg">Dale «⏺ Marcar» y, mientras se canta cada palabra (o sílaba), mantén presionada la ESPACIADORA; suéltala al terminarla. ⌫ deshace la última · Esc detiene.</p>
+            <p class="kmsg" id="kMsg">Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.</p>
             <ol class="klines" id="kLines"></ol>
           </div>
         </div>
@@ -553,6 +554,10 @@
       '🎬 Crear video de karaoke': '🎬 Create karaoke video', '✕ Cancelar': '✕ Cancel', '(sin título)': '(untitled)', '(nuevo karaoke)': '(new karaoke)',
       'desde aquí': 'from here', 'Primero escribe la letra arriba.': 'First type the lyrics above.', 'Primero elige la música.': 'First choose the music.',
       'Primero escribe la letra.': 'First type the lyrics.', 'Primero marca los tiempos de la letra.': 'First mark the lyrics timing.',
+      '● SOSTÉN… suelta al terminar la frase': '● HOLD… release when the line ends', '● MARCANDO — aprieta ESPACIO cuando empiece la frase amarilla': '● MARKING — press SPACE when the yellow line starts',
+      '⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada frase. ⌫ deshace · Esc detiene.': '⏺ MARKING: hold SPACE while each line is sung. ⌫ undo · Esc stop.',
+      'Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.': 'Press “⏺ Mark”. When a line starts being sung, press and hold SPACE; release it when the line ends. The next one is ready. ⌫ undo · Esc stop.',
+      'Marcar por': 'Mark by', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
       '● SOSTÉN… suelta al terminar la palabra': '● HOLD… release when the word ends', '● MARCANDO — aprieta ESPACIO cuando empiece la palabra amarilla': '● MARKING — press SPACE when the yellow word starts',
       '⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada palabra. ⌫ deshace · Esc detiene.': '⏺ MARKING: hold SPACE while each word is sung. ⌫ undo · Esc stop.',
       '✅ ¡Listo! Revisa con «Vista previa». Si algo quedó mal, usa «⏺ desde aquí» en esa línea.': '✅ Done! Check it with “Preview”. If something is off, use “⏺ from here” on that line.',
@@ -1205,6 +1210,7 @@
         document.querySelectorAll('input[name=kBg]').forEach(i => { i.checked = i.value === p.bg; });
         document.querySelectorAll('input[name=kFormat]').forEach(i => { i.checked = i.value === p.format; });
         $('#kColor1').value = p.color1; $('#kColor2').value = p.color2; $('#kSung').value = p.sung_color;
+        $('#kMode').value = p.mark_mode || 'line';
         $('#kOffset').value = p.offset || 0; $('#kOffsetText').textContent = `${(+p.offset || 0).toFixed(2)} s`;
         $('#kDelete').disabled = !p.id;
         this.syncBg(); this.sizeCanvas(); this.renderLines(); kDisclaimer();
@@ -1222,7 +1228,7 @@
         const run = async () => {
           const p = this.proj;
           const body = {id: p.id, title: p.title, lyrics: p.lyrics, lines: p.lines, offset: p.offset, sung_color: p.sung_color, bg: p.bg,
-            color1: p.color1, color2: p.color2, format: p.format, source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
+            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
           if (!p.source && !p.lyrics.trim() && !p.title.trim()) return;
           try {
             const data = await api('/api/karaoke/save', body);
@@ -1239,13 +1245,24 @@
         lines.forEach((units, i) => units.forEach((u, j) => { const o = old[i] && old[i][j]; if (o && o.text === u.text) { u.start = o.start; u.end = o.end; } }));
         this.proj.lyrics = text; this.proj.lines = lines; this.renderLines(); this.save();
       },
+      lineMode() { return (this.proj.mark_mode || 'line') === 'line'; },
+      // Por frase: un solo toque largo por renglón; las palabras se reparten según su largo (barrido parejo).
+      spread(li, start, end) {
+        const units = this.proj.lines[li], total = units.reduce((n, u) => n + u.text.length + (u.space ? 1 : 0), 0) || 1;
+        let acc = 0;
+        units.forEach(u => {
+          const w = u.text.length + (u.space ? 1 : 0);
+          u.start = start + (end - start) * acc / total; acc += w;
+          u.end = start + (end - start) * (acc - (u.space ? 1 : 0)) / total;
+        });
+      },
       flat() { const out = []; this.proj.lines.forEach((units, li) => units.forEach(u => out.push({li, u}))); return out; },
       renderLines(nowLine = -1) {
         const lines = this.proj.lines;
         $('#kLines').innerHTML = lines.length ? lines.map((units, i) => {
           const done = units.every(u => u.start != null), text = units.map(u => u.text + (u.space ? ' ' : '')).join('');
-          const flatNext = this.marking ? (this.flat()[this.markIndex] || {}).u : null;
-          const body = i === nowLine && this.marking ? units.map(u => `<span class="${u === flatNext ? 'knext' : u.end != null ? 'kdone' : ''}">${esc(u.text)}</span>${u.space ? ' ' : ''}`).join('') : esc(text);
+          const tgt = this.marking ? (this.flat()[this.markIndex] || {}) : {}, flatNext = tgt.u, lineNext = this.lineMode() && tgt.li === i;
+          const body = i === nowLine && this.marking ? units.map(u => `<span class="${u === flatNext || lineNext ? 'knext' : u.end != null ? 'kdone' : ''}">${esc(u.text)}</span>${u.space ? ' ' : ''}`).join('') : esc(text);
           return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''}"><span class="kt">${units[0].start != null ? hms(units[0].start) : '—'}</span><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${body}</span><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
         }).join('') : `<li><span></span><span class="kl todo">${t('Primero escribe la letra arriba.')}</span></li>`;
       },
@@ -1261,7 +1278,7 @@
         kMedia.currentTime = prev != null ? Math.max(0, prev - 2) : 0;
         kMedia.playbackRate = +$('#kSpeed').value; kMedia.play().catch(() => {});
         $('#kMark').textContent = t('⏹ Detener marcado'); document.activeElement && document.activeElement.blur();
-        this.msg(t('⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada palabra. ⌫ deshace · Esc detiene.'), true);
+        this.msg(this.lineMode() ? t('⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada frase. ⌫ deshace · Esc detiene.') : t('⏺ MARCANDO: mantén la ESPACIADORA mientras se canta cada palabra. ⌫ deshace · Esc detiene.'), true);
         this.renderLines(fromLine);
       },
       stopMark(done = false) {
@@ -1273,20 +1290,33 @@
       keyDown() {
         if (this.holding) this.keyUp();  // por si Windows se tragó el «soltar» anterior: no perder esta palabra
         const flat = this.flat(); const item = flat[this.markIndex]; if (!item) return;
+        if (this.lineMode()) {
+          this.proj.lines[item.li].forEach(u => { u.start = null; u.end = null; });
+          this.lineStart = kMedia.currentTime; item.u.start = this.lineStart; this.holding = true; this.renderLines(item.li); return;
+        }
         item.u.start = kMedia.currentTime; item.u.end = null; this.holding = true; this.renderLines(item.li);
       },
       keyUp() {
         if (!this.holding) return; this.holding = false;
         const flat = this.flat(); const item = flat[this.markIndex]; if (!item) return;
-        item.u.end = Math.max(item.u.start + 0.08, kMedia.currentTime);
-        this.markIndex++;
+        if (this.lineMode()) {
+          this.spread(item.li, this.lineStart, Math.max(this.lineStart + 0.3, kMedia.currentTime));
+          while (this.markIndex < flat.length && flat[this.markIndex].li === item.li) this.markIndex++;
+        } else {
+          item.u.end = Math.max(item.u.start + 0.08, kMedia.currentTime);
+          this.markIndex++;
+        }
         const next = flat[this.markIndex]; this.renderLines(next ? next.li : item.li);
         if (this.markIndex >= flat.length) setTimeout(() => this.stopMark(true), 600);
       },
       undo() {
         const flat = this.flat(); if (this.markIndex <= 0) return;
-        this.markIndex--; const item = flat[this.markIndex]; const back = item.u.start;
-        item.u.start = null; item.u.end = null; this.holding = false;
+        if (this.holding) { this.holding = false; const cur = flat[this.markIndex]; if (cur) this.proj.lines[cur.li].forEach(u => { u.start = null; u.end = null; }); }
+        this.markIndex--; const item = flat[this.markIndex];
+        if (this.lineMode()) while (this.markIndex > 0 && flat[this.markIndex - 1].li === item.li) this.markIndex--;
+        const back = flat[this.markIndex].u.start;
+        const clear = this.lineMode() ? this.proj.lines[item.li] : [item.u];
+        clear.forEach(u => { u.start = null; u.end = null; }); this.holding = false;
         if (back != null) kMedia.currentTime = Math.max(0, back - 2);
         this.renderLines(item.li);
       },
@@ -1342,7 +1372,9 @@
         ctx.font = `bold ${head}px Arial`; ctx.textAlign = 'center';
         const blink = Math.floor(now * 2.5) % 2 === 0;
         ctx.fillStyle = this.holding ? p.sung_color : (blink ? '#ff4d4d' : '#ffb3b3');
-        ctx.fillText(this.holding ? t('● SOSTÉN… suelta al terminar la palabra') : t('● MARCANDO — aprieta ESPACIO cuando empiece la palabra amarilla'), W / 2, H * 0.12);
+        ctx.fillText(this.lineMode()
+          ? (this.holding ? t('● SOSTÉN… suelta al terminar la frase') : t('● MARCANDO — aprieta ESPACIO cuando empiece la frase amarilla'))
+          : (this.holding ? t('● SOSTÉN… suelta al terminar la palabra') : t('● MARCANDO — aprieta ESPACIO cuando empiece la palabra amarilla')), W / 2, H * 0.12);
         ctx.textAlign = 'left';
         [cur, cur + 1].forEach((li, row) => {
           const units = p.lines[li]; if (!units) return;
@@ -1350,10 +1382,17 @@
           ctx.font = `bold ${size}px Arial`; ctx.globalAlpha = row ? 0.6 : 1;
           const pieces = units.map(u => u.text + (u.space ? ' ' : '')), widths = pieces.map(t2 => ctx.measureText(t2).width);
           let x = (W - widths.reduce((a, b) => a + b, 0)) / 2;
+          const lineW = widths.reduce((a, b) => a + b, 0);
+          if (row === 0 && this.lineMode() && flat[this.markIndex] && flat[this.markIndex].li === li) {
+            ctx.fillStyle = this.holding ? 'rgba(255,255,255,.14)' : 'rgba(255,214,0,.28)';
+            ctx.fillRect(x - size * 0.25, y - size * 0.7, lineW + size * 0.5, size * 1.4);
+            ctx.fillStyle = this.holding ? p.sung_color : '#ffd600'; ctx.fillRect(x, y + size * 0.58, lineW, Math.max(3, size * 0.08));
+          }
           ctx.lineWidth = Math.max(3, Math.min(fullW, fullH) * 0.006) * scale * 2; ctx.strokeStyle = '#101010';
           units.forEach((u, i) => {
-            const tw = ctx.measureText(u.text).width, isNext = row === 0 && flat[this.markIndex] && flat[this.markIndex].u === u;
-            if (isNext) {
+            const target = flat[this.markIndex], tw = ctx.measureText(u.text).width;
+            const isNext = row === 0 && target && (this.lineMode() ? target.li === li : target.u === u);
+            if (isNext && !this.lineMode()) {
               ctx.fillStyle = this.holding ? 'rgba(255,255,255,.18)' : 'rgba(255,214,0,.30)';
               ctx.fillRect(x - size * 0.12, y - size * 0.66, tw + size * 0.24, size * 1.32);
               ctx.fillStyle = this.holding ? p.sung_color : '#ffd600'; ctx.fillRect(x, y + size * 0.55, tw, Math.max(3, size * 0.08));
@@ -1362,6 +1401,10 @@
             ctx.fillStyle = isNext && !this.holding ? '#ffd600' : '#fff'; ctx.fillText(pieces[i], x, y);
             let f = 0;
             if (u.start != null && u.end != null) f = 1;
+            else if (isNext && this.holding && this.lineMode()) {  // barrido estimado mientras sostienes (~0.12 s por letra)
+              const before = units.slice(0, i).reduce((n, v) => n + v.text.length + 1, 0), sweep = (now - this.lineStart) / 0.12 - before;
+              f = Math.max(0, Math.min(1, sweep / Math.max(1, u.text.length)));
+            }
             else if (isNext && this.holding && u.start != null) f = Math.min(0.8, 0.1 + (now - u.start) / 1.2);
             if (f > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x, y - size, tw * f, size * 2); ctx.clip(); ctx.fillStyle = p.sung_color; ctx.fillText(pieces[i], x, y); ctx.restore(); }
             x += widths[i];
@@ -1422,6 +1465,9 @@
     $('#kOffset').addEventListener('input', () => { Karaoke.proj.offset = +$('#kOffset').value; $('#kOffsetText').textContent = `${Karaoke.proj.offset.toFixed(2)} s`; Karaoke.save(); });
     $('#kPlay').addEventListener('click', () => { if (Karaoke.marking) Karaoke.stopMark(); if (kMedia.paused) kMedia.play().catch(() => {}); else kMedia.pause(); });
     $('#kMark').addEventListener('click', () => { if (Karaoke.marking) Karaoke.stopMark(); else Karaoke.startMark(0); });
+    $('#kMode').addEventListener('change', () => { if (Karaoke.marking) Karaoke.stopMark(); Karaoke.proj.mark_mode = $('#kMode').value; Karaoke.save(); Karaoke.msg(Karaoke.lineMode()
+      ? t('Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.')
+      : t('Dale «⏺ Marcar» y, mientras se canta cada palabra (o sílaba), mantén presionada la ESPACIADORA; suéltala al terminarla. ⌫ deshace la última · Esc detiene.')); });
     $('#kSpeed').addEventListener('change', () => { if (Karaoke.marking) kMedia.playbackRate = +$('#kSpeed').value; });
     $('#kSeek').addEventListener('input', () => { Karaoke.seeking = true; });
     $('#kSeek').addEventListener('change', () => { kMedia.currentTime = +$('#kSeek').value; Karaoke.seeking = false; });

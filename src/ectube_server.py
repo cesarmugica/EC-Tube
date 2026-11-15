@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.2.2"
+APP_VERSION = "2.3.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -888,7 +888,7 @@ def _karaoke_path(project_id: str) -> Path:
 
 def karaoke_public(project: dict) -> dict:
     data = {k: project.get(k) for k in ("id", "title", "lyrics", "lines", "offset", "sung_color", "bg", "color1",
-                                       "color2", "format", "updated")}
+                                       "color2", "format", "mark_mode", "updated")}
     for key in ("source", "image"):
         path = Path(project[key]) if project.get(key) else None
         data[key] = {"token": MEDIA.token_for(path), "name": path.name, "exists": path.is_file(),
@@ -938,6 +938,7 @@ def karaoke_save(data: dict) -> dict:
     project["color2"] = data.get("color2") if HEX_COLOR.fullmatch(str(data.get("color2") or "")) else "#6C4CE6"
     project["bg"] = data.get("bg") if data.get("bg") in ("video", "image", "color") else "color"
     project["format"] = data.get("format") if data.get("format") in ("16:9", "9:16") else "16:9"
+    project["mark_mode"] = data.get("mark_mode") if data.get("mark_mode") in ("line", "word") else "line"
     KARAOKE_DIR.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(project, ensure_ascii=False, indent=1), encoding="utf-8")

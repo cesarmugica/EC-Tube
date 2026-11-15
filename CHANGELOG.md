@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.3.0 — Karaoke: marcar por frase (como Apple Music)
+- Nuevo **«Marcar por: Frase»** (viene puesto): cuando empieza la frase aprietas la ESPACIADORA, la mantienes mientras se canta y la sueltas al terminar. La frase se ilumina de corrido de principio a fin y la siguiente queda lista.
+- Mientras sostienes, la frase se va iluminando en la vista previa; al soltar queda con sus tiempos.
+- ⌫ deshace la frase completa. Si prefieres el modo anterior, elige «Marcar por: Palabra».
+
 ## 2.2.2 — Karaoke más parejo
 - **Tamaño de letra igual en todo el karaoke** (el que le queda a la línea más larga). Solo una línea que de plano no quepa se achica ella sola.
 - Marcar: si Windows no avisa que soltaste la ESPACIADORA (pasaba al final de una frase, antes de un puente), la palabra se quedaba «sostenida» hasta la siguiente frase. Ahora el siguiente toque la cierra y sigue normal, y al cambiar de ventana también se suelta.
