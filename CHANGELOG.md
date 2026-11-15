@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.9.4 — Editar la letra desde 📝 Frases
+- Cada frase tiene botones: **⏺** marcar desde aquí · **✏** editar el texto · **➕** agregar una frase debajo · **🗑** borrarla (por ejemplo, una parte hablada que no quieres en el karaoke).
+- Las demás frases conservan sus tiempos. Si editas una frase y tiene las mismas palabras, conserva sus tiempos; si cambia, se reparte en el mismo tramo.
+- La letra del paso 1 se actualiza sola, y todo se puede deshacer con ↶ / Ctrl+Z.
+
 ## 2.9.3 — Todo en una pantalla
 - Play/pausa, el tiempo y **Entra/Sale = ahora** pasan a la columna de la derecha, junto al video.
 - 📝 Frases queda pegada debajo del video y muestra unas 5 frases con scroll; al poner una salida, la lista se recorre sola para que veas la siguiente frase.

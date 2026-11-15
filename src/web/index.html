@@ -119,6 +119,9 @@
     .kcheck { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; font-size: .88rem; }
     .klines li.hidden-line .kl { opacity: .45; }
     .klines li.edited .kl { color: var(--ok); }
+    .krow-btns { display: inline-flex; gap: 4px; }
+    .krow-btns button { padding: 4px 8px; font-size: .8rem; min-width: 30px; }
+    .klines .kedit { width: 100%; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--surface-2); color: var(--text); font: inherit; }
     .klines .kin { width: 74px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: .82rem; font-variant-numeric: tabular-nums; text-align: center; }
     .klines .kin:focus { outline: 2px solid var(--accent); }
     .klines .kin.bad { outline: 2px solid var(--danger); }
@@ -737,6 +740,8 @@
       '¿Ya quedó? Revisaste con 👁 Ver cómo quedó y ajustaste en la línea de tiempo o en 📝 Frases:': 'All good? Checked with ▶ Preview and adjusted in the timeline or 📝 Lines:',
       '▶ Play': '▶ Play', '⤓ Entra = ahora': '⤓ Start = now', '⤒ Sale = ahora': '⤒ End = now', 'Frase': 'Line', 'Primero pega la letra.': 'Paste the lyrics first.',
       '⬇ Ir a marcar': '⬇ Go mark', 'Play/pausa y «Entra/Sale = ahora», escribe los tiempos, o ⏺ Marcar con la espaciadora': 'Play/pause and “Start/End = now”, type the times, or ⏺ Mark with the space bar',
+      'Marcar con la espaciadora desde esta frase': 'Mark with the space bar from this line', 'Editar el texto': 'Edit the text', 'Agregar una frase debajo': 'Add a line below', 'Borrar esta frase': 'Delete this line',
+      '🗑 Frase borrada (↶ Deshacer la regresa).': '🗑 Line deleted (↶ Undo brings it back).', 'Escribe la frase (con / para separar sílabas)': 'Type the line (use / to split syllables)',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1636,6 +1641,57 @@
         if (row.offsetTop < list.scrollTop) list.scrollTop = row.offsetTop - 4;
         else if (row.offsetTop + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = row.offsetTop + row.offsetHeight - list.clientHeight + 4;
       },
+      // ---------- editar la letra desde la lista (sin perder los tiempos de las demás frases) ----------
+      rawRows() {  // en el texto: qué renglón corresponde a cada frase (los renglones vacíos separan estrofas)
+        const rows = (this.proj.lyrics || '').split(/\r?\n/), map = [];
+        rows.forEach((r, k) => { if (r.trim()) map.push(k); });
+        return {rows, map};
+      },
+      commitText(rows) { this.proj.lyrics = rows.join('\n'); $('#kLyrics').value = this.proj.lyrics; },
+      deleteLine(li) {
+        const p = this.proj; if (!p.lines[li]) return;
+        this.snapshot();
+        const {rows, map} = this.rawRows(); rows.splice(map[li], 1); this.commitText(rows);
+        p.lines.splice(li, 1); (p.holds || []).splice(li, 1); (p.edited || []).splice(li, 1);
+        if (this.target != null && this.target >= li) this.target = Math.max(0, this.target - 1);
+        this.renderLines(); this.save(); this.msg(t('🗑 Frase borrada (↶ Deshacer la regresa).'));
+      },
+      insertLine(li, text) {  // debajo de la frase li (li = -1 → al principio)
+        const p = this.proj, units = kParse(text)[0]; if (!units) return;
+        this.snapshot();
+        const {rows, map} = this.rawRows(); rows.splice(li >= 0 ? map[li] + 1 : 0, 0, text.trim()); this.commitText(rows);
+        p.lines.splice(li + 1, 0, units); (p.holds = p.holds || []).splice(li + 1, 0, null); (p.edited = p.edited || []).splice(li + 1, 0, false);
+        this.target = li + 1; this.renderLines(); this.save();
+      },
+      editLine(li, text) {
+        const p = this.proj, units = kParse(text)[0], old = p.lines[li]; if (!old) return;
+        if (!units) { this.deleteLine(li); return; }
+        this.snapshot();
+        const span = KT.lineSpan(li);
+        if (units.length === old.length) units.forEach((u, j) => { u.start = old[j].start; u.end = old[j].end; });  // mismas palabras: mismos tiempos
+        const {rows, map} = this.rawRows(); rows[map[li]] = text.trim(); this.commitText(rows);
+        p.lines[li] = units;
+        if (span && units.length !== old.length) this.spread(li, span[0], span[1]);  // cambió: repartir en el mismo tramo
+        this.renderLines(); this.save();
+      },
+      openEdit(li, isNew = false) {
+        const row = $(`#kLines li[data-i="${li}"]`); if (!row) return;
+        const span = row.querySelector('.kl'), text = this.proj.lines[li].map(u => u.text.replace(/^/, '') + (u.space ? ' ' : '')).join('');
+        const raw = this.rawRows(), current = raw.rows[raw.map[li]] || text;
+        const input = document.createElement('input'); input.className = 'kedit'; input.value = isNew ? '' : current.trim();
+        input.placeholder = t('Escribe la frase (con / para separar sílabas)');
+        span.replaceWith(input); input.focus(); input.select();
+        let done = false;
+        const finish = ok => {
+          if (done) return; done = true;
+          const value = input.value.trim();
+          if (isNew) { if (ok && value) { this.editLine(li, value); this.undoStack.pop(); } else { this.deleteLine(li); this.undoStack.pop(); this.undoStack.pop(); } }
+          else if (ok && value && value !== current.trim()) this.editLine(li, value);
+          else this.renderLines();
+        };
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } e.stopPropagation(); });
+        input.addEventListener('blur', () => finish(true));
+      },
       markEdited(li) {
         const p = this.proj; if (!p.lines[li]) return;
         p.edited = p.edited || []; while (p.edited.length < p.lines.length) p.edited.push(false);
@@ -1665,7 +1721,7 @@
           const span = KT.lineSpan(i);
           const edited = !!(this.proj.edited || [])[i];
           const tgt2 = !this.marking && i === this.targetLine() ? 'target' : '';
-          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''} ${tgt2} ${edited ? 'edited' : this.proj.hide_unedited ? 'hidden-line' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${edited ? '✓ ' : ''}${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
+          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''} ${tgt2} ${edited ? 'edited' : this.proj.hide_unedited ? 'hidden-line' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${edited ? '✓ ' : ''}${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><span class="krow-btns"><button class="secondary" type="button" data-from="${i}" title="${t('Marcar con la espaciadora desde esta frase')}">⏺</button><button class="secondary" type="button" data-edit="${i}" title="${t('Editar el texto')}">✏</button><button class="secondary" type="button" data-add="${i}" title="${t('Agregar una frase debajo')}">➕</button><button class="secondary" type="button" data-del="${i}" title="${t('Borrar esta frase')}">🗑</button></span></li>`;
         }).join('') : `<li><span></span><span class="kl todo">${t('Primero escribe la letra arriba.')}</span></li>`;
         $('#kLines').scrollTop = scroll; if (!this.marking) this.showTarget();
         if (keep) { const el = $(`#kLines input.kin[data-li="${keep.li}"][data-edge="${keep.edge}"]`); if (el) { el.value = keep.value; el.focus(); } }
@@ -1823,18 +1879,22 @@
         });
       },
       // ---------- deshacer ----------
+      snapState() {
+        const p = this.proj;
+        return JSON.stringify({lyrics: p.lyrics, lines: p.lines, holds: p.holds || [], edited: p.edited || []});
+      },
       snapshot() {
-        const snap = JSON.stringify({lines: this.proj.lines.map(l => l.map(u => [u.start, u.end])), holds: this.proj.holds || []});
+        const snap = this.snapState();
         if (this.undoStack[this.undoStack.length - 1] !== snap) { this.undoStack.push(snap); if (this.undoStack.length > 60) this.undoStack.shift(); }
       },
       undoEdit() {
-        const now = JSON.stringify({lines: this.proj.lines.map(l => l.map(u => [u.start, u.end])), holds: this.proj.holds || []});
+        const now = this.snapState();
         let snap = this.undoStack.pop();
         while (snap === now) snap = this.undoStack.pop();  // saltar copias iguales a lo que ya se ve
         if (!snap) { this.msg(t('No hay nada que deshacer.')); return; }
-        const data = JSON.parse(snap);
-        this.proj.lines.forEach((l, i) => l.forEach((u, j) => { const v = data.lines[i] && data.lines[i][j]; u.start = v ? v[0] : null; u.end = v ? v[1] : null; }));
-        this.proj.holds = data.holds; this.renderLines(); this.save();
+        const data = JSON.parse(snap), p = this.proj;
+        p.lyrics = data.lyrics; p.lines = data.lines; p.holds = data.holds; p.edited = data.edited;
+        $('#kLyrics').value = p.lyrics || ''; this.target = null; this.renderLines(); this.save();
       },
       drawBar(now) {
         if (!this.seeking) { $('#kSeek').max = kMedia.duration || 1; $('#kSeek').value = now; }
@@ -2289,7 +2349,12 @@
     });
     $('#kLines').addEventListener('click', event => {
       if (event.target.closest('input')) return;
-      const from = event.target.dataset.from; if (from !== undefined) { Karaoke.startMark(+from); return; }
+      const btn = event.target.closest('button'); const ds = btn ? btn.dataset : {};
+      if (ds.from !== undefined) { Karaoke.startMark(+ds.from); return; }
+      if (ds.edit !== undefined) { Karaoke.openEdit(+ds.edit); return; }
+      if (ds.del !== undefined) { Karaoke.deleteLine(+ds.del); return; }
+      if (ds.add !== undefined) { const li = +ds.add; Karaoke.insertLine(li, '…'); Karaoke.openEdit(li + 1, true); return; }
+      if (event.target.closest('input')) return;
       const li = event.target.closest('li[data-i]'); if (!li) return;
       Karaoke.setTarget(+li.dataset.i);
       const units = Karaoke.proj.lines[+li.dataset.i]; if (units && units[0].start != null) { kMedia.currentTime = Math.max(0, units[0].start - 1.5); kMedia.play().catch(() => {}); }
