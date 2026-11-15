@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.9.1 — Nombres más claros
+- «▶ Vista previa» ahora se llama **👁 Ver cómo quedó** (y reproduce desde un poco antes de la primera frase): es para revisar el resultado. Para escuchar mientras marcas está **▶ Play / ⏸ Pausa** debajo del video.
+
 ## 2.9.0 — Karaoke: escuchar, pausar y marcar «ahora»
 - Debajo del video: **▶ Play / ⏸ Pausa**, **⟲ 3 s / 3 s ⟳** y el tiempo exacto (0:25.3).
 - **⤓ Entra = ahora** y **⤒ Sale = ahora**: ponen el momento actual a la frase elegida (resaltada en amarillo en 📝 Frases). Al poner la salida pasa sola a la siguiente frase. Haz clic en una frase para elegirla.
