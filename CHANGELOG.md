@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.9.10 — Un renglón también en Automático
+- El botón «🤖 Poner tiempos solo» de debajo del video ahora dice **🤖 Auto** (al pasar el mouse explica qué hace), así los controles caben en un renglón en todos los métodos.
+
 ## 2.9.9 — Ahora sí, un renglón
 - Debajo del video: **👁 Ver cómo quedó · ⏺ Marcar · por frase/por palabra · 🐢 velocidad**. El **⏱ Ajuste fino** (de toda la letra) pasa a la columna derecha.
 
