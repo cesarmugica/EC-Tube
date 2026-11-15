@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 2.1.1
+- Karaoke: aviso **⚠ IMPORTANTE** para cuando vayas a subir el karaoke a YouTube, TikTok u otras plataformas (derechos de la canción, reclamos, bloqueos, pistas con licencia, «No listado») y un texto de créditos para la descripción del video, con tu título ya puesto y botón «📋 Copiar texto».
+
 ## 2.1.0 — 🎤 Karaoke
 - **Pestaña nueva «🎤 Karaoke»** para hacer videos de karaoke con la letra iluminándose:
   1. **Música:** eliges la pista (audio o video). Tip: quítale la voz a una canción con «🎵 Solo música» del editor.

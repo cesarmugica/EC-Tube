@@ -122,6 +122,12 @@
     .kcode { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: .82rem; }
     input[type=color] { width: 38px; height: 30px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 2px; cursor: pointer; }
     .go .grow { flex: 1 1 auto; align-self: center; }
+    .knotice { border-color: color-mix(in srgb, var(--warn) 55%, var(--border)); background: color-mix(in srgb, var(--warn) 7%, var(--surface)); }
+    .knotice summary { cursor: pointer; color: var(--text); line-height: 1.5; }
+    .knotice summary strong { color: var(--warn); }
+    .knotice-body { color: var(--text); font-size: .9rem; line-height: 1.55; margin-top: 10px; }
+    .knotice-body ul { margin: 8px 0; padding-left: 20px; display: grid; gap: 6px; }
+    .knotice pre { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-family: inherit; font-size: .86rem; margin: 8px 0 10px; }
     /* ---------- Reproductor ---------- */
     body.has-player main { padding-bottom: 120px; }
     .pl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -312,6 +318,35 @@
         <p class="khelp">Tip: para quitarle la voz a una canción, ábrela en «✂ Recortar» y guarda «🎵 Solo música»; queda en tu carpeta de editados.</p>
       </section>
 
+      <section class="panel knotice">
+        <details>
+          <summary><span data-lang="es"><strong>⚠ IMPORTANTE:</strong> si vas a subir este karaoke a YouTube, TikTok u otras plataformas…</span><span data-lang="en"><strong>⚠ IMPORTANT:</strong> if you are going to upload this karaoke to YouTube, TikTok or other platforms…</span></summary>
+          <div class="knotice-body" data-lang="en">
+            <p>Keep in mind that a song's <strong>lyrics and music</strong> have an owner (the songwriter and their publisher) and, if the track comes from the original recording, so does the <strong>recording</strong> (the label). Writing “non-commercial”, “personal use” or “credits to the author” is good practice, but it <strong>does not give you permission</strong> to use it.</p>
+            <ul>
+              <li>Most often the platform detects the song and makes a <strong>claim</strong>: the video stays up, but the ads go to the owner. It does not affect your channel; do not dispute it if you have no permission.</li>
+              <li>The owner can also <strong>block or mute</strong> the video, or ask for it to be taken down (that one does count as a strike on your channel: if it happens, remove it and do not upload it again).</li>
+              <li>To have fewer problems: use <strong>royalty-free or licensed</strong> tracks, or upload it as <strong>“Unlisted”</strong> if it is just for you or your friends.</li>
+            </ul>
+            <p>It is always recommended to write the credits and a notice in the video description. You can copy this text and fill in the parts in brackets:</p>
+          </div>
+          <div class="knotice-body" data-lang="es">
+            <p>Ten en cuenta que la <strong>letra y la música</strong> de una canción tienen dueño (el compositor y su editora) y, si la pista sale de la grabación original, también la <strong>grabación</strong> (la disquera). Poner «sin fines de lucro», «uso personal» o «créditos al autor» es buena costumbre, pero <strong>no da permiso</strong> para usarla.</p>
+            <ul>
+              <li>Lo más común es que la plataforma detecte la canción y haga un <strong>reclamo</strong>: el video sigue arriba, pero los anuncios se los lleva el dueño. No afecta tu canal; no lo disputes si no tienes permiso.</li>
+              <li>El dueño también puede <strong>bloquear o silenciar</strong> el video, o pedir que se retire (eso sí cuenta como falta en tu canal: si pasa, quítalo y no lo vuelvas a subir).</li>
+              <li>Para tener menos problemas: usa pistas <strong>libres de derechos o con licencia</strong>, o súbelo como <strong>«No listado»</strong> si es para ti o tus amigos.</li>
+            </ul>
+            <p>Siempre es recomendable escribir en la descripción del video los créditos y un aviso. Puedes copiar este texto y completar lo que va entre corchetes:</p>
+          </div>
+          <div class="knotice-body">
+            <pre id="kDisclaimer"></pre>
+            <button class="secondary" id="kCopyDisclaimer" type="button">📋 Copiar texto</button>
+            <p class="khelp">Esto es una orientación general, no asesoría legal.</p>
+          </div>
+        </details>
+      </section>
+
       <section class="panel">
         <div class="list-head"><h2>1 · Letra</h2></div>
         <p class="khelp">Un renglón = una línea en pantalla. Para que una palabra larga se ilumine por sílabas, sepárala con «/»: <em>co/ra/zón</em>.</p>
@@ -475,7 +510,8 @@
       'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
       'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
       'Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.': 'Installing the new version… a new window will open. This one closes by itself.',
-      'Qué guardar': 'What to save',
+      'Qué guardar': 'What to save', '📋 Copiar texto': '📋 Copy text', '✅ Copiado': '✅ Copied', '[Nombre de la canción]': '[Song name]',
+      'Esto es una orientación general, no asesoría legal.': 'This is general guidance, not legal advice.',
       'Dale «⏺ Marcar» y, mientras se canta cada palabra (o sílaba), mantén presionada la ESPACIADORA; suéltala al terminarla. ⌫ deshace la última · Esc detiene.': 'Press “⏺ Mark” and, while each word (or syllable) is sung, hold SPACE; release it when it ends. ⌫ undo last · Esc stop.',
       '🎤 Karaoke': '🎤 Karaoke', '➕ Nuevo karaoke': '➕ New karaoke', '🗑 Borrar': '🗑 Delete', 'Título': 'Title', 'Nombre de la canción': 'Song name',
       '🎵 Música': '🎵 Music', 'Elige la pista (sin voz)…': 'Choose the backing track (no vocals)…', 'Elegir música…': 'Choose music…',
@@ -518,6 +554,7 @@
       document.title = 'EC-Tube';
     }
     translatePage();
+    document.querySelectorAll('[data-lang]').forEach(el => { el.hidden = el.dataset.lang !== LANG; });
     $('#langSelect').value = LANG;
     $('#langSelect').addEventListener('change', async () => {
       try { await fetch('/api/settings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({language: $('#langSelect').value})}); } catch (_) {}
@@ -1088,7 +1125,7 @@
         $('#kColor1').value = p.color1; $('#kColor2').value = p.color2; $('#kSung').value = p.sung_color;
         $('#kOffset').value = p.offset || 0; $('#kOffsetText').textContent = `${(+p.offset || 0).toFixed(2)} s`;
         $('#kDelete').disabled = !p.id;
-        this.syncBg(); this.sizeCanvas(); this.renderLines();
+        this.syncBg(); this.sizeCanvas(); this.renderLines(); kDisclaimer();
       },
       syncBg() {
         const p = this.proj, isVideo = !!(p.source && p.source.video);
@@ -1220,7 +1257,18 @@
       const p = Karaoke.proj; if (!p.id || !confirm(tf('¿Borrar el karaoke «{0}»? (Los videos que ya creaste no se borran.)', p.title || t('(sin título)')))) return;
       await api('/api/karaoke/delete', {id: p.id}).catch(() => {}); kMedia.pause(); Karaoke.ready = false; await Karaoke.init();
     });
-    $('#kTitle').addEventListener('input', () => { Karaoke.proj.title = $('#kTitle').value; Karaoke.save(); });
+    $('#kTitle').addEventListener('input', () => { Karaoke.proj.title = $('#kTitle').value; Karaoke.save(); kDisclaimer(); });
+    function kDisclaimer() {
+      const title = (Karaoke.proj && Karaoke.proj.title) || t('[Nombre de la canción]');
+      $('#kDisclaimer').textContent = LANG === 'en'
+        ? `🎤 Karaoke: “${title}” – [Artist]\n\nLyrics and music: [Songwriter(s)]\nOriginal performance: [Artist]\nRights: [Label / publisher]. All rights belong to their respective owners.\n\nKaraoke version made by me for singing and practice, non-commercial.\nI do not own this song. If you are a rights holder and want it removed,\ncontact me and I will take it down right away.\n\n#karaoke`
+        : `🎤 Karaoke: «${title}» – [Artista]\n\nLetra y música: [Compositor(es)]\nInterpretación original: [Artista]\nDerechos: [Disquera / editora]. Todos los derechos pertenecen a sus respectivos dueños.\n\nVersión karaoke hecha por mí para cantar y practicar, sin fines de lucro.\nNo soy dueño de esta canción. Si eres titular de los derechos y quieres\nque la retire, escríbeme y la quito de inmediato.\n\n#karaoke`;
+    }
+    $('#kCopyDisclaimer').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('#kDisclaimer').textContent); $('#kCopyDisclaimer').textContent = t('✅ Copiado'); }
+      catch (_) { const r = document.createRange(); r.selectNodeContents($('#kDisclaimer')); getSelection().removeAllRanges(); getSelection().addRange(r); }
+      setTimeout(() => { $('#kCopyDisclaimer').textContent = t('📋 Copiar texto'); }, 2000);
+    });
     $('#kLyrics').addEventListener('input', () => Karaoke.setLyrics($('#kLyrics').value));
     $('#kPickSource').addEventListener('click', async () => {
       say(t('Elige el archivo en la ventana que se abrió…'));
