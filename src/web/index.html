@@ -154,6 +154,14 @@
     .kplayer .ktarget { flex: 1 1 100%; font-size: .88rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kplayer .ktarget b { color: var(--text); }
     .klines li.target { box-shadow: inset 4px 0 0 #ffd600; background: color-mix(in srgb, #ffd600 10%, var(--bg)); }
+    .kmini { position: fixed; right: 16px; bottom: 16px; z-index: 45; width: min(380px, calc(100vw - 32px)); padding: 8px; border-radius: 14px; border: 1px solid var(--accent); background: var(--surface); box-shadow: 0 12px 32px rgba(0,0,0,.5); display: grid; gap: 6px; }
+    .kmini canvas { width: 100%; height: auto; border-radius: 8px; display: block; background: #000; }
+    .kmini-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kmini-head .grow { flex: 1; }
+    .kmini-target { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kmini-target b { color: var(--text); }
+    .kmini-btns { display: flex; gap: 6px; }
+    .kmini-btns button { flex: 1; padding: 8px 6px; font-size: .88rem; }
     .kreturn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
     .ktl-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
     .ktl-bar .grow { flex: 1; }
@@ -530,6 +538,20 @@
           <button id="kExport" type="button">🎬 Crear video de karaoke</button>
         </div>
       </section>
+    </div>
+
+    <div class="kmini" id="kMini" hidden>
+      <div class="kmini-head"><span id="kMiniTime">0:00.0</span><span class="grow"></span>
+        <button class="link" type="button" id="kMiniUp" title="Subir al video grande">⬆</button>
+        <button class="link" type="button" id="kMiniClose" title="Ocultar el mini reproductor">✕</button></div>
+      <canvas id="kMiniCanvas" width="480" height="270"></canvas>
+      <div class="kmini-target" id="kMiniTarget"></div>
+      <div class="kmini-btns">
+        <button type="button" id="kMiniPP">▶</button>
+        <button class="secondary" type="button" id="kMiniBack" title="3 s atrás">⟲</button>
+        <button class="secondary" type="button" id="kMiniIn" title="Entra = ahora (I)">⤓ Entra</button>
+        <button class="secondary" type="button" id="kMiniOut" title="Sale = ahora (O)">⤒ Sale</button>
+      </div>
     </div>
 
     <div class="playerbar" id="playerBar" hidden>
@@ -1045,7 +1067,7 @@
       try { localStorage.setItem('ectube-tab', name); } catch (_) {}
       if (name === 'player') { Player.init(); Library.load(); }
       if (name === 'karaoke') Karaoke.init();
-      if (name !== 'karaoke') Karaoke.leave();
+      if (name !== 'karaoke') { Karaoke.leave(); $('#kMini').hidden = true; }
     }
     document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
@@ -1337,7 +1359,7 @@
         }
         $('#kFolder').textContent = settings.karaoke_folder || '…'; $('#kFolder').title = settings.karaoke_folder || '';
         this.quickList();
-        cancelAnimationFrame(this.raf); const loop = () => { this.draw(); KT.tick(); this.raf = requestAnimationFrame(loop); }; loop();
+        cancelAnimationFrame(this.raf); const loop = () => { this.draw(); KT.tick(); kMiniDraw(); this.raf = requestAnimationFrame(loop); }; loop();
       },
       async quickList() {
         const groups = [['edited', 'audio', '✂🎵 Editados · audio'], ['edited', 'video', '✂🎬 Editados · video'], ['downloads', 'audio', '⬇🎵 Descargas · audio'], ['downloads', 'video', '⬇🎬 Descargas · video']];
@@ -1908,6 +1930,29 @@
       else if (event.key === 'ArrowLeft') { event.preventDefault(); $('#kBack').click(); }
       else if (event.key === 'ArrowRight') { event.preventDefault(); $('#kFwd').click(); }
     });
+    // ---------- mini reproductor flotante: cuando bajas y el video grande ya no se ve ----------
+    let kMiniClosed = false;
+    function kMiniDraw() {
+      // solo cuando ya bajaste MÁS ALLÁ del video grande (no cuando todavía está abajo, en los pasos)
+      const r = kCanvas.getBoundingClientRect(), s3 = $('#kExport').closest('section').getBoundingClientRect();
+      const past = r.height > 0 && r.bottom < r.height * 0.35 && s3.top > window.innerHeight * 0.55;  // no tapar el paso 3
+      if (!past) kMiniClosed = false;
+      const show = past && !kMiniClosed && !$('#tabKaraoke').hidden && !!Karaoke.proj && !!Karaoke.proj.source;
+      if ($('#kMini').hidden === show) $('#kMini').hidden = !show;
+      if (!show) return;
+      const mc = $('#kMiniCanvas'), ratio = kCanvas.height / kCanvas.width;
+      if (mc.height !== Math.round(mc.width * ratio)) mc.height = Math.round(mc.width * ratio);
+      mc.getContext('2d').drawImage(kCanvas, 0, 0, mc.width, mc.height);
+      $('#kMiniTime').textContent = `${kTime(kMedia.currentTime || 0)} / ${hms(kMedia.duration) || '0:00'}`;
+      $('#kMiniPP').textContent = kMedia.paused ? '▶' : '⏸';
+      $('#kMiniTarget').innerHTML = $('#kTarget').innerHTML;
+    }
+    $('#kMiniPP').addEventListener('click', () => $('#kPP').click());
+    $('#kMiniBack').addEventListener('click', () => $('#kBack').click());
+    $('#kMiniIn').addEventListener('click', () => Karaoke.setNow('start'));
+    $('#kMiniOut').addEventListener('click', () => Karaoke.setNow('end'));
+    $('#kMiniUp').addEventListener('click', () => $('#kCanvas').scrollIntoView({behavior: 'smooth', block: 'center'}));
+    $('#kMiniClose').addEventListener('click', () => { kMiniClosed = true; $('#kMini').hidden = true; });
     const kBackToSteps = () => { kMedia.pause(); $('#tabKaraoke section.panel').scrollIntoView({behavior: 'smooth', block: 'start'}); };
     $('#kBackTop').addEventListener('click', kBackToSteps);
     $('#kAcceptBack').addEventListener('click', () => {
