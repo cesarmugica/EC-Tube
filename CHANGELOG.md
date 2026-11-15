@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 2.6.0 — Karaoke: escribir a qué hora entra y sale cada frase
+- La lista **📝 Frases** ahora va a todo lo ancho y cada frase tiene dos casillas: **entra** y **sale**. Escribe el tiempo (`0:29`, `0:34.5`, `29`…) y presiona Enter; pasa sola a la siguiente casilla.
+- Es una forma más, no reemplaza nada: funciona junto con marcar con la espaciadora, el borrador automático y la línea de tiempo.
+- Si la frase ya tenía tiempos, se estiran o encogen conservando su ritmo; si no, se reparten. Con voz guía, las palabras se acomodan a la voz dentro de ese tramo.
+- Se deshace con ↶ / Ctrl+Z (antes, deshacer a veces no regresaba el último cambio).
+- Los botones ➖ ➕ de la línea de tiempo ya no se bajan a otro renglón.
+
 ## 2.5.4 — Karaoke: la letra ya no arranca antes de que se cante
 - El separador deja «fantasmas» de la música en la voz (sobre todo en la intro). Antes contaban como si alguien cantara y la letra empezaba antes de tiempo. Ahora solo cuenta como voz lo que suena de verdad por encima de la música; lo demás se ignora (para el borrador automático, para «Frase + voz» y en la línea de tiempo).
 - En el borrador automático, la voz suelta antes del primer renglón (intro, «yeah», partes habladas) se salta más fácil.

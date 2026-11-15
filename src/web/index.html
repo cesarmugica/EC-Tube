@@ -111,10 +111,15 @@
     .kmsg { color: var(--muted); font-size: .88rem; margin: 12px 0 0; }
     .kmsg.rec { color: var(--danger); font-weight: 600; }
     .klines { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); max-height: 40vh; overflow: auto; font-size: .88rem; }
-    .klines li { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .klines li { display: grid; grid-template-columns: 74px minmax(0, 1fr) 74px auto; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
     .klines li:last-child { border-bottom: 0; }
     .klines li:hover { background: var(--surface-2); }
     .klines li.now { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
+    .klist-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; margin-top: 16px; }
+    .klines .kin { width: 74px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: .82rem; font-variant-numeric: tabular-nums; text-align: center; }
+    .klines .kin:focus { outline: 2px solid var(--accent); }
+    .klines .kin.bad { outline: 2px solid var(--danger); }
+    .ktl-bar #ktZoomIn, .ktl-bar #ktZoomOut { padding-left: 12px; padding-right: 12px; }
     .klines .kt { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .78rem; }
     .klines .kl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .klines .kl.todo { color: var(--muted); }
@@ -440,9 +445,10 @@
               <button class="secondary" id="kAlign" data-for="semi" type="button" title="Volver a acomodar todas las frases según la voz">✨ Ajustar a la voz</button>
             </div>
             <p class="kmsg" id="kMsg">Dale «⏺ Marcar». Cuando empiece a cantarse la frase, aprieta la ESPACIADORA y mantenla mientras se canta; suéltala al terminar la frase. La siguiente queda lista. ⌫ deshace · Esc detiene.</p>
-            <ol class="klines" id="kLines"></ol>
           </div>
         </div>
+        <div class="klist-head"><strong>📝 Frases</strong><span class="khelp">Puedes escribir a qué hora entra y sale cada frase (ej. 0:29 y 0:34.5) y presionar Enter. Clic en la frase = oírla.</span></div>
+        <ol class="klines" id="kLines"></ol>
         <div class="ktl-bar">
           <strong>🎚 Línea de tiempo</strong>
           <button class="secondary" id="ktLoop" type="button" title="Oír solo la frase elegida, una y otra vez">🔁 Oír frase</button>
@@ -641,6 +647,10 @@
       'Presiona ⏺ Marcar y sigue la canción': 'Press ⏺ Mark and follow the song', '⏺ Marcar': '⏺ Mark',
       'Revisa con ▶ Vista previa y corrige en la 🎚 línea de tiempo': 'Check with ▶ Preview and fix in the 🎚 timeline', 'Arrastra palabras, 🔁 oye la frase, ↶ deshace': 'Drag words, 🔁 hear the line, ↶ undo',
       '▶ Ver cómo quedó': '▶ See how it looks', 'Crea el video en «3 · Fondo y video»': 'Create the video in “3 · Background and video”', '🎬 Ir a crear el video': '🎬 Go create the video',
+      '📝 Frases': '📝 Lines', 'Puedes escribir a qué hora entra y sale cada frase (ej. 0:29 y 0:34.5) y presionar Enter. Clic en la frase = oírla.': 'You can type when each line starts and ends (e.g. 0:29 and 0:34.5) and press Enter. Click a line = hear it.',
+      'entra': 'start', 'sale': 'end', 'A qué hora entra (ej. 0:29)': 'When it starts (e.g. 0:29)', 'A qué hora termina (ej. 0:34)': 'When it ends (e.g. 0:34)',
+      'La frase debe terminar después de que entra (al menos 0.2 s).': 'The line must end after it starts (at least 0.2 s).', 'Escribe el tiempo así: 0:29 o 0:29.5': 'Type the time like this: 0:29 or 0:29.5',
+      'Primero escribe a qué hora entra la frase.': 'First type when the line starts.',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1235,6 +1245,14 @@
     }
     // Tamaño parejo en todo el karaoke (mismo cálculo que ectube_karaoke.font_size).
     const kFit = (units, w) => (w * 0.9) / ((units.reduce((n, u) => n + u.text.length + (u.space ? 1 : 0), 0) || 1) * 0.56);
+    // 89.25 → «1:29.3»   y   «1:29.3», «89», «1:29», «0:01:29» → 89.3
+    const kTime = sec => { const m = Math.floor(sec / 60), r = sec - m * 60; return `${m}:${r.toFixed(1).padStart(4, '0')}`; };
+    function kParseTime(text) {
+      const m = String(text || '').trim().replace(',', '.').match(/^(?:(\d+):)?(?:(\d+):)?(\d+(?:\.\d+)?)$/);
+      if (!m) return NaN;
+      const parts = [m[1], m[2], m[3]].filter(x => x !== undefined).map(Number);
+      return parts.reduce((acc, x) => acc * 60 + x, 0);
+    }
     function kFont(units, w, h, all) {
       const base = Math.round(Math.min(w, h) * (w > h ? 0.085 : 0.075));
       let common = base;
@@ -1439,6 +1457,21 @@
           this.save();
         } catch (error) { if (!lis) this.msg(error.message); }
       },
+      // Escribir a mano cuándo entra y sale una frase: las palabras se reacomodan dentro (con la voz si hay voz guía).
+      setLineSpan(li, start, end) {
+        const units = this.proj.lines[li]; if (!units || !units.length) return false;
+        if (!(end > start + 0.2)) { this.msg(t('La frase debe terminar después de que entra (al menos 0.2 s).')); return false; }
+        this.snapshot();
+        const span = KT.lineSpan(li);
+        if (span && units.every(u => u.start != null && u.end != null) && span[1] > span[0]) {
+          const k = (end - start) / (span[1] - span[0]);  // estirar/encoger lo que ya tenía, conservando su ritmo
+          units.forEach(u => { u.start = start + (u.start - span[0]) * k; u.end = start + (u.end - span[0]) * k; });
+        } else this.spread(li, start, end);
+        (this.proj.holds = this.proj.holds || [])[li] = [start, end];
+        if (this.proj.guide && this.guideState && this.guideState.state === 'ready') this.align([li]).then(() => this.renderLines());
+        this.renderLines(); this.save();
+        return true;
+      },
       lineMode() { return (this.proj.mark_mode || 'line') === 'line'; },
       // Por frase: un solo toque largo por renglón; las palabras se reparten según su largo (barrido parejo).
       spread(li, start, end) {
@@ -1453,13 +1486,18 @@
       flat() { const out = []; this.proj.lines.forEach((units, li) => units.forEach(u => out.push({li, u}))); return out; },
       renderLines(nowLine = -1) {
         const lines = this.proj.lines;
+        const act = document.activeElement, keep = act && act.matches && act.matches('#kLines input.kin') ? {li: act.dataset.li, edge: act.dataset.edge, value: act.value} : null;
+        const scroll = $('#kLines').scrollTop;
         if (!this.marking) this.renderSteps();
         $('#kLines').innerHTML = lines.length ? lines.map((units, i) => {
           const done = units.every(u => u.start != null), text = units.map(u => u.text + (u.space ? ' ' : '')).join('');
           const tgt = this.marking ? (this.flat()[this.markIndex] || {}) : {}, flatNext = tgt.u, lineNext = this.lineMode() && tgt.li === i;
           const body = i === nowLine && this.marking ? units.map(u => `<span class="${u === flatNext || lineNext ? 'knext' : u.end != null ? 'kdone' : ''}">${esc(u.text)}</span>${u.space ? ' ' : ''}`).join('') : esc(text);
-          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''}"><span class="kt">${units[0].start != null ? hms(units[0].start) : '—'}</span><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${body}</span><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
+          const span = KT.lineSpan(i);
+          return `<li data-i="${i}" class="${i === nowLine ? 'now' : ''}"><input class="kin" data-edge="start" data-li="${i}" value="${span ? kTime(span[0]) : ''}" placeholder="${t('entra')}" title="${t('A qué hora entra (ej. 0:29)')}" inputmode="decimal"><span class="kl ${done ? '' : 'todo'}" title="${esc(text)}">${body}</span><input class="kin" data-edge="end" data-li="${i}" value="${span ? kTime(span[1]) : ''}" placeholder="${t('sale')}" title="${t('A qué hora termina (ej. 0:34)')}" inputmode="decimal"><button class="secondary" type="button" data-from="${i}">⏺ ${t('desde aquí')}</button></li>`;
         }).join('') : `<li><span></span><span class="kl todo">${t('Primero escribe la letra arriba.')}</span></li>`;
+        $('#kLines').scrollTop = scroll;
+        if (keep) { const el = $(`#kLines input.kin[data-li="${keep.li}"][data-edge="${keep.edge}"]`); if (el) { el.value = keep.value; el.focus(); } }
       },
       // ---------- marcar ----------
       startMark(fromLine = 0) {
@@ -1618,7 +1656,10 @@
         if (this.undoStack[this.undoStack.length - 1] !== snap) { this.undoStack.push(snap); if (this.undoStack.length > 60) this.undoStack.shift(); }
       },
       undoEdit() {
-        const snap = this.undoStack.pop(); if (!snap) { this.msg(t('No hay nada que deshacer.')); return; }
+        const now = JSON.stringify({lines: this.proj.lines.map(l => l.map(u => [u.start, u.end])), holds: this.proj.holds || []});
+        let snap = this.undoStack.pop();
+        while (snap === now) snap = this.undoStack.pop();  // saltar copias iguales a lo que ya se ve
+        if (!snap) { this.msg(t('No hay nada que deshacer.')); return; }
         const data = JSON.parse(snap);
         this.proj.lines.forEach((l, i) => l.forEach((u, j) => { const v = data.lines[i] && data.lines[i][j]; u.start = v ? v[0] : null; u.end = v ? v[1] : null; }));
         this.proj.holds = data.holds; this.renderLines(); this.save();
@@ -1979,7 +2020,27 @@
     $('#kSpeed').addEventListener('change', () => { if (Karaoke.marking) kMedia.playbackRate = +$('#kSpeed').value; });
     $('#kSeek').addEventListener('input', () => { Karaoke.seeking = true; });
     $('#kSeek').addEventListener('change', () => { kMedia.currentTime = +$('#kSeek').value; Karaoke.seeking = false; });
+    $('#kLines').addEventListener('change', event => {
+      const input = event.target.closest('input.kin'); if (!input) return;
+      const li = +input.dataset.li, units = Karaoke.proj.lines[li], span = KT.lineSpan(li);
+      const value = kParseTime(input.value);
+      if (isNaN(value) || value < 0) { input.classList.add('bad'); Karaoke.msg(t('Escribe el tiempo así: 0:29 o 0:29.5')); return; }
+      input.classList.remove('bad'); input.blur();  // ya se aplicó: que se vuelva a dibujar con el formato 0:29.0
+      let start = span ? span[0] : null, end = span ? span[1] : null;
+      if (input.dataset.edge === 'start') { start = value; if (end == null || end <= start + 0.2) end = start + Math.max(1.5, units.reduce((n, u) => n + u.text.length, 0) * 0.09); }
+      else { end = value; if (start == null) { Karaoke.msg(t('Primero escribe a qué hora entra la frase.')); return; } }
+      Karaoke.setLineSpan(li, start, end);
+    });
+    $('#kLines').addEventListener('keydown', event => {
+      if (event.target.matches('input.kin') && event.key === 'Enter') {
+        event.preventDefault();
+        const k = [...document.querySelectorAll('#kLines input.kin')].indexOf(event.target);
+        event.target.dispatchEvent(new Event('change', {bubbles: true}));
+        const next = document.querySelectorAll('#kLines input.kin')[k + 1]; if (next) { next.focus(); next.select(); }
+      }
+    });
     $('#kLines').addEventListener('click', event => {
+      if (event.target.closest('input')) return;
       const from = event.target.dataset.from; if (from !== undefined) { Karaoke.startMark(+from); return; }
       const li = event.target.closest('li[data-i]'); if (!li) return;
       const units = Karaoke.proj.lines[+li.dataset.i]; if (units && units[0].start != null) { kMedia.currentTime = Math.max(0, units[0].start - 1.5); kMedia.play().catch(() => {}); }
