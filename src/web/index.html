@@ -149,6 +149,7 @@
     .ksteps li.todo { opacity: .55; }
     .kmethod-info ol { margin: 6px 0 0; padding-left: 20px; }
     .kmethod-info p { margin: 0; }
+    .kreturn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
     .ktl-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
     .ktl-bar .grow { flex: 1; }
     #kTimeline { display: block; width: 100%; height: 170px; margin-top: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); touch-action: none; cursor: default; }
@@ -425,7 +426,7 @@
       </section>
 
       <section class="panel">
-        <div class="list-head"><h2>2 · Marcar los tiempos</h2></div>
+        <div class="list-head"><h2>2 · Marcar los tiempos</h2><button class="secondary" type="button" id="kBackTop" data-for="guided auto semi manual">⬆ Regresar a los pasos</button></div>
         <div class="kgrid">
           <div>
             <canvas id="kCanvas" width="960" height="540"></canvas>
@@ -468,6 +469,10 @@
           <button class="secondary" id="ktZoomIn" type="button" title="Ver más de cerca">➕</button>
         </div>
         <canvas id="kTimeline" height="170"></canvas>
+        <div class="kreturn" data-for="guided">
+          <span class="khelp">¿Ya quedó? Revisaste con ▶ Vista previa y ajustaste en la línea de tiempo o en 📝 Frases:</span>
+          <button type="button" id="kAcceptBack">✅ Aceptar tiempos y regresar a los pasos</button>
+        </div>
         <p class="khelp" id="ktHelp">Arrastra una palabra para moverla · jala sus orillas para alargarla o acortarla · <b>Shift</b>+arrastrar mueve la frase completa · clic en lo vacío = ir a ese momento · arrastrar lo vacío = recorrer · rueda = acercar/alejar. Gris = la pista, color = la voz guía.</p>
       </section>
 
@@ -684,6 +689,10 @@
       '🎤➜🎵 Quitar voz': '🎤➜🎵 Remove vocals', 'Crea el video: 🎤 karaoke o 🎵 con letra': 'Create the video: 🎤 karaoke or 🎵 lyric video', 'En «3 · Fondo y video»': 'In “3 · Background and video”',
       '✅ Tiempos fijados. Ahora quita la voz para el karaoke (o ve directo a crear un video con letra).': '✅ Timing locked. Now remove the vocals for the karaoke (or go straight to creating a lyric video).',
       '✅ Voz quitada. Tus tiempos se quedan igual; ahora las palabras de cada frase se acomodan a la voz. Ya puedes crear el karaoke.': '✅ Vocals removed. Your timing stays the same; the words of each line now follow the voice. You can create the karaoke.',
+      'Revisa y ajusta: vista previa, línea de tiempo y 📝 Frases': 'Review and adjust: preview, timeline and 📝 Lines',
+      'Te lleva abajo; cuando termines, «✅ Aceptar tiempos y regresar a los pasos»': 'Takes you below; when you finish, “✅ Accept timing and go back to the steps”',
+      '⬆ Regresar a los pasos': '⬆ Back to the steps', '✅ Aceptar tiempos y regresar a los pasos': '✅ Accept timing and go back to the steps',
+      '¿Ya quedó? Revisaste con ▶ Vista previa y ajustaste en la línea de tiempo o en 📝 Frases:': 'All good? Checked with ▶ Preview and adjusted in the timeline or 📝 Lines:',
       'Marcar por': 'Mark by', '🎤 Voz guía': '🎤 Guide vocal', '✨ Ajustar a la voz': '✨ Fit to the voice',
       '— (elige la canción original, con voz)': '— (choose the original song, with vocals)', 'preparando': 'preparing',
       'No hay frases marcadas «por frase» para ajustar.': 'No lines marked “by line” to fit.', '✨ Listo: {n} frases acomodadas a la voz.': '✨ Done: {n} lines fitted to the voice.', 'Frase (como Apple Music)': 'Line (like Apple Music)', 'Palabra': 'Word',
@@ -1368,7 +1377,7 @@
         const run = async () => {
           const p = this.proj;
           const body = {id: p.id, title: p.title, lyrics: p.lyrics, lines: p.lines, offset: p.offset, sung_color: p.sung_color, bg: p.bg,
-            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, accepted: !!p.accepted, voice_removed: !!p.voice_removed, video_type: p.video_type || 'karaoke', lyrics_highlight: !!p.lyrics_highlight, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
+            color1: p.color1, color2: p.color2, format: p.format, mark_mode: p.mark_mode || 'line', method: p.method || null, accepted: !!p.accepted, reviewed: !!p.reviewed, voice_removed: !!p.voice_removed, video_type: p.video_type || 'karaoke', lyrics_highlight: !!p.lyrics_highlight, edited: p.edited || [], hide_unedited: !!p.hide_unedited, guide_token: p.guide ? p.guide.token : null, holds: p.holds || [], source_token: p.source ? p.source.token : null, image_token: p.image ? p.image.token : null};
           if (!p.source && !p.lyrics.trim() && !p.title.trim()) return;
           try {
             const data = await api('/api/karaoke/save', body);
@@ -1423,6 +1432,8 @@
           steps.push({ok: lines > 0 && timed === lines, title: t('Oyendo la voz, marca cuándo entra y sale cada frase'),
             info: (timed ? tf('{0} de {1} renglones con tiempo', timed, lines) + ' · ' : '') + t('ESPACIADORA sostenida por frase, o escribe entra/sale en 📝 Frases'),
             act: btn('mark', t('⏺ Marcar'), true), need: !!p.source && lines > 0});
+          steps.push({ok: !!p.reviewed || !!p.accepted, title: t('Revisa y ajusta: vista previa, línea de tiempo y 📝 Frases'),
+            info: t('Te lleva abajo; cuando termines, «✅ Aceptar tiempos y regresar a los pasos»'), act: btn('review', t('▶ Vista previa'), true), need: timed > 0});
           steps.push({ok: !!p.accepted, title: t('Acepta para fijar los tiempos'), info: p.accepted ? t('Tiempos fijados (los puedes seguir ajustando)') : t('Revisa con ▶ Vista previa antes de aceptar'),
             act: p.accepted ? '' : btn('accept', t('✅ Aceptar tiempos'), true), need: timed > 0});
           steps.push({ok: removed, wait: job ? (job.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', job.pct) : tf('Quitando la voz… {0} %', job.pct)) : guideWait,
@@ -1839,6 +1850,12 @@
       Karaoke.proj.method = i.value; Karaoke.applyMethod(); Karaoke.save();
     }));
     $('#kAutoTop').addEventListener('click', () => $('#ktAuto').click());
+    const kBackToSteps = () => { kMedia.pause(); $('#tabKaraoke section.panel').scrollIntoView({behavior: 'smooth', block: 'start'}); };
+    $('#kBackTop').addEventListener('click', kBackToSteps);
+    $('#kAcceptBack').addEventListener('click', () => {
+      Karaoke.proj.reviewed = true; Karaoke.proj.accepted = true; Karaoke.save(); Karaoke.renderSteps(); kBackToSteps();
+      Karaoke.msg(t('✅ Tiempos fijados. Ahora quita la voz para el karaoke (o ve directo a crear un video con letra).'));
+    });
     $('#kSteps').addEventListener('click', event => {
       const b = event.target.closest('button[data-act]'); if (!b) return;
       const go = el => el.scrollIntoView({behavior: 'smooth', block: 'start'});
@@ -1852,6 +1869,8 @@
         case 'mark': go(step2); setTimeout(() => { if (!Karaoke.marking) Karaoke.startMark(0); }, 500); break;
         case 'preview': go(step2); setTimeout(() => { kMedia.currentTime = 0; kMedia.play().catch(() => {}); }, 400); break;
         case 'export': go(step3); break;
+        case 'review': Karaoke.proj.reviewed = true; Karaoke.save(); Karaoke.renderSteps(); go(step2);
+          setTimeout(() => { const sp = KT.lineSpan(0); kMedia.currentTime = sp ? Math.max(0, sp[0] - 2) : 0; kMedia.play().catch(() => {}); }, 500); break;
         case 'accept': Karaoke.proj.accepted = true; Karaoke.save(); Karaoke.renderSteps(); Karaoke.msg(t('✅ Tiempos fijados. Ahora quita la voz para el karaoke (o ve directo a crear un video con letra).')); break;
         case 'removevoice': kRemoveVoice({token: Karaoke.proj.source.token, name: Karaoke.proj.source.name}, 'guided'); break;
       }

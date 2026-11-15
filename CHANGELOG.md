@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 2.8.1 — Paso a paso: revisar y regresar
+- Nuevo paso **4 · Revisa y ajusta** con botón **▶ Vista previa**: te lleva abajo y empieza a reproducir desde la primera frase.
+- Abajo, junto a la línea de tiempo, **✅ Aceptar tiempos y regresar a los pasos**: fija los tiempos y te sube de nuevo a la lista. También hay **⬆ Regresar a los pasos** junto al título del paso 2.
+- Los pasos siguientes se recorren: 5 Aceptar · 6 Quitar voz · 7 Crear el video.
+
 ## 2.8.0 — Karaoke «🧭 Paso a paso» (recomendado)
 Para canciones con voz (video o solo audio), el flujo más limpio:
 1. **Sube la canción** con voz y música, tal cual.
