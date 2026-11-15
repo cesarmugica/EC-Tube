@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 2.5.4 — Karaoke: la letra ya no arranca antes de que se cante
+- El separador deja «fantasmas» de la música en la voz (sobre todo en la intro). Antes contaban como si alguien cantara y la letra empezaba antes de tiempo. Ahora solo cuenta como voz lo que suena de verdad por encima de la música; lo demás se ignora (para el borrador automático, para «Frase + voz» y en la línea de tiempo).
+- En el borrador automático, la voz suelta antes del primer renglón (intro, «yeah», partes habladas) se salta más fácil.
+
 ## 2.5.3 — Arreglo: «🤖 Poner tiempos solo» se quedaba apagado
 - Al terminar de quitar la voz, una consulta vieja (la que intenta adivinar la canción original en tus carpetas) podía llegar al último y apagar el botón para siempre, aunque la voz ya estuviera lista. Ahora solo cuenta la respuesta más reciente, y si algo falla se vuelve a intentar.
 - Para adivinar la canción original también se busca en la carpeta de la pista y en las carpetas de antes (`Música\EC-Tube`, `Videos\EC-Tube`…).

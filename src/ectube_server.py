@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.5.3"
+APP_VERSION = "2.5.4"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1143,6 +1143,9 @@ class Guide:
                 self.mix_env = voice_envelope(mix.mean(axis=0))
                 cache.parent.mkdir(parents=True, exist_ok=True)
                 np.savez_compressed(cache, env=self.env, mix=self.mix_env)
+            from ectube_karaoke import clean_voice
+
+            self.env = clean_voice(self.env, self.mix_env)  # solo donde de verdad se canta
             self.state, self.percent = "ready", 100
             log(f"[karaoke] voz guía lista: {self.path.name}")
         except Exception as exc:  # noqa: BLE001

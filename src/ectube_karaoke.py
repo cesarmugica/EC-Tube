@@ -169,6 +169,17 @@ def voice_envelope(vocals_mono, rate: int = 44100):
     return np.convolve(db, kernel, mode="same").astype(np.float32)
 
 
+def clean_voice(env, mix, margin_db: float = 12.0):
+    """Quitar lo que NO es voz de la voz separada: el separador deja «fantasmas» de la música (intro,
+    instrumentos fuertes). Si la «voz» está muy por debajo de la canción completa en ese momento
+    (más de 12 dB), es eco de la música, no alguien cantando."""
+    import numpy as np
+
+    if mix is None or len(mix) != len(env):
+        return env
+    return np.where(env - mix >= -margin_db, env, np.float32(-90)).astype(np.float32)
+
+
 def _weight(text: str) -> float:
     """Cuánto «dura» al cantarse: sílabas (grupos de vocales) y un poco por letra."""
     groups, prev = 0, False
@@ -316,8 +327,9 @@ def auto_align(env, lines: list[list[str]]) -> list[list[tuple[float, float]] | 
             c0 = cost[i][j]
             if c0 == INF:
                 continue
-            if j < P and c0 + 1.2 < cost[i][j + 1]:  # saltar un tramo (voz sin letra)
-                cost[i][j + 1], back[i][j + 1] = c0 + 1.2, ("skip",)
+            skip = 0.5 if i == 0 else 1.2  # antes del primer renglón (intro, «yeah», hablado) saltar es barato
+            if j < P and c0 + skip < cost[i][j + 1]:  # saltar un tramo (voz sin letra)
+                cost[i][j + 1], back[i][j + 1] = c0 + skip, ("skip",)
             if i == L:
                 continue
             for nl in range(1, MAXRUN + 1):
