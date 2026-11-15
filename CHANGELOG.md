@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 2.9.5 — Karaoke más compacto
+- «👁 Ver cómo quedó», «⏺ Marcar», Velocidad y Ajuste fino pasan debajo del video; a la derecha quedan Play/pausa, Entra/Sale = ahora y las notas. Así 📝 Frases sube y cabe todo en la pantalla.
+- En la pestaña Karaoke ya no aparece la barra del reproductor de música (solo si de verdad está sonando algo), para que no tape las frases.
+
 ## 2.9.4 — Editar la letra desde 📝 Frases
 - Cada frase tiene botones: **⏺** marcar desde aquí · **✏** editar el texto · **➕** agregar una frase debajo · **🗑** borrarla (por ejemplo, una parte hablada que no quieres en el karaoke).
 - Las demás frases conservan sus tiempos. Si editas una frase y tiene las mismas palabras, conserva sus tiempos; si cambia, se reparte en el mismo tramo.

@@ -152,6 +152,9 @@
     .ksteps li.todo { opacity: .55; }
     .kmethod-info ol { margin: 6px 0 0; padding-left: 20px; }
     .kmethod-info p { margin: 0; }
+    .kctl { margin-top: 8px; gap: 8px; align-items: center; }
+    .kctl .field { gap: 6px; }
+    .kctl #kOffset { width: 110px; }
     .ksep { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
     .kplayer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .kplayer .know { font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); }
@@ -185,6 +188,9 @@
     .knotice pre { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-family: inherit; font-size: .86rem; margin: 8px 0 10px; }
     /* ---------- Reproductor ---------- */
     body.has-player main { padding-bottom: 120px; }
+    /* En Karaoke la barra de la música estorba: solo se ve si de verdad está sonando algo */
+    body.tab-karaoke:not(.music-on) .playerbar { display: none; }
+    body.tab-karaoke:not(.music-on) main { padding-bottom: 24px; }
     .pl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .pl-head select { flex: 1 1 220px; min-width: 0; font-weight: 600; }
     .pl-info { color: var(--muted); font-size: .85rem; margin: 10px 2px 6px; }
@@ -449,6 +455,14 @@
             <canvas id="kCanvas" width="960" height="540"></canvas>
             <video id="kMedia" preload="auto" playsinline hidden></video>
             <div class="pb-seek" style="margin-top:8px"><span id="kCur">0:00</span><input type="range" id="kSeek" min="0" max="1" step="0.05" value="0" aria-label="Posición"><span id="kDur">0:00</span></div>
+            <div class="row kctl">
+              <button class="secondary" id="kPlay" type="button" title="Ver el resultado desde la primera frase, como va a quedar el video">👁 Ver cómo quedó</button>
+              <button id="kAutoTop" type="button" data-for="auto">🤖 Poner tiempos solo</button>
+              <button id="kMark" type="button">⏺ Marcar desde el inicio</button>
+              <label class="field" data-for="manual">Marcar por <select id="kMode"><option value="line">Frase (como Apple Music)</option><option value="word">Palabra</option></select></label>
+              <label class="field">Velocidad <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
+              <label class="field" title="Si la letra se ilumina tarde, muévelo a la izquierda">Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
+            </div>
 
           </div>
           <div class="kside">
@@ -465,16 +479,6 @@
             </div>
             <p class="khelp" style="margin:4px 0 0">Escucha, pon <b>pausa</b> (K) cuando termine una frase y usa <b>Entra/Sale = ahora</b> (I / O), o escribe los tiempos en 📝 Frases. Clic en una frase para elegirla.</p>
             <hr class="ksep">
-            <div class="row" style="margin-top:0">
-              <button class="secondary" id="kPlay" type="button" title="Ver el resultado desde la primera frase, como va a quedar el video">👁 Ver cómo quedó</button>
-              <button id="kAutoTop" type="button" data-for="auto">🤖 Poner tiempos solo</button>
-              <button id="kMark" type="button">⏺ Marcar desde el inicio</button>
-            </div>
-            <div class="row">
-              <label class="field" data-for="manual">Marcar por <select id="kMode"><option value="line">Frase (como Apple Music)</option><option value="word">Palabra</option></select></label>
-              <label class="field">Velocidad <select id="kSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
-              <label class="field" title="Si la letra se ilumina tarde, muévelo a la izquierda">Ajuste fino <input type="range" id="kOffset" min="-0.5" max="0.5" step="0.01" value="0"> <span id="kOffsetText">0.00 s</span></label>
-            </div>
             <div class="row kguide" data-for="semi auto">
               <span class="field" style="white-space:nowrap" title="La canción original, CON voz. Con ella la letra se ilumina siguiendo al cantante.">🎤 Voz guía</span>
               <code id="kGuide" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</code>
@@ -1074,6 +1078,7 @@
       $('#tabDownload').hidden = name !== 'download'; $('#tabPlayer').hidden = name !== 'player'; $('#tabKaraoke').hidden = name !== 'karaoke';
       try { localStorage.setItem('ectube-tab', name); } catch (_) {}
       if (name === 'player') { Player.init(); Library.load(); }
+      document.body.classList.toggle('tab-karaoke', name === 'karaoke');
       if (name === 'karaoke') Karaoke.init();
       if (name !== 'karaoke') { Karaoke.leave(); $('#kMini').hidden = true; }
     }
@@ -1258,6 +1263,8 @@
       const list = Player.playingList(), item = list && list.items.find(i => i.token === Player.playing.token);
       if (item && !item.duration && isFinite(audio.duration)) { item.duration = audio.duration; Player.render(); Player.save(); }
     });
+    audio.addEventListener('play', () => document.body.classList.add('music-on'));
+    audio.addEventListener('pause', () => document.body.classList.remove('music-on'));
     audio.addEventListener('play', () => { Player.renderBar(); Player.render(); });
     audio.addEventListener('pause', () => { Player.renderBar(); Player.render(); });
     audio.addEventListener('ended', () => Player.next(true));
