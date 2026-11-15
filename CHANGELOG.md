@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 2.1.3
+- **📁 Tus archivos** (en «Descargar y recortar»): lista lo que hay de verdad en tus carpetas de descargas o editados (audio o video), aunque EC-Tube se haya cerrado o actualizado, con buscador y botones **✂ Editar**, ▶ abrir y 📂 ver en la carpeta. «🔄 Volver a leer la carpeta» la actualiza (también se actualiza sola al terminar una descarga o un recorte).
+- Las ventanas de Windows para elegir archivo o carpeta ahora salen al frente (antes podían abrirse detrás de EC-Tube).
+
 ## 2.1.2
 - Editor: al elegir «Solo música» o «Solo voz», el botón cambia a **«🎵 Quitar la voz y guardar»** / **«🎤 Quitar la música y guardar»** y aparece la explicación (antes parecía que el menú no hacía nada).
 

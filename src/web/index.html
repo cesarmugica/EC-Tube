@@ -237,6 +237,22 @@
       <div class="list-head"><h2>Descargas</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" id="trimFile" type="button">✂ Recortar un archivo…</button><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div></div>
       <div id="jobs"><p class="empty">Aquí aparecen tus descargas.</p></div>
     </section>
+
+    <section class="panel">
+      <div class="list-head"><h2>📁 Tus archivos</h2><button class="secondary" id="filesRefresh" type="button">🔄 Volver a leer la carpeta</button></div>
+      <div class="lib-head" style="margin-top:12px">
+        <div class="seg" role="radiogroup" aria-label="Carpeta">
+          <label><input type="radio" name="filesWhere" value="downloads" checked><span>⬇ Descargas</span></label>
+          <label><input type="radio" name="filesWhere" value="edited"><span>✂ Editados</span></label>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Tipo">
+          <label><input type="radio" name="filesKind" value="audio" checked><span>🎵 Audio</span></label>
+          <label><input type="radio" name="filesKind" value="video"><span>🎬 Video</span></label>
+        </div>
+        <input id="filesSearch" type="search" placeholder="Buscar…" aria-label="Buscar archivo">
+      </div>
+      <ul class="lib" id="files"></ul>
+    </section>
     </div>
 
     <div id="tabPlayer" style="display:grid;gap:18px" hidden>
@@ -510,7 +526,9 @@
       'Repetir: toda la lista': 'Repeat: whole list', 'Repetir: esta canción': 'Repeat: this song', 'Elige los archivos en la ventana que se abrió…': 'Choose the files in the window that opened…',
       'Canción {0} de {1} · {2}': 'Song {0} of {1} · {2}', 'Ya está en la lista': 'Already in the list',
       'Instalando la versión nueva… se abrirá una ventana nueva. Esta se cierra sola.': 'Installing the new version… a new window will open. This one closes by itself.',
-      'Qué guardar': 'What to save', '🎵 Quitar la voz y guardar': '🎵 Remove vocals and save', '🎤 Quitar la música y guardar': '🎤 Remove music and save',
+      'Qué guardar': 'What to save', '📁 Tus archivos': '📁 Your files', '🔄 Volver a leer la carpeta': '🔄 Re-read the folder', 'Editar': 'Edit',
+      'Abrir con el reproductor de Windows': 'Open with the Windows player', 'No hay archivos en esta carpeta todavía.': 'No files in this folder yet.',
+      'Buscar archivo': 'Search file', 'Tipo': 'Type', '🎵 Quitar la voz y guardar': '🎵 Remove vocals and save', '🎤 Quitar la música y guardar': '🎤 Remove music and save',
       'Elige el tramo (o déjalo completo) y presiona el botón morado. La primera vez baja el separador (~65 MB); tarda un poco según la duración.': 'Choose the section (or leave it whole) and press the purple button. The first time it downloads the separator (~65 MB); it takes a while depending on the length.', '📋 Copiar texto': '📋 Copy text', '✅ Copiado': '✅ Copied', '[Nombre de la canción]': '[Song name]',
       'Esto es una orientación general, no asesoría legal.': 'This is general guidance, not legal advice.',
       'Dale «⏺ Marcar» y, mientras se canta cada palabra (o sílaba), mantén presionada la ESPACIADORA; suéltala al terminarla. ⌫ deshace la última · Esc detiene.': 'Press “⏺ Mark” and, while each word (or syllable) is sung, hold SPACE; release it when it ends. ⌫ undo last · Esc stop.',
@@ -668,6 +686,31 @@
     });
     $('#openEdited').addEventListener('click', () => api('/api/open-folder', {kind: readForm().kind, which: 'edited'}).catch(error => say(error.message)));
     $('#clear').addEventListener('click', () => api('/api/jobs/clear', {}).then(refreshJobs).catch(() => {}));
+    // ---------- Tus archivos (lo que hay en las carpetas, aunque EC-Tube se haya reiniciado) ----------
+    const Files = {
+      items: [],
+      async load() {
+        const where = document.querySelector('input[name=filesWhere]:checked').value, kind = document.querySelector('input[name=filesKind]:checked').value;
+        try { this.items = (await api(`/api/library?where=${where}&kind=${kind}`)).items; } catch (error) { this.items = []; say(error.message); }
+        this.render();
+      },
+      filtered() { const q = $('#filesSearch').value.trim().toLowerCase(); return q ? this.items.filter(i => (i.file + ' ' + i.sub).toLowerCase().includes(q)) : this.items; },
+      render() {
+        const items = this.filtered();
+        $('#files').innerHTML = items.length ? items.slice(0, 400).map((item, i) => `<li><span class="lname" title="${esc(item.file)}">${esc(item.file)}${item.sub ? `<small>${esc(item.sub)}</small>` : ''}</span>
+          <span style="display:flex;gap:6px"><button type="button" data-edit="${i}">✂ ${t('Editar')}</button><button class="secondary" type="button" data-play="${i}" title="${t('Abrir con el reproductor de Windows')}">▶</button><button class="secondary" type="button" data-reveal="${i}" title="${t('Ver en la carpeta')}">📂</button></span></li>`).join('')
+          : `<li><span class="lname" style="color:var(--muted)">${t(this.items.length ? 'Nada coincide con la búsqueda.' : 'No hay archivos en esta carpeta todavía.')}</span></li>`;
+      },
+    };
+    $('#files').addEventListener('click', event => {
+      const d = event.target.dataset, list = Files.filtered();
+      if (d.edit !== undefined) openEditorByToken(list[+d.edit].token);
+      else if (d.play !== undefined) api('/api/file/open', {token: list[+d.play].token}).catch(error => say(error.message));
+      else if (d.reveal !== undefined) api('/api/file/reveal', {token: list[+d.reveal].token}).catch(error => say(error.message));
+    });
+    document.querySelectorAll('input[name=filesWhere], input[name=filesKind]').forEach(i => i.addEventListener('change', () => Files.load()));
+    $('#filesSearch').addEventListener('input', () => Files.render());
+    $('#filesRefresh').addEventListener('click', () => Files.load());
     $('#updateEngine').addEventListener('click', async () => {
       $('#updateEngine').disabled = true; $('#engine').textContent = t('Actualizando motor…');
       try { await api('/api/engine/update', {}); } catch (_) {}
@@ -705,6 +748,8 @@
         const html = data.jobs.length ? data.jobs.map(jobHtml).join('') : `<p class="empty">${t('Aquí aparecen tus descargas.')}</p>`;
         if (html !== lastJobs) { $('#jobs').innerHTML = html; lastJobs = html; }
         const busy = data.jobs.some(job => ['queued', 'running', 'converting'].includes(job.status));
+        const doneCount = data.jobs.filter(job => job.status === 'done').length;
+        if (doneCount !== refreshJobs.done) { if (refreshJobs.done !== undefined && typeof Files !== 'undefined') Files.load(); refreshJobs.done = doneCount; }
         clearTimeout(refreshJobs.timer); refreshJobs.timer = setTimeout(refreshJobs, busy ? 700 : 4000);
       } catch (_) { clearTimeout(refreshJobs.timer); refreshJobs.timer = setTimeout(refreshJobs, 4000); }
     }
@@ -800,6 +845,7 @@
           }
           $('#saveTrim').disabled = false;
           if (state.status === 'done') {
+            Files.load();
             $('#trimStatus').innerHTML = `✅ ${t('Guardado como')} <strong>${esc(state.output)}</strong> · <button class="link" type="button" id="trimReveal">${t('Ver en la carpeta')}</button> · <button class="link" type="button" id="trimOpenNew">${t('Abrir el recorte aquí')}</button>`;
             $('#trimReveal').onclick = () => api(`/api/trim/${job.id}/reveal`, {}).catch(() => {});
             $('#trimOpenNew').onclick = () => openEditor(state.media);
@@ -1348,6 +1394,8 @@
       try { const info = await api('/api/info'); settings = info.settings; applySettings(); showInfo(info); }
       catch (_) { say(t('No se pudo conectar con EC-Tube. Ciérralo y vuelve a abrirlo.')); }
       refreshJobs();
+      document.querySelectorAll('input[name=filesKind]').forEach(i => { i.checked = i.value === (settings.kind === 'video' ? 'video' : 'audio'); });
+      Files.load();
       setInterval(() => fetch('/api/ping').catch(() => {}), 20000);
       let tab = 'download'; try { tab = localStorage.getItem('ectube-tab') || 'download'; } catch (_) {}
       showTab(['player', 'karaoke'].includes(tab) ? tab : 'download');

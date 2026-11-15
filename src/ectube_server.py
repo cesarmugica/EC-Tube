@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "2.1.2"
+APP_VERSION = "2.1.3"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -760,9 +760,11 @@ PLAYLISTS_LOCK = threading.Lock()
 MAX_LISTS, MAX_ITEMS = 100, 5000
 
 
-def library(where: str) -> dict:
-    """Canciones de una carpeta (y sus subcarpetas, p. ej. listas de YouTube), las más nuevas primero."""
-    folder = Path(CONFIG["audio_edited_folder"] if where == "edited" else CONFIG["audio_folder"])
+def library(where: str, kind: str = "audio") -> dict:
+    """Archivos de una carpeta (y sus subcarpetas, p. ej. listas de YouTube), los más nuevos primero."""
+    kind = "video" if kind == "video" else "audio"
+    folder = Path(CONFIG[f"{kind}_edited_folder"] if where == "edited" else CONFIG[f"{kind}_folder"])
+    exts = VIDEO_EXTS if kind == "video" else AUDIO_EXTS
     files = []
     if folder.is_dir():
         base_depth = len(folder.parts)
@@ -771,7 +773,7 @@ def library(where: str) -> dict:
                 dirs[:] = []
             for name in names:
                 path = Path(root) / name
-                if path.suffix.lower() in AUDIO_EXTS and not name.endswith((".part", ".ytdl")):
+                if path.suffix.lower() in exts and not name.endswith((".part", ".ytdl")):
                     with contextlib.suppress(OSError):
                         stat = path.stat()
                         files.append((stat.st_mtime, path, stat.st_size))
@@ -1033,7 +1035,7 @@ def pick_files(initial: str) -> list[str]:
     english = current_language() == "en"
     script = (
         "Add-Type -AssemblyName System.Windows.Forms;"
-        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
+        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false; Opacity=0; StartPosition='CenterScreen'}; $owner.Show(); $owner.Activate();"
         "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true;"
         f"$d.Title = '{english and 'Choose songs for the list' or 'Elige canciones para la lista'}';"
         f"$d.Filter = '{english and 'Audio and video' or 'Audio y video'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
@@ -1062,7 +1064,7 @@ def pick_file(kind: str = "media") -> str | None:
     title = titles.get(kind, ("Choose the audio or video to trim", "Elige el audio o video que quieres recortar"))[0 if english else 1]
     script = (
         "Add-Type -AssemblyName System.Windows.Forms;"
-        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
+        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false; Opacity=0; StartPosition='CenterScreen'}; $owner.Show(); $owner.Activate();"
         "$d = New-Object System.Windows.Forms.OpenFileDialog;"
         f"$d.Title = '{title}';"
         f"$d.Filter = '{english and ('Images' if kind == 'image' else 'Audio and video') or ('Imágenes' if kind == 'image' else 'Audio y video')}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
@@ -1089,7 +1091,7 @@ def pick_folder(initial: str) -> str | None:
         return None
     script = (
         "Add-Type -AssemblyName System.Windows.Forms;"
-        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
+        "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false; Opacity=0; StartPosition='CenterScreen'}; $owner.Show(); $owner.Activate();"
         "$d = New-Object System.Windows.Forms.FolderBrowserDialog;"
         f"$d.Description = '{'Folder for EC-Tube downloads' if current_language() == 'en' else 'Carpeta para las descargas de EC-Tube'}';"
         "$d.ShowNewFolderButton = $true;"
@@ -1257,8 +1259,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/update":
             self.send_json(UPDATER.public())
         elif path == "/api/library":
-            where = parse_qs(urlsplit(self.path).query).get("where", ["downloads"])[0]
-            self.send_json({"ok": True, **library("edited" if where == "edited" else "downloads")})
+            query = parse_qs(urlsplit(self.path).query)
+            where, kind = query.get("where", ["downloads"])[0], query.get("kind", ["audio"])[0]
+            self.send_json({"ok": True, **library("edited" if where == "edited" else "downloads", kind)})
         elif path == "/api/playlists":
             self.send_json({"ok": True, **playlists_public(load_playlists())})
         elif path == "/api/karaoke/projects":
@@ -1375,6 +1378,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, **save_playlists(data)})
             except (ValueError, OSError) as exc:
                 self.send_json({"ok": False, "error": str(exc)}, 400)
+        elif path in ("/api/file/open", "/api/file/reveal"):
+            target = MEDIA.path(str(data.get("token") or ""))
+            if not target or not target.is_file():
+                self.send_json({"ok": False, "error": "El archivo ya no está en su carpeta."}, 404)
+            elif path.endswith("open") and IS_WINDOWS:
+                os.startfile(str(target))  # type: ignore[attr-defined]
+                self.send_json({"ok": True})
+            else:
+                open_in_explorer(target, select=True)
+                self.send_json({"ok": True})
         elif path == "/api/media-info":
             source = MEDIA.path(str(data.get("token") or ""))
             if not source or not source.is_file():
