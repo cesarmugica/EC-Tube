@@ -1269,6 +1269,11 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "video HDR, como los del iPhone": "HDR video, like the iPhone ones",
+      "formato {0}": "{0} format",
+      "📱 Preparando «{0}» para poder verlo y editarlo ({1})… {2} %": "📱 Preparing “{0}” so it can be viewed and edited ({1})… {2} %",
+      "✅ «{0}» listo. EC-Tube hizo una copia compatible (tu video original no cambia).": "✅ “{0}” ready. EC-Tube made a compatible copy (your original video does not change).",
+      "No se pudo preparar el video.": "Could not prepare the video.",
       "Empezando…": "Starting…",
       "Sí, continuar": "Yes, continue",
       "Sí": "Yes",
@@ -1804,6 +1809,22 @@
       finally { button.disabled = false; }
     });
 
+    // ---------- Videos del iPhone (HEVC / HDR): EC-Tube hace solo una copia compatible ----------
+    async function compatMedia(media, show) {
+      if (!media || media.kind !== 'video') return media;
+      let r; try { r = await api('/api/compat', {token: media.token}); } catch (_) { return media; }
+      if (!r.needed) return media;
+      if (r.media) return r.media;   // ya estaba preparada de antes
+      const why = r.hdr ? t('video HDR, como los del iPhone') : tf('formato {0}', (r.codec || '').toUpperCase());
+      while (true) {
+        const j = await api('/api/compat/' + r.job.id).catch(() => null);
+        if (!j) return media;
+        if (j.status === 'running') { show(tf('📱 Preparando «{0}» para poder verlo y editarlo ({1})… {2} %', media.name, why, Math.round(j.percent)), true); await new Promise(res => setTimeout(res, 900)); continue; }
+        if (j.status === 'done') { show(tf('✅ «{0}» listo. EC-Tube hizo una copia compatible (tu video original no cambia).', media.name), true); return j.media; }
+        show(t(j.error || 'No se pudo preparar el video.')); return media;
+      }
+    }
+
     // ---------- Edición: onda, fragmentos de una o varias fuentes y edición final ----------
     const fmt2 = t => { t = Math.max(0, t || 0); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t - h * 3600 - m * 60;
       const ss = (s < 10 ? '0' : '') + s.toFixed(2); return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
@@ -1857,7 +1878,8 @@
       },
       list(tr) { return tr === 'audio' ? this.afrags : this.frags; },
       async addToken(token) { try { this.add((await api('/api/media-info', {token})).media); } catch (error) { say(error.message); } },
-      add(media) {
+      async add(media) {
+        media = await compatMedia(media, (text, ok) => this.say(text, ok));
         if (!this.sources.length && media.kind !== this.kind) this.setKind(media.kind);  // la primera fuente decide (luego puedes cambiar)
         if (this.kind === 'video' && media.kind === 'audio') {
           if (this.vaudio !== 'other') { this.say(t('Para usar una canción en un video, en «Audio del video final» elige «🎵 Otra pista de audio».')); $('#edPanel').scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
@@ -2709,7 +2731,8 @@
         }
         $('#sQuick').innerHTML = html;
       },
-      setSource(media, url) {
+      async setSource(media, url) {
+        media = await compatMedia({kind: 'video', ...media, name: media.name || media.file}, text => { $('#sDlMsg').textContent = text; });
         this.p.source = {token: media.token, name: media.name || media.file, exists: true};
         if (!this.p.title) { this.p.title = (media.name || media.file || '').replace(/\.[^.]+$/, ''); $('#sTitle').value = this.p.title; }
         if (url) { this.p.url = url; $('#sUrl').value = url; }

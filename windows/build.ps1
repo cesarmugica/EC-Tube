@@ -91,6 +91,10 @@ Invoke-Checked $python ($pythonArgs + @(
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 foreach ($exe in 'yt-dlp.exe', 'deno.exe', 'ffmpeg.exe', 'ffprobe.exe') { Copy-Item (Join-Path $cache $exe) (Join-Path $binDir $exe) -Force }
 
+# FFmpeg debe traer zscale (para pasar los videos HDR del iPhone a colores normales).
+$filters = & (Join-Path $binDir 'ffmpeg.exe') -hide_banner -filters 2>&1 | Out-String
+if ($filters -notmatch 'zscale') { throw 'Este FFmpeg no trae zscale (videos HDR).' }
+
 # Prueba rápida: que yt-dlp corra.
 $ytv = & (Join-Path $binDir 'yt-dlp.exe') --version
 if ($LASTEXITCODE -ne 0) { throw 'yt-dlp.exe no corrió.' }

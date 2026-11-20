@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.1.4"
+APP_VERSION = "5.2.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -799,7 +799,7 @@ def probe(path: Path) -> dict:
     key = (str(path), path.stat().st_mtime)
     if key in PROBE_CACHE:
         return PROBE_CACHE[key]
-    info = {"duration": 0.0, "audio": False, "width": 0, "height": 0}
+    info = {"duration": 0.0, "audio": False, "width": 0, "height": 0, "codec": "", "fps": 0.0, "hdr": False, "deep": False}
     if FFMPEG:
         out = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-i", str(path)], capture_output=True, text=True,
                              encoding="utf-8", errors="replace", creationflags=_no_window_flags()).stderr
@@ -810,6 +810,13 @@ def probe(path: Path) -> dict:
         v = re.search(r"Stream #\S+.*?: Video:(?!.*attached pic).*?(\d{2,5})x(\d{2,5})", out)
         if v:
             info["width"], info["height"] = int(v[1]), int(v[2])
+            line = next((x for x in out.splitlines() if ": Video:" in x and "attached pic" not in x), "")
+            c = re.search(r"Video:\s*(\w+)", line)
+            info["codec"] = c.group(1).lower() if c else ""
+            f = re.search(r"([\d.]+)\s*fps", line)
+            info["fps"] = float(f.group(1)) if f else 0.0
+            info["hdr"] = bool(re.search(r"bt2020|arib-std-b67|smpte2084", line))
+            info["deep"] = bool(re.search(r"p1[02]le|p1[02]be", line))
     PROBE_CACHE[key] = info
     return info
 
@@ -1096,6 +1103,97 @@ def anims_remove(anim_id: str) -> None:
     path.unlink()
 
 
+# ---------- Videos del iPhone (HEVC / HDR / 10 bits): una copia compatible para poder verlos y editarlos ----------
+COMPAT_DIR = HOME / "compatibles"
+BROWSER_CODECS = {"h264", "vp8", "vp9", "av1"}
+TONEMAP = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,"
+           "zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+
+
+def needs_compat(path: Path) -> bool:
+    if path.suffix.lower() not in VIDEO_EXTS or not path.is_file():
+        return False
+    info = probe(path)
+    return bool(info["codec"]) and (info["codec"] not in BROWSER_CODECS or info["hdr"] or info["deep"])
+
+
+def compat_path(path: Path) -> Path:
+    stat = path.stat()
+    key = hashlib.sha1(f"{path}|{stat.st_size}|{int(stat.st_mtime)}".encode()).hexdigest()[:16]
+    return COMPAT_DIR / key / f"{path.stem}.mp4"
+
+
+class CompatJob:
+    """Pasar un video HEVC/HDR (como los del iPhone) a H.264 normal: mismo tamaño y fps, colores corregidos."""
+
+    def __init__(self, source: Path) -> None:
+        self.id = uuid.uuid4().hex[:12]
+        self.source, self.output = source, compat_path(source)
+        self.status, self.percent, self.error = "running", 0.0, ""
+        self.process: subprocess.Popen | None = None
+
+    def _run(self, vf: str, tmp: Path) -> tuple[int, list[str]]:
+        info = probe(self.source)
+        fps = info["fps"]
+        if fps > 61:  # cámara lenta de 120/240 fps: se queda en 60
+            vf += ",fps=60"
+        args = [FFMPEG, "-hide_banner", "-nostdin", "-y", "-i", str(self.source), "-map", "0:v:0", "-map", "0:a:0?",
+                "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart", "-progress", "pipe:1", "-nostats", str(tmp)]
+        self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                                        errors="replace", creationflags=_no_window_flags())
+        errors: list[str] = []
+        threading.Thread(target=lambda: errors.extend(self.process.stderr.readlines()), daemon=True).start()  # type: ignore[union-attr]
+        duration = max(0.5, info["duration"])
+        for line in self.process.stdout:  # type: ignore[union-attr]
+            if line.startswith(("out_time_us=", "out_time_ms=")):
+                with contextlib.suppress(ValueError):
+                    self.percent = min(99.0, int(line.split("=", 1)[1]) / 1e6 / duration * 100)
+        return self.process.wait(), errors
+
+    def run(self) -> None:
+        tmp = self.output.with_suffix(".tmp.mp4")
+        try:
+            if not FFMPEG:
+                raise RuntimeError("No se encontró FFmpeg.")
+            self.output.parent.mkdir(parents=True, exist_ok=True)
+            hdr = probe(self.source)["hdr"]
+            log(f"[compatible {self.id}] {self.source.name} ({probe(self.source)['codec']}{', HDR' if hdr else ''})")
+            code, errors = self._run(TONEMAP if hdr else "format=yuv420p", tmp)
+            if code != 0 and hdr:  # si este FFmpeg no trae zscale: sin ajustar el brillo (mejor eso que nada)
+                log(f"[compatible {self.id}] sin tonemap: {''.join(errors[-3:])[:300]}")
+                self.percent = 0.0
+                code, errors = self._run("format=yuv420p", tmp)
+            if code != 0 or not tmp.exists():
+                raise RuntimeError(friendly_error("".join(errors[-20:])) if errors else "No se pudo preparar el video.")
+            tmp.replace(self.output)
+            self.status, self.percent = "done", 100.0
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+            log(f"[compatible {self.id}] error: {exc}")
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+
+    def public(self) -> dict:
+        return {"id": self.id, "status": self.status, "percent": round(self.percent, 1), "error": self.error,
+                "media": media_info(self.output) if self.status == "done" else None}
+
+
+COMPAT_JOBS: dict[str, CompatJob] = {}
+
+
+def clean_compat(days: int = 30) -> None:
+    """Las copias compatibles que no se han usado en un mes se borran solas (el video original no se toca)."""
+    if not COMPAT_DIR.is_dir():
+        return
+    limit = time.time() - days * 86400
+    for folder in COMPAT_DIR.iterdir():
+        with contextlib.suppress(OSError):
+            newest = max((p.stat().st_atime for p in folder.iterdir()), default=0)
+            if newest < limit:
+                shutil.rmtree(folder, ignore_errors=True)
+
+
 def waveform(path: Path, buckets: int = 1600) -> dict:
     """La onda: el nivel más alto de cada pedacito (0 a 1), para ver dónde hay silencios o baja el volumen."""
     import numpy as np
@@ -1261,12 +1359,13 @@ class EditJob:
 
         info = probe(self.fragments[0][0])
         width, height = (info["width"] or 1280) // 2 * 2, (info["height"] or 720) // 2 * 2
+        fps = min(60.0, max(24.0, round(info["fps"] or 30, 3)))  # los cuadros por segundo del primer video (60 se queda en 60)
         vlabels = []
         for i, (path, start, end) in enumerate(self.fragments):
             dur = end - start
             idx = add_input(path, start, dur)
             chains.append(f"[{idx}:v:0]setpts=PTS-STARTPTS,scale={width}:{height}:force_original_aspect_ratio=decrease,"
-                          f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p[v{i}]")
+                          f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},format=yuv420p[v{i}]")
             vlabels.append(f"[v{i}]")
             if self.audio_mode == "own":
                 aidx = idx if probe(path)["audio"] else silence(dur)  # video sin audio: silencio del mismo largo
@@ -2470,6 +2569,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/subs/auto/"):
             job = ASR_JOBS.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe ese trabajo."}, 200 if job else 404)
+        elif path.startswith("/api/compat/"):
+            job = COMPAT_JOBS.get(path.rsplit("/", 1)[-1])
+            self.send_json(job.public() if job else {"ok": False, "error": "No existe ese trabajo."}, 200 if job else 404)
         elif path.startswith("/api/subs/export/"):
             job = SUBS_JOBS.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
@@ -2708,6 +2810,24 @@ class Handler(BaseHTTPRequestHandler):
             job = DOWNLOADS.add([url], {"kind": "video", "audio_format": CONFIG["audio_format"], "audio_quality": CONFIG["audio_quality"],
                                         "video_quality": CONFIG["video_quality"], "folder": CONFIG["video_folder"], "playlist": False})[0]
             self.send_json({"ok": True, "job": job.public()})
+        elif path == "/api/compat":
+            source = MEDIA.path(str(data.get("token") or ""))
+            if not source or not needs_compat(source):
+                self.send_json({"ok": True, "needed": False})
+                return
+            out = compat_path(source)
+            if out.is_file():
+                with contextlib.suppress(OSError):
+                    os.utime(out)
+                self.send_json({"ok": True, "needed": True, "media": media_info(out)})
+                return
+            job = next((j for j in COMPAT_JOBS.values() if j.source == source and j.status == "running"), None)
+            if not job:
+                job = CompatJob(source)
+                COMPAT_JOBS[job.id] = job
+                threading.Thread(target=job.run, daemon=True).start()
+            info = probe(source)
+            self.send_json({"ok": True, "needed": True, "job": job.public(), "hdr": info["hdr"], "codec": info["codec"]})
         elif path == "/api/subs/auto":
             source = MEDIA.path(str(data.get("token") or ""))
             if not source or not source.is_file():
@@ -3115,7 +3235,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _update_blocker() -> str:
-    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values(), *ASR_JOBS.values()])
+    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values(), *ASR_JOBS.values(), *COMPAT_JOBS.values()])
     return "Espera a que terminen las descargas y recortes." if DOWNLOADS.active() or trimming else ""
 
 
@@ -3182,6 +3302,7 @@ def main() -> int:
     threading.Thread(target=clear_edit_tmp, daemon=True).start()
     reload_scenes()
     threading.Thread(target=bank_check, daemon=True).start()
+    threading.Thread(target=clean_compat, daemon=True).start()
     if not args.stay:
         threading.Thread(target=_idle_watch, args=(server,), daemon=True).start()
     if not args.no_browser:
