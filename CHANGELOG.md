@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 4.2.4
+- 🎬 Cada animación en la lista se acomoda en 3 renglones: ① nombre y texto, ② Inicia en, Duración, Posición X/Y, Ancho y Alto, ③ Mantener proporción, Entrada con rebote y los botones 👁 ⧉ 🗑.
+
 ## 4.2.3
 - ✂ Edición: cada pantalla tiene su **título** y una explicación al pasar el mouse (ⓘ ¿qué es?):
   ① **Fuente**: el archivo original, de donde sacas los tramos.

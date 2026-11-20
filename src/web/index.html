@@ -263,6 +263,11 @@
     .fxrows li.on.an { border-color: #56ccf2; }
     .fxrows input.tx { flex: 1 1 220px; min-width: 140px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 4px 8px; font: inherit; font-size: .86rem; }
     .fxrows input.px { width: 64px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 3px 6px; font-size: .82rem; }
+    .fxrows li.an { flex-direction: column; align-items: stretch; gap: 8px; }
+    .fxrows li.an .r { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    .fxrows li.an .r label { white-space: nowrap; } .fxrows li.an input.tm { width: 72px; } .fxrows li.an input.px { width: 60px; }
+    .fxrows li.an .r .nm { flex: 0 1 auto; max-width: 320px; }
+    .fxrows li.an .r .btns { margin-left: auto; display: flex; gap: 4px; }
     .fxrows .note { color: var(--muted); font-size: .8rem; flex: 1 1 220px; }
     .sw { display: inline-flex; gap: 4px; vertical-align: middle; } .sw button { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid transparent; }
     .sw button.on { border-color: #fff; }
@@ -1102,6 +1107,15 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "Inicia en:": "Starts at:",
+      "Duración:": "Duration:",
+      "Posición X:": "Position X:",
+      "Posición Y:": "Position Y:",
+      "Ancho:": "Width:",
+      "Alto:": "Height:",
+      "Mantener proporción": "Keep ratio",
+      "Al cambiar el ancho o el alto, el otro cambia igual para que no se estire": "When you change the width or height, the other changes too so it does not stretch",
+      "Entra brincando y sale desvaneciéndose": "It bounces in and fades out",
       "Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia.": "Here you see and hear the original file you have selected. Mark a section on the waveform below and add it with “➕ Add fragment”. Your file does not change.",
       "No se reproduce: es como una foto del video final en el momento que eliges con «Viendo». Aquí acomodas las animaciones: arrástralas para moverlas y jala la esquina azul para cambiar su tamaño.": "It does not play: it is like a snapshot of the final video at the moment you choose with “Showing”. Here you arrange the animations: drag them to move them and pull the blue corner to resize them.",
       "Es la edición final ya armada, con tus fragmentos, sonidos y animaciones. Todavía no se guarda: presiona «💾 Guardar edición» cuando te guste. Si cambias algo, vuelve a hacer la vista previa.": "This is the final edit already put together, with your fragments, sounds and animations. It is not saved yet: press “💾 Save edit” when you like it. If you change something, make the preview again.",
@@ -2069,14 +2083,21 @@
           const out = o.at >= T, cut = !out && o.at + o.dur > T + 0.01;
           const textCell = o.kind === 'banner' ? `<input class="tx" data-k="text" value="${esc(o.text)}" placeholder="${t('Texto del cintillo')}"><span class="sw">${this.COLORS.map(c => `<button type="button" data-color="${c}" class="${c === o.color ? 'on' : ''}" style="background:${c}"></button>`).join('')}</span>`
             : o.hasText ? `<input class="tx" data-k="text" value="${esc(o.text)}" placeholder="${t('Texto del letrero')}">` : `<span class="note">${t('Esta animación no muestra texto.')}</span>`;
-          return `<li data-ov="${i}" class="an${i === Edit.ovOn ? ' on' : ''}"><span class="nm" title="${esc(o.name)}">${o.kind === 'banner' ? '📢' : '🎬'} ${esc(o.name)}</span>${textCell}
-            <label>${t('Sale en')} <input class="tm" data-k="at" value="${fmt2(o.at)}"></label>
-            <label>${t('Dura')} <input class="tm" data-k="dur" value="${fmt2(o.dur)}"></label>
-            <label>X <input class="px" data-k="x" type="number" value="${px(o.x, W)}"></label><label>Y <input class="px" data-k="y" type="number" value="${px(o.y, H)}"></label>
-            <label>${t('Ancho')} <input class="px" data-k="w" type="number" min="10" value="${px(o.w, W)}"></label><label>${t('Alto')} <input class="px" data-k="h" type="number" min="10" value="${px(o.h, H)}"></label>
-            <label class="check"><input type="checkbox" data-k="lock" ${o.lock ? 'checked' : ''}> ${t('Proporción')}</label>
-            <label class="check"><input type="checkbox" data-k="pop" ${o.pop !== false ? 'checked' : ''}> ${t('Entrada con rebote')}</label>
-            <span><button type="button" class="secondary" data-act="see" title="${t('Verla en el lienzo')}">👁</button><button type="button" class="secondary" data-act="dup" title="${t('Duplicar')}">⧉</button><button type="button" class="secondary" data-act="del" title="${t('Quitar')}">🗑</button></span>
+          return `<li data-ov="${i}" class="an${i === Edit.ovOn ? ' on' : ''}">
+            <div class="r"><span class="nm" title="${esc(o.name)}">${o.kind === 'banner' ? '📢' : '🎬'} ${esc(o.name)}</span>${textCell}</div>
+            <div class="r">
+              <label>${t('Inicia en:')} <input class="tm" data-k="at" value="${fmt2(o.at)}"></label>
+              <label>${t('Duración:')} <input class="tm" data-k="dur" value="${fmt2(o.dur)}"></label>
+              <label>${t('Posición X:')} <input class="px" data-k="x" type="number" value="${px(o.x, W)}"></label>
+              <label>${t('Posición Y:')} <input class="px" data-k="y" type="number" value="${px(o.y, H)}"></label>
+              <label>${t('Ancho:')} <input class="px" data-k="w" type="number" min="10" value="${px(o.w, W)}"></label>
+              <label>${t('Alto:')} <input class="px" data-k="h" type="number" min="10" value="${px(o.h, H)}"></label>
+            </div>
+            <div class="r">
+              <label class="check" title="${t('Al cambiar el ancho o el alto, el otro cambia igual para que no se estire')}"><input type="checkbox" data-k="lock" ${o.lock ? 'checked' : ''}> ${t('Mantener proporción')}</label>
+              <label class="check" title="${t('Entra brincando y sale desvaneciéndose')}"><input type="checkbox" data-k="pop" ${o.pop !== false ? 'checked' : ''}> ${t('Entrada con rebote')}</label>
+              <span class="btns"><button type="button" class="secondary" data-act="see" title="${t('Verla en el lienzo')}">👁</button><button type="button" class="secondary" data-act="dup" title="${t('Duplicar')}">⧉</button><button type="button" class="secondary" data-act="del" title="${t('Quitar')}">🗑</button></span>
+            </div>
             ${out ? `<span class="warn">${t('⚠ Queda después del final del video: no se va a ver. Muévela más atrás.')}</span>` : cut ? `<span class="warn">${t('Se corta al final del video.')}</span>` : ''}</li>`;
         }).join('');
         this.seek(this.T);
