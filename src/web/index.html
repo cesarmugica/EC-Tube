@@ -1095,6 +1095,8 @@
       "Son demasiados efectos (máximo 200).": "Too many sounds (maximum 200).",
       "Cada efecto debe durar al menos 0.05 segundos.": "Each sound must be at least 0.05 seconds long.",
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
+      "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
+      "▶ Ver edición final": "▶ Watch final edit",
       "🎬 Animaciones encima": "🎬 Animations on top",
       "Personajes con tu texto en el letrero, efectos, cintillos o tus propias animaciones, encima del video.": "Characters with your text on the sign, effects, banners or your own animations, on top of the video.",
       "➕ Agregar animación": "➕ Add animation",
@@ -1477,6 +1479,8 @@
       cur() { return this.sources[this.active]; },
       pathOf(m) { return m.folder + (m.folder.includes('\\') ? '\\' : '/') + m.name; },
       save() {
+        // si ya había vista previa, avisar que no trae los cambios nuevos
+        if ($('#edPreviewBox audio, #edPreviewBox video') && !this.job) this.say(tf('Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.', $('#edPreview').textContent));
         const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end}));
         try { localStorage.setItem('ectube-edit', JSON.stringify({kind: this.kind, smooth: $('#edSmooth').checked, mode: $('#edMode').value, vaudio: this.vaudio,
           sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
@@ -1639,6 +1643,7 @@
           ? tf('Video: {0} fragmentos · {1} · Pista de audio: {2}', this.frags.length, fmt2(this.total()), fmt2(this.total(this.afrags)))
           : tf('Edición final: {0} fragmentos · {1}', this.frags.length, fmt2(this.total()));
         $('#edSave').disabled = $('#edPreview').disabled = !this.frags.length || !!this.job;
+        $('#edPreview').textContent = t(this.kind === 'video' ? '▶ Ver edición final' : '▶ Escuchar edición final');
         $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
           : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
         $('#edCancelEdit').hidden = this.editing < 0;
@@ -1971,8 +1976,10 @@
         $('#anStage').scrollIntoView({behavior: 'smooth', block: 'center'});
       },
       // el lienzo muestra el cuadro del video final en el momento T
-      async seek(T) {
-        this.T = Math.max(0, Math.min(T, this.total())); $('#anScrub').value = this.T; $('#anTimeLbl').textContent = fmt2(this.T);
+      async seek(T, sync) {
+        this.T = Math.max(0, Math.min(T, this.total()));
+        // la vista previa de abajo (si ya la hiciste) también se va a ese momento
+        const pv = $('#edPreviewBox video'); if (sync && pv) { try { pv.currentTime = this.T; } catch (_) {} } $('#anScrub').value = this.T; $('#anTimeLbl').textContent = fmt2(this.T);
         let acc = 0, f = null;
         for (const fr of Edit.frags) { const d = fr.end - fr.start; if (this.T < acc + d || fr === Edit.frags[Edit.frags.length - 1]) { f = fr; break; } acc += d; }
         const v = $('#anVideo');
@@ -2061,7 +2068,7 @@
         }).join('');
         this.seek(this.T);
       },
-      select(i, see) { Edit.ovOn = i; const o = Edit.ov[i]; if (see && o && !(this.T >= o.at && this.T <= o.at + o.dur)) this.T = Math.min(o.at + Math.min(1, o.dur / 2), this.total()); this.render(); },
+      select(i, see) { Edit.ovOn = i; const o = Edit.ov[i]; if (see && o && !(this.T >= o.at && this.T <= o.at + o.dur)) this.T = Math.min(o.at + Math.min(1, o.dur / 2), this.total()); this.render(); if (see) this.seek(this.T, true); },
     };
     $('#anOpen').addEventListener('click', () => An.open());
     $('#anClose').addEventListener('click', () => An.close());
@@ -2086,7 +2093,7 @@
     $('#anPick').addEventListener('input', event => { if (event.target.id === 'anText') { An.lastText = event.target.value; const p = $('#anBnPrev'); if (p) p.textContent = event.target.value || t('Tu texto aquí'); } });
     $('#anPick').addEventListener('keydown', event => { if (event.key === 'Enter' && event.target.id === 'anText') An.add(); });
     $('#anBank').addEventListener('click', async event => { if (event.target.closest('[data-bank]')) { try { await api('/api/bank/download', {}); Bank.poll(); } catch (error) { Edit.say(t(error.message)); } } });
-    $('#anScrub').addEventListener('input', () => An.seek(+$('#anScrub').value));
+    $('#anScrub').addEventListener('input', () => An.seek(+$('#anScrub').value, true));
     // mover y cambiar el tamaño en el lienzo
     (() => {
       const st = $('#anStage');
@@ -2114,7 +2121,7 @@
       const line = $('#anLine'); let drag = null;
       const timeAt = event => { const r = line.getBoundingClientRect(); return Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * An.total(); };
       line.addEventListener('pointerdown', event => {
-        const chip = event.target.closest('.chip'); if (!chip) { An.seek(timeAt(event)); return; }
+        const chip = event.target.closest('.chip'); if (!chip) { An.seek(timeAt(event), true); return; }
         const i = +chip.dataset.ov, o = Edit.ov[i];
         drag = {i, mode: event.target.closest('.grip') ? 'dur' : 'at', offset: timeAt(event) - o.at, x0: event.clientX, moved: false};
         line.setPointerCapture(event.pointerId); event.preventDefault();

@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 4.2.2
+- ✂ Edición de video: al mover «Viendo», dar clic en la línea de tiempo de animaciones o en 👁, la **vista previa de abajo también salta a ese momento**.
+- Si cambias algo después de hacer la vista previa, avisa que hay que volver a hacerla para ver los cambios.
+- En video, el botón dice «▶ Ver edición final».
+
 ## 4.2.1
 - El aviso dice «Baja gratis el banco de animaciones EC-Tube».
 
