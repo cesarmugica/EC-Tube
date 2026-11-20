@@ -386,7 +386,7 @@
 
   <main>
     <div class="update" id="updateBox" hidden><span id="updateText"></span><button type="button" id="updateButton">⬆ Actualizar</button></div>
-    <div class="update" id="bankBar" hidden><span id="bankBarText"></span><span class="btns"><button type="button" id="bankBarBtn"></button><button type="button" class="secondary" id="bankBarLater">Ahora no</button></span></div>
+    <div class="update" id="bankBar" hidden><span id="bankBarText"></span><span class="btns"><button type="button" id="bankBarBtn"></button><button type="button" class="secondary" id="bankBarLater">Ahora no</button><button type="button" class="secondary" id="bankBarClose" title="Cerrar" aria-label="Cerrar" hidden>✕</button></span></div>
     <nav class="tabs" role="tablist">
       <button type="button" class="on" data-tab="download" role="tab">⬇ Descargar / Editar</button>
       <button type="button" data-tab="subs" role="tab">💬 Subtítulos</button>
@@ -2540,7 +2540,9 @@
           if (b.installed && b.latest > b.installed) { text = tf('🆕 ¡Hay un banco de animaciones nuevo! (banco {0})', b.latest); btn = t('📥 Actualizar animaciones'); }
           else if (!b.installed) { text = tf('🎬 Baja gratis el banco de animaciones EC-Tube ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.', mb); btn = t('📥 Descargar'); }
         }
-        $('#bankBar').hidden = !text; $('#bankBarText').textContent = text;
+        const done = b.state === 'done' && this.wasBusy;
+        $('#bankBar').hidden = !text; $('#bankBarText').textContent = text; $('#bankBarClose').hidden = !done;
+        if (done && !this.hideTimer) this.hideTimer = setTimeout(() => this.dismissDone(), 10000);  // el aviso de «listo» se quita solo
         $('#bankBarBtn').textContent = btn; $('#bankBarBtn').hidden = !btn; $('#bankBarLater').hidden = !btn;
         if (An.lib) {
           An.lib.bank = b;
@@ -2548,11 +2550,13 @@
           else if (!$('#anPicker').hidden) { const h = An.bankHtml(b); $('#anBank').innerHTML = h; $('#anBank').hidden = !h; }
         }
         clearTimeout(this.timer); this.timer = null; if (busy) this.timer = setTimeout(() => this.poll(), 800);
-        if (busy) { this.wasBusy = true; this.reloaded = false; }
+        if (busy) { this.wasBusy = true; this.reloaded = false; clearTimeout(this.hideTimer); this.hideTimer = null; }
       },
       async poll() { try { this.show(await api('/api/bank/status')); } catch (_) {} },
+      dismissDone() { clearTimeout(this.hideTimer); this.hideTimer = null; this.wasBusy = false; $('#bankBar').hidden = true; },
     };
     $('#bankBarBtn').addEventListener('click', async () => { try { await api('/api/bank/download', {}); Bank.poll(); } catch (error) { say(error.message); } });
+    $('#bankBarClose').addEventListener('click', () => Bank.dismissDone());
     $('#bankBarLater').addEventListener('click', async () => { try { await api('/api/bank/dismiss', {}); } catch (_) {} $('#bankBar').hidden = true; });
     setTimeout(() => Bank.poll(), 2500); setInterval(() => { if (!Bank.timer || !(Bank.info && /download|install/.test(Bank.info.state))) Bank.poll(); }, 10 * 60 * 1000);
     $('#edSources').addEventListener('click', event => {

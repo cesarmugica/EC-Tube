@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.2.1
+- El aviso «✅ Banco de animaciones listo» ahora se quita solo a los 10 segundos y tiene un ✕ para cerrarlo. Antes se quedaba arriba todo el tiempo.
+
 ## 5.2.0 — 📱 Videos del iPhone
 - **Videos del iPhone (HEVC / HDR / 10 bits) sin configurar nada**: al ponerlos en ✂ Editar o en 💬 Subtítulos, EC-Tube hace solo una **copia compatible** (H.264, mismo tamaño y mismos fps) con los **colores HDR corregidos**, para que se vean en la app y no salgan deslavados. Avisa el avance; tu video original no cambia. Las copias que no uses en un mes se borran solas.
 - ✂ Editar ahora **respeta los cuadros por segundo** del primer video (un video de 60 fps sale a 60); antes siempre salía a 30.
