@@ -201,7 +201,9 @@
     /* Edición */
     .ed-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .ed-help { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
-    .ed-sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .ed-sources { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-width: 680px; }
+    .ed-sources .ed-src { display: flex; border-radius: 12px; padding: 6px 6px 6px 12px; }
+    .ed-sources .ed-src .nm { flex: 1 1 auto; max-width: none; text-align: left; }
     .ed-src { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid var(--border); border-radius: 999px; padding: 4px 4px 4px 10px; background: var(--bg); color: var(--text); font-weight: 500; font-size: .86rem; }
     .ed-src.on { border-color: var(--accent); border-width: 2px; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
     .ed-src .sel { flex: none; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; }

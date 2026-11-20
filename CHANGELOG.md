@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 4.0.2
+- ✂ Edición: las fuentes (canciones y videos) se listan **una por renglón**, con la SELECCIONADA resaltada.
+
 ## 4.0.1
 - ✂ Edición: la fuente que estás usando ahora dice **SELECCIONADA**, y arriba de la onda aparece «Seleccionada: …», para que quede claro de qué canción o video salen los fragmentos que agregas.
 - 🔄 EC-Tube busca actualización **cada vez que abres la ventana** (aunque ya estuviera corriendo) y, si lo dejas abierto, **cada hora**.
