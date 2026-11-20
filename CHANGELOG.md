@@ -1,5 +1,19 @@
 # Historial de versiones
 
+## 4.0.0 — Editor de audio y video
+Versión grande: el recorte se convierte en un editor completo.
+- **✂ Edición**, panel propio (aparte de Descargas).
+- **Onda del audio**: se ven los silencios, las bajadas de volumen y las partes fuertes. Arrastras sobre la onda para marcar un tramo (o mueves sus bordes), con clic vas a ese punto, y puedes acercar y alejar con 🔍 o con la rueda del mouse.
+- **Fragmentos de una o varias fuentes**: marcas tramos de distintas canciones o videos y los agregas a una lista. La edición final los une en el orden de la lista, aunque se repitan o se traslapen. Cada fragmento se puede escuchar, ajustar (en la onda o escribiendo los tiempos), subir, bajar, arrastrar o quitar.
+- **Audio**: une fragmentos de canciones, y también de videos (se toma solo su audio).
+- **Video**: une fragmentos de videos (aunque sean de distinto tamaño) y eliges el audio del video final:
+  - 🎬 el de cada video,
+  - 🔇 sin audio,
+  - 🎵 **otra pista de audio**: una canción completa o hecha también por fragmentos. Si dura más que el video se corta; si dura menos, el final queda en silencio.
+- **▶ Escuchar la edición final** antes de guardarla, **suavizar uniones** (sin «clic») y guardar **tal cual, solo música o solo voz**.
+- La edición se queda guardada aunque cierres EC-Tube.
+- «✂ Editar» en Tus archivos y en Descargas manda el archivo al editor. El recorte rápido de antes sigue en «✂ Recorte rápido…».
+
 ## 3.0.2
 - El botón «⬆ Actualizar» vuelve a funcionar como en la 3.0.0 (se deshace un cambio de la 3.0.1 que no hacía falta).
 

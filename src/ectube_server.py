@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-APP_VERSION = "3.0.2"
+APP_VERSION = "4.0.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -786,6 +786,269 @@ TRIMS: dict[str, TrimJob] = {}
 
 
 # ---------------------------------------------------------------------------
+# Edición: onda del audio y unir fragmentos de una o varias fuentes (audio con audio, video con video)
+# ---------------------------------------------------------------------------
+PEAKS_CACHE: dict[tuple, dict] = {}
+PROBE_CACHE: dict[tuple, dict] = {}
+EDIT_TMP = HOME / "edicion-tmp"
+
+
+def probe(path: Path) -> dict:
+    """Duración, si tiene audio y el tamaño del video (leído de lo que dice FFmpeg)."""
+    key = (str(path), path.stat().st_mtime)
+    if key in PROBE_CACHE:
+        return PROBE_CACHE[key]
+    info = {"duration": 0.0, "audio": False, "width": 0, "height": 0}
+    if FFMPEG:
+        out = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-i", str(path)], capture_output=True, text=True,
+                             encoding="utf-8", errors="replace", creationflags=_no_window_flags()).stderr
+        m = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", out)
+        if m:
+            info["duration"] = int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3])
+        info["audio"] = bool(re.search(r"Stream #\S+.*?: Audio:", out))
+        v = re.search(r"Stream #\S+.*?: Video:(?!.*attached pic).*?(\d{2,5})x(\d{2,5})", out)
+        if v:
+            info["width"], info["height"] = int(v[1]), int(v[2])
+    PROBE_CACHE[key] = info
+    return info
+
+
+def waveform(path: Path, buckets: int = 1600) -> dict:
+    """La onda: el nivel más alto de cada pedacito (0 a 1), para ver dónde hay silencios o baja el volumen."""
+    import numpy as np
+
+    buckets = max(100, min(int(buckets), 6000))
+    key = (str(path), path.stat().st_mtime, buckets)
+    if key in PEAKS_CACHE:
+        return PEAKS_CACHE[key]
+    if not FFMPEG:
+        raise RuntimeError("No se encontró FFmpeg.")
+    rate = 4000
+    proc = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-i", str(path), "-vn", "-ac", "1",
+                           "-ar", str(rate), "-f", "s16le", "pipe:1"], capture_output=True, creationflags=_no_window_flags())
+    samples = np.frombuffer(proc.stdout, dtype="<i2").astype(np.float32) / 32768.0 if proc.stdout else np.zeros(0, np.float32)
+    duration = len(samples) / rate or probe(path)["duration"]
+    if len(samples):
+        size = max(1, int(np.ceil(len(samples) / buckets)))
+        count = int(np.ceil(len(samples) / size))  # pedacitos que cubren exactamente toda la canción
+        padded = np.pad(np.abs(samples), (0, size * count - len(samples)))
+        peaks = padded.reshape(count, size).max(axis=1)
+        top = float(np.percentile(peaks, 99.5)) or 1.0
+        peaks = np.clip(peaks / top, 0, 1)
+    else:
+        peaks = np.zeros(buckets, np.float32)
+    data = {"duration": round(duration, 3), "peaks": [round(float(x), 3) for x in peaks]}
+    if len(PEAKS_CACHE) > 40:
+        PEAKS_CACHE.clear()
+    PEAKS_CACHE[key] = data
+    return data
+
+
+class EditJob:
+    """Une los fragmentos en el orden de la lista. Opcional: quitar la voz o la música al resultado."""
+
+    def __init__(self, kind: str, fragments: list[tuple[Path, float, float]], mode: str = "original",
+                 smooth: bool = True, preview: bool = False, audio_mode: str = "own",
+                 audio_fragments: list[tuple[Path, float, float]] | None = None) -> None:
+        self.id = uuid.uuid4().hex[:12]
+        self.kind, self.fragments, self.smooth, self.preview = kind, fragments, smooth, preview
+        # Video: «own» = el audio de cada fragmento, «none» = sin audio, «other» = otra pista de audio (también por fragmentos)
+        self.audio_mode = audio_mode if kind == "video" and audio_mode in ("own", "none", "other") else "own"
+        self.audio_fragments = audio_fragments or []
+        if self.audio_mode == "other" and not self.audio_fragments:
+            self.audio_mode = "none"
+        self.mode = "original" if preview or mode not in TRIM_WORDS or self.audio_mode == "none" else mode
+        self.total = sum(end - start for _, start, end in fragments)
+        first = fragments[0][0]
+        if kind == "video":
+            ext = ".mp4"
+        else:  # audio sacado de un video: MP3
+            ext = first.suffix.lower() if first.suffix.lower() in AUDIO_CODECS else ".mp3"
+        if preview:
+            EDIT_TMP.mkdir(parents=True, exist_ok=True)
+            self.output = EDIT_TMP / f"vista-previa-{self.id}{'.mp4' if kind == 'video' else '.mp3'}"
+        else:
+            word = {"original": ("edición", "edit"), "music": ("edición, música", "edit, music"),
+                    "voice": ("edición, voz", "edit, vocals")}[self.mode][1 if current_language() == "en" else 0]
+            folder = Path(CONFIG[f"{kind}_edited_folder"])
+            folder.mkdir(parents=True, exist_ok=True)
+            self.output = next((folder / f"{first.stem} ({word}{'' if n == 1 else f' {n}'}){ext}" for n in range(1, 1000)
+                                if not (folder / f"{first.stem} ({word}{'' if n == 1 else f' {n}'}){ext}").exists()), None)
+            if self.output is None:
+                raise RuntimeError("Hay demasiadas ediciones de este archivo.")
+        self.status, self.percent, self.error, self.phase = "running", 0.0, "", "join"
+        self.process: subprocess.Popen | None = None
+        self.sub: TrimJob | None = None
+        self.cancelled = False
+
+    def _audio_chain(self, label: str, dur: float, out: str) -> str:
+        fade = ""
+        if self.smooth and dur > 0.1:  # quitar el «clic» de las uniones
+            fade = f",afade=t=in:d=0.015,afade=t=out:st={max(0.0, dur - 0.015):.3f}:d=0.015"
+        return f"{label}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS{fade}[{out}]"
+
+    def command(self, output: Path) -> list[str]:
+        if not FFMPEG:
+            raise RuntimeError("No se encontró FFmpeg.")
+        args = [FFMPEG, "-hide_banner", "-nostdin", "-y"]
+        chains: list[str] = []
+        n = 0
+
+        def add_input(path: Path, start: float, dur: float) -> int:
+            nonlocal n
+            args.extend(["-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(path)])
+            n += 1
+            return n - 1
+
+        def silence(dur: float) -> int:
+            nonlocal n
+            args.extend(["-f", "lavfi", "-t", f"{dur:.3f}", "-i", "anullsrc=r=48000:cl=stereo"])
+            n += 1
+            return n - 1
+
+        def audio_track(frags: list[tuple[Path, float, float]], prefix: str) -> str:
+            labels = []
+            for i, (path, start, end) in enumerate(frags):
+                dur = end - start
+                idx = add_input(path, start, dur) if probe(path)["audio"] else silence(dur)
+                chains.append(self._audio_chain(f"[{idx}:a:0]", dur, f"{prefix}{i}"))
+                labels.append(f"[{prefix}{i}]")
+            chains.append("".join(labels) + f"concat=n={len(frags)}:v=0:a=1[{prefix}]")
+            return f"[{prefix}]"
+
+        if self.kind == "audio":
+            for path, *_ in self.fragments:
+                if not probe(path)["audio"]:
+                    raise RuntimeError(f"«{path.name}» no tiene audio.")
+            track = audio_track(self.fragments, "a")
+            args += ["-filter_complex", ";".join(chains), "-map", track, "-vn"]
+            if self.preview:
+                args += ["-c:a", "libmp3lame", "-b:a", "128k"]
+            else:
+                args += AUDIO_CODECS.get(output.suffix.lower(), ["-c:a", "libmp3lame", "-b:a", "320k"])
+            return args + ["-progress", "pipe:1", "-nostats", str(output)]
+
+        info = probe(self.fragments[0][0])
+        width, height = (info["width"] or 1280) // 2 * 2, (info["height"] or 720) // 2 * 2
+        vlabels = []
+        for i, (path, start, end) in enumerate(self.fragments):
+            dur = end - start
+            idx = add_input(path, start, dur)
+            chains.append(f"[{idx}:v:0]setpts=PTS-STARTPTS,scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                          f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p[v{i}]")
+            vlabels.append(f"[v{i}]")
+            if self.audio_mode == "own":
+                aidx = idx if probe(path)["audio"] else silence(dur)  # video sin audio: silencio del mismo largo
+                chains.append(self._audio_chain(f"[{aidx}:a:0]", dur, f"a{i}"))
+                vlabels.append(f"[a{i}]")
+        count = len(self.fragments)
+        maps: list[str] = []
+        if self.audio_mode == "own":
+            chains.append("".join(vlabels) + f"concat=n={count}:v=1:a=1[v][a]")
+            maps = ["-map", "[v]", "-map", "[a]"]
+        else:
+            chains.append("".join(vlabels) + f"concat=n={count}:v=1:a=0[v]")
+            maps = ["-map", "[v]"]
+            if self.audio_mode == "other":
+                track = audio_track(self.audio_fragments, "b")
+                # la pista de audio dura lo mismo que el video: si sobra se corta, si falta queda en silencio
+                chains.append(f"{track}apad,atrim=0:{self.total:.3f}[a]")
+                maps += ["-map", "[a]"]
+        args += ["-filter_complex", ";".join(chains), *maps]
+        if self.preview:
+            args += ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"]
+        else:
+            args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
+        args += ["-c:a", "aac", "-b:a", "128k" if self.preview else "192k"] if self.audio_mode != "none" else ["-an"]
+        args += ["-movflags", "+faststart"]
+        return args + ["-progress", "pipe:1", "-nostats", str(output)]
+
+    def _join(self, output: Path, share: float) -> None:
+        self.process = subprocess.Popen(self.command(output), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                        encoding="utf-8", errors="replace", creationflags=_no_window_flags())
+        errors: list[str] = []
+        threading.Thread(target=lambda: errors.extend(self.process.stderr.readlines()), daemon=True).start()  # type: ignore[union-attr]
+        for line in self.process.stdout:  # type: ignore[union-attr]
+            if line.startswith(("out_time_us=", "out_time_ms=")):
+                with contextlib.suppress(ValueError):
+                    self.percent = min(share - 1, int(line.split("=", 1)[1]) / 1e6 / max(0.1, self.total) * share)
+        code = self.process.wait()
+        if self.cancelled:
+            raise InterruptedError
+        if code != 0 or not output.exists():
+            log(f"[edición {self.id}] error: {''.join(errors[-6:])[:600]}")
+            raise RuntimeError(friendly_error("".join(errors[-20:])) if errors else "No se pudo guardar la edición.")
+
+    def run(self) -> None:
+        temp: Path | None = None
+        try:
+            log(f"[edición {self.id}] {len(self.fragments)} fragmentos, {self.total:.1f} s, {self.kind}, {self.mode}"
+                + (" (vista previa)" if self.preview else ""))
+            if self.mode == "original":
+                self._join(self.output, 100.0)
+            else:  # primero se une todo y luego se separa la voz o la música del resultado
+                EDIT_TMP.mkdir(parents=True, exist_ok=True)
+                temp = EDIT_TMP / f"unido-{self.id}{self.output.suffix}"
+                self._join(temp, 25.0)
+                self.sub = TrimJob(temp, 0.0, self.total, self.mode)
+                self.sub.output = self.output
+                self.phase = "separate"
+                done = threading.Event()
+
+                def follow() -> None:
+                    while not done.wait(0.4):
+                        self.phase = self.sub.phase or "separate"  # type: ignore[union-attr]
+                        self.percent = 25 + self.sub.percent * 0.75  # type: ignore[union-attr]
+
+                threading.Thread(target=follow, daemon=True).start()
+                self.sub.run()
+                done.set()
+                if self.sub.status == "cancelled" or self.cancelled:
+                    raise InterruptedError
+                if self.sub.status != "done":
+                    raise RuntimeError(self.sub.error or "No se pudo guardar la edición.")
+            self.status, self.percent = "done", 100.0
+        except InterruptedError:
+            self.status = "cancelled"
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+            log(f"[edición {self.id}] error: {exc}")
+        if temp:
+            with contextlib.suppress(OSError):
+                temp.unlink()
+        if self.status != "done":
+            with contextlib.suppress(OSError):
+                self.output.unlink()
+
+    def cancel(self) -> None:
+        self.cancelled = True
+        if self.sub:
+            self.sub.cancelled = True
+            if self.sub.process:
+                _kill_tree(self.sub.process)
+        if self.process:
+            _kill_tree(self.process)
+
+    def public(self) -> dict:
+        data = {"id": self.id, "status": self.status, "percent": round(self.percent, 1), "error": self.error,
+                "output": self.output.name, "mode": self.mode, "phase": self.phase, "preview": self.preview}
+        if self.status == "done":
+            data["media"] = media_info(self.output)
+        return data
+
+
+EDITS: dict[str, EditJob] = {}
+
+
+def clear_edit_tmp() -> None:
+    """Las vistas previas viejas no se guardan: se borran al abrir EC-Tube."""
+    if EDIT_TMP.is_dir():
+        for item in EDIT_TMP.iterdir():
+            with contextlib.suppress(OSError):
+                item.unlink()
+
+
+# ---------------------------------------------------------------------------
 # Reproductor: biblioteca (carpetas de descargas y editados) y listas guardadas
 # ---------------------------------------------------------------------------
 PLAYLISTS_PATH = HOME / "playlists.json"
@@ -1412,7 +1675,7 @@ class Handler(BaseHTTPRequestHandler):
         if "/api/jobs" in (args[0] if args else "") and '"GET' in fmt % args:
             return  # el sondeo de la lista llenaría el registro
         text = fmt % args
-        if "/api/ping" in text or '"GET /media/' in text or '"GET /api/trim/' in text:
+        if "/api/ping" in text or '"GET /media/' in text or '"GET /api/trim/' in text or '"GET /api/edit/' in text:
             return
         log("HTTP " + (fmt % args))
 
@@ -1501,6 +1764,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/media/"):
             self._send_media(path.rsplit("/", 1)[-1])
             return
+        elif path.startswith("/api/edit/"):
+            job = EDITS.get(path.rsplit("/", 1)[-1])
+            if job:
+                self.send_json(job.public())
+            else:
+                self.send_json({"ok": False, "error": "No existe esa edición."}, 404)
         elif path.startswith("/api/trim/"):
             job = TRIMS.get(path.rsplit("/", 1)[-1])
             if job:
@@ -1706,6 +1975,32 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, "media": media_info(source)})
         elif path == "/api/trim":
             self._start_trim(data)
+        elif path == "/api/peaks":
+            source = MEDIA.path(str(data.get("token") or ""))
+            if not source or not source.is_file():
+                self.send_json({"ok": False, "error": "El archivo ya no está en su carpeta."}, 404)
+            else:
+                try:
+                    self.send_json({"ok": True, **waveform(source, int(data.get("buckets") or 1600))})
+                except Exception as exc:  # noqa: BLE001
+                    self.send_json({"ok": False, "error": str(exc)}, 500)
+        elif path == "/api/media-path":  # volver a abrir las fuentes de la edición guardada (si siguen en su carpeta)
+            target = Path(str(data.get("path") or ""))
+            ok = target.is_absolute() and target.suffix.lower() in AUDIO_EXTS | VIDEO_EXTS and target.is_file()
+            self.send_json({"ok": True, "media": media_info(target)} if ok else
+                           {"ok": False, "error": "El archivo ya no está en su carpeta."}, 200 if ok else 404)
+        elif path == "/api/edit":
+            self._start_edit(data)
+        elif re.fullmatch(r"/api/edit/[0-9a-f]{12}/(cancel|reveal)", path):
+            job = EDITS.get(path.split("/")[3])
+            if not job:
+                self.send_json({"ok": False, "error": "No existe esa edición."}, 404)
+            elif path.endswith("cancel"):
+                job.cancel()
+                self.send_json({"ok": True})
+            else:
+                open_in_explorer(job.output if job.output.exists() else job.output.parent, select=job.output.exists())
+                self.send_json({"ok": True})
         elif re.fullmatch(r"/api/trim/[0-9a-f]{12}/(cancel|reveal)", path):
             job = TRIMS.get(path.split("/")[3])
             if not job:
@@ -1732,6 +2027,61 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
         else:
             self.send_json({"ok": False, "error": "No encontrado."}, 404)
+
+    def _fragments(self, raw, allowed: set) -> list | str:
+        """Leer y revisar una lista de fragmentos. Regresa la lista o el error."""
+        if not isinstance(raw, list) or not raw:
+            return "Agrega al menos un fragmento."
+        if len(raw) > 200:
+            return "Son demasiados fragmentos (máximo 200)."
+        out = []
+        for item in raw:
+            source = MEDIA.path(str((item or {}).get("token") or "")) if isinstance(item, dict) else None
+            try:
+                start, end = float(item.get("start")), float(item.get("end"))
+            except (TypeError, ValueError, AttributeError):
+                return "Tiempos inválidos."
+            if not source or not source.is_file():
+                return "El archivo ya no está en su carpeta."
+            if source.suffix.lower() not in allowed:
+                return "En la pista de video solo van videos."
+            if start < 0 or end - start < 0.1:
+                return "Cada fragmento debe durar al menos 0.1 segundos."
+            out.append((source, start, end))
+        return out
+
+    def _start_edit(self, data: dict) -> None:
+        kind = "video" if data.get("kind") == "video" else "audio"
+        fragments = self._fragments(data.get("fragments"), VIDEO_EXTS if kind == "video" else AUDIO_EXTS | VIDEO_EXTS)
+        if isinstance(fragments, str):
+            self.send_json({"ok": False, "error": fragments}, 400)
+            return
+        audio_mode = str(data.get("audio_mode") or "own")
+        audio_fragments: list = []
+        if kind == "video" and audio_mode == "other":
+            audio_fragments = self._fragments(data.get("audio_fragments"), AUDIO_EXTS | VIDEO_EXTS)
+            if isinstance(audio_fragments, str):
+                self.send_json({"ok": False, "error": "Pista de audio: " + audio_fragments}, 400)
+                return
+        if sum(e - s for _, s, e in fragments) > 3 * 3600:
+            self.send_json({"ok": False, "error": "La edición final puede durar máximo 3 horas."}, 400)
+            return
+        preview = bool(data.get("preview"))
+        if preview:  # solo una vista previa a la vez
+            for old in [j for j in EDITS.values() if j.preview]:
+                old.cancel()
+                with contextlib.suppress(OSError):
+                    old.output.unlink()
+                EDITS.pop(old.id, None)
+        try:
+            job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
+                          audio_mode, audio_fragments)
+        except RuntimeError as exc:
+            self.send_json({"ok": False, "error": str(exc)}, 400)
+            return
+        EDITS[job.id] = job
+        threading.Thread(target=job.run, daemon=True).start()
+        self.send_json({"ok": True, **job.public()})
 
     def _start_trim(self, data: dict) -> None:
         source = MEDIA.path(str(data.get("token") or ""))
@@ -1865,7 +2215,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _update_blocker() -> str:
-    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values()])
+    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values()])
     return "Espera a que terminen las descargas y recortes." if DOWNLOADS.active() or trimming else ""
 
 
@@ -1909,6 +2259,7 @@ def main() -> int:
     log(f"yt-dlp: {ytdlp_path() or 'NO ENCONTRADO'} · FFmpeg: {FFMPEG or 'NO'} · Deno: {DENO or 'NO'}")
     ENGINE.refresh_version()
     threading.Thread(target=ENGINE.update, daemon=True).start()
+    threading.Thread(target=clear_edit_tmp, daemon=True).start()
     if not args.stay:
         threading.Thread(target=_idle_watch, args=(server,), daemon=True).start()
     if not args.no_browser:

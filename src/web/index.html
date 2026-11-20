@@ -198,6 +198,35 @@
     .pl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .pl-head select { flex: 1 1 220px; min-width: 0; font-weight: 600; }
     .pl-info { color: var(--muted); font-size: .85rem; margin: 10px 2px 6px; }
+    /* Edición */
+    .ed-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ed-help { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
+    .ed-sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .ed-src { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid var(--border); border-radius: 999px; padding: 4px 4px 4px 10px; background: var(--bg); color: var(--text); font-weight: 500; font-size: .86rem; }
+    .ed-src.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
+    .ed-src .dot, .frags .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .ed-src .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; cursor: pointer; background: none; padding: 0; color: inherit; font-weight: 500; }
+    .ed-src .nm:hover:not(:disabled) { background: none; }
+    .ed-src .x { padding: 2px 8px; background: none; color: var(--muted); border-radius: 999px; }
+    .ed-src .x:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+    #edPlayerBox { margin-top: 12px; }
+    #edPlayerBox audio { width: 100%; }
+    #edPlayerBox video { width: 100%; max-height: 300px; background: #000; border-radius: 10px; }
+    .wave { position: relative; margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); overflow: hidden; touch-action: none; cursor: crosshair; }
+    .wave canvas { display: block; width: 100%; height: 120px; }
+    .wave-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; color: var(--muted); font-size: .82rem; }
+    .wave-tools button { padding: 4px 10px; font-size: .82rem; }
+    .ed-times { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 10px; }
+    .ed-times input, .frags input { width: 92px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding: 6px 8px; font-variant-numeric: tabular-nums; }
+    .ed-h3 { margin: 18px 0 8px; font-size: 1rem; }
+    .tracks.frags li { grid-template-columns: 26px 12px minmax(0, 1fr) auto auto auto; cursor: grab; }
+    .tracks.frags li.editing { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
+    .frags .ft { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .82rem; }
+    .frags input { width: 78px; padding: 3px 6px; font-size: .82rem; }
+    .ed-foot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 12px; }
+    .ed-foot .grow { flex: 1 1 auto; }
+    #edStatus { min-height: 1.2em; margin: 10px 0 0; color: var(--warn); font-size: .9rem; } #edStatus.ok { color: var(--ok); }
+    #edPreviewBox { margin-top: 10px; } #edPreviewBox audio { width: 100%; } #edPreviewBox video { width: 100%; max-height: 300px; background: #000; border-radius: 10px; }
     .tracks { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); max-height: 46vh; overflow: auto; }
     .tracks li { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
     .tracks li:last-child { border-bottom: 0; }
@@ -299,8 +328,79 @@
     </section>
 
     <section class="panel">
-      <div class="list-head"><h2>Descargas</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" id="trimFile" type="button">✂ Recortar un archivo…</button><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div></div>
+      <div class="list-head"><h2>Descargas</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" id="clear" type="button">Limpiar terminadas</button></div></div>
       <div id="jobs"><p class="empty">Aquí aparecen tus descargas.</p></div>
+    </section>
+
+    <section class="panel" id="edPanel">
+      <div class="list-head"><h2>✂ Edición</h2>
+        <div class="ed-head">
+          <div class="seg" role="radiogroup" aria-label="Tipo de edición">
+            <label><input type="radio" name="edKind" value="audio" checked><span>🎵 Audio</span></label>
+            <label><input type="radio" name="edKind" value="video"><span>🎬 Video</span></label>
+          </div>
+          <button class="secondary" id="edAdd" type="button">📂 Agregar archivo…</button>
+          <button class="secondary" id="trimFile" type="button">✂ Recorte rápido…</button>
+        </div>
+      </div>
+      <p class="ed-help" id="edHelpAudio">Agrega una o varias canciones (aquí o con «✂ Editar» en Tus archivos). También puedes usar videos: se toma solo su audio. Marca un tramo en la onda y agrégalo a la lista: la edición final une los fragmentos en ese orden.</p>
+      <p class="ed-help" id="edHelpVideo" hidden>Agrega uno o varios videos, marca tramos y agrégalos a la lista: el video final los une en ese orden. Puedes dejarle su propio audio, quitárselo o ponerle otra pista de audio (una canción completa o hecha también por fragmentos).</p>
+      <div class="row" id="edVideoOpts" hidden style="margin-top:10px">
+        <label class="field">Audio del video final <select id="edVAudio">
+          <option value="own">🎬 El del propio video</option>
+          <option value="none">🔇 Sin audio</option>
+          <option value="other">🎵 Otra pista de audio</option>
+        </select></label>
+        <div class="seg" id="edTrackSeg" hidden role="radiogroup" aria-label="Agregar a la pista">
+          <label><input type="radio" name="edTrack" value="main" checked><span>🎬 Pista de video</span></label>
+          <label><input type="radio" name="edTrack" value="audio"><span>🎵 Pista de audio</span></label>
+        </div>
+      </div>
+      <div class="ed-sources" id="edSources"></div>
+      <div id="edViewer" hidden>
+        <div id="edPlayerBox"></div>
+        <div class="wave" id="edWave" aria-label="Onda del audio: arrastra para marcar un tramo, clic para ir a ese punto"><canvas id="edCanvas"></canvas></div>
+        <div class="wave-tools">
+          <span class="grow" id="edWaveInfo">Arrastra sobre la onda para marcar un tramo · clic para ir a ese punto. Lo plano es silencio.</span>
+          <button class="secondary" type="button" id="edZoomOut" title="Alejar">🔍−</button>
+          <button class="secondary" type="button" id="edZoomIn" title="Acercar">🔍+</button>
+          <button class="secondary" type="button" id="edZoomAll">Ver todo</button>
+        </div>
+        <div class="ed-times">
+          <label class="field">Inicio <input id="edStart" inputmode="decimal" aria-label="Inicio del tramo (minutos:segundos)"></label>
+          <button class="secondary" type="button" id="edMarkStart" title="Usa el punto donde va el reproductor">⇤ Inicio aquí</button>
+          <label class="field">Final <input id="edEnd" inputmode="decimal" aria-label="Final del tramo (minutos:segundos)"></label>
+          <button class="secondary" type="button" id="edMarkEnd" title="Usa el punto donde va el reproductor">Final aquí ⇥</button>
+          <span class="field" id="edSelLen"></span>
+          <button class="secondary" type="button" id="edPlaySel">▶ Escuchar tramo</button>
+          <button type="button" id="edAddFrag">➕ Agregar fragmento</button>
+          <button class="link" type="button" id="edCancelEdit" hidden>Cancelar cambio</button>
+        </div>
+      </div>
+      <h3 class="ed-h3" id="edListTitle">Fragmentos (en el orden de la edición final)</h3>
+      <ol class="tracks frags" id="edFrags"></ol>
+      <div id="edAudioTrack" hidden>
+        <h3 class="ed-h3">🎵 Pista de audio (suena sobre el video)</h3>
+        <ol class="tracks frags" id="edAFrags"></ol>
+        <p class="ed-help">Si la pista de audio dura más que el video, se corta al final; si dura menos, lo que falta queda en silencio.</p>
+      </div>
+      <div class="ed-foot">
+        <span class="grow field" id="edTotal"></span>
+        <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
+        <select id="edMode" aria-label="Qué guardar">
+          <option value="original">✂ Tal cual (voz y música)</option>
+          <option value="music">🎵 Solo música (quitar la voz)</option>
+          <option value="voice">🎤 Solo voz (quitar la música)</option>
+        </select>
+      </div>
+      <div class="ed-foot">
+        <span class="grow"></span>
+        <button class="secondary" type="button" id="edClear">🧹 Vaciar edición</button>
+        <button class="secondary" type="button" id="edPreview">▶ Escuchar edición final</button>
+        <button type="button" id="edSave">💾 Guardar edición</button>
+      </div>
+      <p id="edStatus" role="status" aria-live="polite"></p>
+      <div id="edPreviewBox"></div>
     </section>
 
     <section class="panel">
@@ -777,6 +877,72 @@
       'Para separar voz o música, el tramo debe durar máximo 30 minutos.': 'To separate vocals or music, the section must be 30 minutes or less.',
       'El separador se descargó mal. Vuelve a intentar.': 'The separator downloaded corrupted. Try again.',
       'No se pudo leer el audio.': 'Could not read the audio.', 'No se pudo guardar.': 'Could not save.',
+      "✂ Edición": "✂ Editing",
+      "📂 Agregar archivo…": "📂 Add file…",
+      "✂ Recorte rápido…": "✂ Quick trim…",
+      "Agrega una o varias canciones (aquí o con «✂ Editar» en Tus archivos). También puedes usar videos: se toma solo su audio. Marca un tramo en la onda y agrégalo a la lista: la edición final une los fragmentos en ese orden.": "Add one or more songs (here or with “✂ Edit” in Your files). You can also use videos: only their audio is used. Mark a section on the waveform and add it to the list: the final edit joins the fragments in that order.",
+      "Agrega uno o varios videos, marca tramos y agrégalos a la lista: el video final los une en ese orden. Puedes dejarle su propio audio, quitárselo o ponerle otra pista de audio (una canción completa o hecha también por fragmentos).": "Add one or more videos, mark sections and add them to the list: the final video joins them in that order. You can keep their own audio, remove it, or use another audio track (a whole song or one also made of fragments).",
+      "Audio del video final": "Final video audio",
+      "🎬 El del propio video": "🎬 The video's own audio",
+      "🔇 Sin audio": "🔇 No audio",
+      "🎵 Otra pista de audio": "🎵 Another audio track",
+      "🎬 Pista de video": "🎬 Video track",
+      "🎵 Pista de audio": "🎵 Audio track",
+      "Agregar a la pista": "Add to track",
+      "Tipo de edición": "Edit type",
+      "Arrastra sobre la onda para marcar un tramo · clic para ir a ese punto. Lo plano es silencio.": "Drag on the waveform to mark a section · click to jump to that point. Flat parts are silence.",
+      "Onda del audio: arrastra para marcar un tramo, clic para ir a ese punto": "Audio waveform: drag to mark a section, click to jump to that point",
+      "Alejar": "Zoom out",
+      "Acercar": "Zoom in",
+      "Ver todo": "Show all",
+      "Inicio del tramo (minutos:segundos)": "Section start (minutes:seconds)",
+      "Final del tramo (minutos:segundos)": "Section end (minutes:seconds)",
+      "▶ Escuchar tramo": "▶ Play section",
+      "➕ Agregar fragmento": "➕ Add fragment",
+      "Cancelar cambio": "Cancel change",
+      "Fragmentos (en el orden de la edición final)": "Fragments (in final edit order)",
+      "🎬 Pista de video (fragmentos en orden)": "🎬 Video track (fragments in order)",
+      "🎵 Pista de audio (suena sobre el video)": "🎵 Audio track (plays over the video)",
+      "Si la pista de audio dura más que el video, se corta al final; si dura menos, lo que falta queda en silencio.": "If the audio track is longer than the video it is cut at the end; if it is shorter, the rest stays silent.",
+      "Suavizar uniones (sin «clic»)": "Smooth joins (no “click”)",
+      "🧹 Vaciar edición": "🧹 Clear edit",
+      "▶ Escuchar edición final": "▶ Preview final edit",
+      "💾 Guardar edición": "💾 Save edit",
+      "Leyendo la onda…": "Reading the waveform…",
+      "Tramo: {0}": "Section: {0}",
+      "Quitar de la edición": "Remove from the edit",
+      "¿Quitar «{0}» de la edición?\n\nTambién se quitan sus {1} fragmentos de la lista. El archivo NO se borra de tu computadora.": "Remove “{0}” from the edit?\n\nIts {1} fragments are also removed from the list. The file is NOT deleted from your computer.",
+      "Escuchar": "Play",
+      "Ajustar en la onda": "Adjust on the waveform",
+      "Todavía no hay fragmentos. Marca un tramo en la onda y presiona «➕ Agregar fragmento».": "No fragments yet. Mark a section on the waveform and press “➕ Add fragment”.",
+      "Todavía no hay audio. Elige «🎵 Pista de audio», marca un tramo de una canción y agrégalo.": "No audio yet. Choose “🎵 Audio track”, mark a section of a song and add it.",
+      "Edición final: {0} fragmentos · {1}": "Final edit: {0} fragments · {1}",
+      "Video: {0} fragmentos · {1} · Pista de audio: {2}": "Video: {0} fragments · {1} · Audio track: {2}",
+      "✔ Actualizar fragmento {0}": "✔ Update fragment {0}",
+      "➕ Agregar a la pista de audio": "➕ Add to audio track",
+      "➕ Agregar a la pista de video": "➕ Add to video track",
+      "Agrega al menos un fragmento a la pista de audio (o elige otro «Audio del video final»).": "Add at least one fragment to the audio track (or choose another “Final video audio”).",
+      "Preparando la vista previa… {0} %": "Preparing the preview… {0} %",
+      "Uniendo los fragmentos… {0} %": "Joining the fragments… {0} %",
+      "No se pudo guardar la edición.": "Could not save the edit.",
+      "Vista previa lista. No se guarda: cuando te guste, presiona «💾 Guardar edición».": "Preview ready. It is not saved: when you like it, press “💾 Save edit”.",
+      "Usarlo como fuente": "Use it as a source",
+      "Para usar una canción en un video, en «Audio del video final» elige «🎵 Otra pista de audio».": "To use a song in a video, choose “🎵 Another audio track” in “Final video audio”.",
+      "Hay canciones en la lista de fragmentos: un video solo se arma con fragmentos de video. Quítalas o vacía la edición.": "There are songs in the fragment list: a video can only be built from video fragments. Remove them or clear the edit.",
+      "¿Pasar a edición de audio?\n\nSe quita la pista de audio del video. Los fragmentos de la lista principal se quedan (se usa su audio).": "Switch to an audio edit?\n\nThe video's audio track is removed. The fragments in the main list stay (their audio is used).",
+      "¿Quitar la pista de audio?\n\nSe borran sus fragmentos de la lista (tus archivos no se tocan).": "Remove the audio track?\n\nIts fragments are removed from the list (your files are not touched).",
+      "En la pista de video solo van videos. Cambia a «🎵 Pista de audio» para agregar esta canción.": "Only videos go in the video track. Switch to “🎵 Audio track” to add this song.",
+      "Fragmento {0} actualizado.": "Fragment {0} updated.",
+      "Fragmento {0} agregado.": "Fragment {0} added.",
+      "El tramo debe durar al menos 0.1 segundos.": "The section must be at least 0.1 seconds long.",
+      "¿Vaciar la edición?\n\nSe quitan las fuentes y la lista de fragmentos de este editor. Tus archivos y las ediciones que ya guardaste NO se borran.": "Clear the edit?\n\nThe sources and the fragment list are removed from this editor. Your files and the edits you already saved are NOT deleted.",
+      "Agrega al menos un fragmento.": "Add at least one fragment.",
+      "Son demasiados fragmentos (máximo 200).": "Too many fragments (maximum 200).",
+      "En la pista de video solo van videos.": "Only videos go in the video track.",
+      "Cada fragmento debe durar al menos 0.1 segundos.": "Each fragment must be at least 0.1 seconds long.",
+      "La edición final puede durar máximo 3 horas.": "The final edit can be at most 3 hours long.",
+      "Hay demasiadas ediciones de este archivo.": "There are too many edits of this file.",
+      "No existe esa edición.": "That edit does not exist.",
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
@@ -924,7 +1090,7 @@
     };
     $('#files').addEventListener('click', event => {
       const d = event.target.dataset, list = Files.filtered();
-      if (d.edit !== undefined) openEditorByToken(list[+d.edit].token);
+      if (d.edit !== undefined) Edit.addToken(list[+d.edit].token);
       else if (d.play !== undefined) api('/api/file/open', {token: list[+d.play].token}).catch(error => say(error.message));
       else if (d.reveal !== undefined) api('/api/file/reveal', {token: list[+d.reveal].token}).catch(error => say(error.message));
     });
@@ -950,7 +1116,7 @@
       const percent = job.status === 'done' ? 100 : (job.status === 'converting' ? 100 : job.percent);
       const buttons = [];
       if (['queued', 'running', 'converting'].includes(job.status)) buttons.push(`<button class="secondary" data-act="cancel">${t('Cancelar')}</button>`);
-      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="${t('Reproducir')}">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 ${t('Ver')}</button>`); if (job.media) buttons.push(`<button class="secondary" data-trim="${job.media}">✂ ${t('Recortar')}</button>`); }
+      if (job.status === 'done') { if (!job.playlist) buttons.push(`<button class="secondary" data-act="open" title="${t('Reproducir')}">▶</button>`); buttons.push(`<button class="secondary" data-act="reveal">📂 ${t('Ver')}</button>`); if (job.media) buttons.push(`<button class="secondary" data-trim="${job.media}">✂ ${t('Editar')}</button>`); }
       if (['error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="retry">${t('Reintentar')}</button>`);
       if (['done', 'error', 'cancelled'].includes(job.status)) buttons.push(`<button class="secondary" data-act="remove" title="${t('Quitar de la lista')}">✕</button>`);
       return `<article class="job ${job.status}" data-id="${job.id}">
@@ -975,7 +1141,7 @@
     }
     $('#jobs').addEventListener('click', async event => {
       const trim = event.target.closest('button[data-trim]');
-      if (trim) { openEditorByToken(trim.dataset.trim); return; }
+      if (trim) { Edit.addToken(trim.dataset.trim); return; }
       const button = event.target.closest('button[data-act]'); if (!button) return;
       const id = button.closest('.job').dataset.id;
       try { await api(`/api/jobs/${id}/${button.dataset.act}`, {}); } catch (error) { say(error.message); }
@@ -1080,6 +1246,326 @@
       catch (error) { say(error.message); }
       finally { button.disabled = false; }
     });
+
+    // ---------- Edición: onda, fragmentos de una o varias fuentes y edición final ----------
+    const fmt2 = t => { t = Math.max(0, t || 0); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t - h * 3600 - m * 60;
+      const ss = (s < 10 ? '0' : '') + s.toFixed(2); return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
+    const Edit = {
+      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], view: [0, 0], el: null, playEnd: null, editing: -1, job: null,
+      COLORS: ['#8569ff', '#25c2a0', '#f2994a', '#eb5757', '#56ccf2', '#f2c94c', '#bb6bd9', '#6fcf97'],
+      say(text, ok = false) { $('#edStatus').textContent = text; $('#edStatus').classList.toggle('ok', ok); },
+      src(token) { return this.sources.find(x => x.token === token); },
+      cur() { return this.sources[this.active]; },
+      pathOf(m) { return m.folder + (m.folder.includes('\\') ? '\\' : '/') + m.name; },
+      save() {
+        const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end}));
+        try { localStorage.setItem('ectube-edit', JSON.stringify({kind: this.kind, smooth: $('#edSmooth').checked, mode: $('#edMode').value, vaudio: this.vaudio,
+          sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags)})); } catch (_) {}
+      },
+      async restore() {
+        let data; try { data = JSON.parse(localStorage.getItem('ectube-edit') || 'null'); } catch (_) {}
+        if (!data) { this.render(); return; }
+        this.setKind(data.kind === 'video' ? 'video' : 'audio');
+        $('#edSmooth').checked = data.smooth !== false; $('#edMode').value = data.mode || 'original';
+        const tokens = [];
+        for (const item of data.sources || []) {
+          try { const m = (await api('/api/media-path', {path: item.path})).media; this.sources.push({...m, color: item.color, peaks: null, duration: 0}); tokens.push(m.token); }
+          catch (_) { tokens.push(null); }
+        }
+        const unpack = list => (list || []).filter(f => tokens[f.i]).map(f => ({token: tokens[f.i], start: f.start, end: f.end}));
+        this.frags = unpack(data.frags); this.afrags = unpack(data.afrags); this.setVAudio(data.vaudio || 'own');
+        if (this.sources.length) this.select(0); else this.render();
+      },
+      setKind(kind) {
+        this.kind = kind; document.querySelector(`input[name=edKind][value=${kind}]`).checked = true;
+        $('#edHelpAudio').hidden = kind !== 'audio'; $('#edHelpVideo').hidden = $('#edVideoOpts').hidden = kind !== 'video';
+        this.syncTracks();
+      },
+      setVAudio(v) { this.vaudio = v; $('#edVAudio').value = v; this.syncTracks(); },
+      other() { return this.kind === 'video' && this.vaudio === 'other'; },
+      setTrack(tr) { this.track = this.other() ? tr : 'main'; document.querySelector(`input[name=edTrack][value=${this.track}]`).checked = true; },
+      syncTracks() {
+        const other = this.other();
+        $('#edTrackSeg').hidden = $('#edAudioTrack').hidden = !other;
+        if (!other) this.setTrack('main');
+        $('#edListTitle').textContent = t(other ? '🎬 Pista de video (fragmentos en orden)' : 'Fragmentos (en el orden de la edición final)');
+        $('#edMode').hidden = this.kind === 'video' && this.vaudio === 'none';
+      },
+      list(tr) { return tr === 'audio' ? this.afrags : this.frags; },
+      async addToken(token) { try { this.add((await api('/api/media-info', {token})).media); } catch (error) { say(error.message); } },
+      add(media) {
+        if (!this.sources.length && media.kind !== this.kind) this.setKind(media.kind);  // la primera fuente decide (luego puedes cambiar)
+        if (this.kind === 'video' && media.kind === 'audio') {
+          if (this.vaudio !== 'other') { this.say(t('Para usar una canción en un video, en «Audio del video final» elige «🎵 Otra pista de audio».')); $('#edPanel').scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
+          this.setTrack('audio');
+        }
+        let i = this.sources.findIndex(x => x.token === media.token);
+        if (i < 0) {
+          const used = new Set(this.sources.map(x => x.color));
+          this.sources.push({...media, color: this.COLORS.find(c => !used.has(c)) || this.COLORS[this.sources.length % this.COLORS.length], peaks: null, duration: 0});
+          i = this.sources.length - 1;
+        }
+        this.select(i); this.save(); this.say('');
+        $('#edPanel').scrollIntoView({behavior: 'smooth', block: 'start'});
+      },
+      remove(i) {
+        const s0 = this.sources[i], n = this.frags.filter(f => f.token === s0.token).length;
+        const na = this.afrags.filter(f => f.token === s0.token).length;
+        if ((n + na) && !confirm(tf('¿Quitar «{0}» de la edición?\n\nTambién se quitan sus {1} fragmentos de la lista. El archivo NO se borra de tu computadora.', s0.name, n + na))) return;
+        this.frags = this.frags.filter(f => f.token !== s0.token); this.afrags = this.afrags.filter(f => f.token !== s0.token); this.sources.splice(i, 1);
+        this.editing = -1;
+        if (!this.sources.length) { this.active = -1; this.unload(); } else this.select(Math.min(i, this.sources.length - 1));
+        this.save(); this.render();
+      },
+      unload() { if (this.el) { this.el.pause(); this.el.removeAttribute('src'); this.el.load(); } this.el = null; $('#edPlayerBox').innerHTML = ''; $('#edViewer').hidden = true; },
+      async select(i, range) {
+        const m = this.sources[i]; if (!m) return;
+        if (this.other()) this.setTrack(m.kind === 'audio' ? 'audio' : this.track);
+        const same = this.active === i && this.el;
+        this.active = i; this.render();
+        if (!same) {
+          this.unload(); $('#edViewer').hidden = false;
+          const tag = m.kind === 'video' ? 'video' : 'audio';
+          $('#edPlayerBox').innerHTML = `<${tag} controls preload="metadata"></${tag}>`;
+          const el = this.el = $('#edPlayerBox ' + tag); el.src = '/media/' + m.token;
+          el.addEventListener('loadedmetadata', () => { if (!m.duration) { m.duration = el.duration || 0; if (!range) this.setSel(0, m.duration); this.zoomAll(); } });
+          el.addEventListener('timeupdate', () => { if (this.playEnd !== null && el.currentTime >= this.playEnd) { el.pause(); this.playEnd = null; } });
+          el.addEventListener('play', () => this.loop()); el.addEventListener('seeked', () => this.draw());
+        }
+        if (!m.peaks) {
+          $('#edWaveInfo').textContent = t('Leyendo la onda…'); this.draw();
+          try { const w = await api('/api/peaks', {token: m.token, buckets: 4000}); m.peaks = w.peaks; m.duration = m.duration || w.duration; }
+          catch (error) { m.peaks = []; this.say(t(error.message)); }
+          $('#edWaveInfo').textContent = t('Arrastra sobre la onda para marcar un tramo · clic para ir a ese punto. Lo plano es silencio.');
+        }
+        if (range) this.setSel(range[0], range[1]); else if (!same) this.setSel(0, m.duration);
+        if (!same || range) this.zoomAll(range);
+        this.draw();
+      },
+      setSel(a, b) {
+        const d = this.cur()?.duration || 0; a = Math.min(Math.max(0, a), d); b = Math.min(Math.max(0, b), d);
+        if (b < a) [a, b] = [b, a];
+        this.sel = [a, b];
+        if (document.activeElement !== $('#edStart')) $('#edStart').value = fmt2(a);
+        if (document.activeElement !== $('#edEnd')) $('#edEnd').value = fmt2(b);
+        $('#edSelLen').textContent = tf('Tramo: {0}', fmt2(b - a));
+        this.draw();
+      },
+      zoomAll(range) { const d = this.cur()?.duration || 0; this.view = [0, d]; this.draw(); },
+      zoom(factor) {
+        const d = this.cur()?.duration || 0; if (!d) return;
+        const center = this.el && !this.el.paused ? this.el.currentTime : (this.sel[0] + this.sel[1]) / 2;
+        const span = Math.min(d, Math.max(1, (this.view[1] - this.view[0]) * factor));
+        let a = Math.max(0, center - span / 2); a = Math.min(a, d - span); this.view = [a, a + span]; this.draw();
+      },
+      loop() { this.draw(); if (this.el && !this.el.paused) requestAnimationFrame(() => this.loop()); },
+      draw() {
+        const c = $('#edCanvas'), m = this.cur(); if (!c || !m) return;
+        const w = c.clientWidth, h = c.clientHeight, dpr = window.devicePixelRatio || 1;
+        if (!w) return;
+        if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+        const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+        const [v0, v1] = this.view, span = Math.max(0.001, v1 - v0), X = t => (t - v0) / span * w;
+        // fragmentos ya usados de esta fuente
+        [[this.frags, '#'], [this.afrags, '♪']].forEach(([list, mark]) => list.forEach((f, n) => {
+          if (f.token !== m.token || f.end < v0 || f.start > v1) return;
+          g.fillStyle = m.color + '33'; g.fillRect(X(f.start), 0, X(f.end) - X(f.start), h);
+          g.fillStyle = m.color; g.font = '600 11px Segoe UI, sans-serif'; g.fillText(mark + (n + 1), X(f.start) + 3, 12);
+        }));
+        // tramo marcado
+        const [a, b] = this.sel; g.fillStyle = 'rgba(133,105,255,.28)'; g.fillRect(X(a), 0, X(b) - X(a), h);
+        // onda
+        const p = m.peaks || [], d = m.duration || 1, mid = (h - 14) / 2;
+        if (p.length) {
+          for (let x = 0; x < w; x++) {
+            const t0 = v0 + x / w * span, t1 = v0 + (x + 1) / w * span;
+            let i0 = Math.floor(t0 / d * p.length), i1 = Math.max(i0 + 1, Math.ceil(t1 / d * p.length)), peak = 0;
+            for (let i = Math.max(0, i0); i < Math.min(p.length, i1); i++) peak = Math.max(peak, p[i]);
+            const on = t0 >= a && t0 <= b, y = Math.max(0.5, peak * (mid - 2));
+            g.fillStyle = on ? '#c9bcff' : '#5c656c'; g.fillRect(x, mid - y, 1, y * 2);
+          }
+        }
+        // bordes del tramo, marcas de tiempo y punto de reproducción
+        g.fillStyle = '#ffffff'; [a, b].forEach(t => g.fillRect(X(t) - 1, 0, 2, h - 14));
+        const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800], step = steps.find(s => span / s <= 10) || 3600;
+        g.fillStyle = '#9aa3aa'; g.font = '10px Segoe UI, sans-serif';
+        for (let t = Math.ceil(v0 / step) * step; t <= v1; t += step) { g.fillRect(X(t), h - 14, 1, 4); g.fillText(fmt2(t).replace(/\.00$/, ''), X(t) + 2, h - 3); }
+        if (this.el) { const now = this.el.currentTime; if (now >= v0 && now <= v1) { g.fillStyle = '#f2c94c'; g.fillRect(X(now) - 1, 0, 2, h); } }
+      },
+      fragLabel(f) { return fmt2(f.start) + ' → ' + fmt2(f.end); },
+      total(list = this.frags) { return list.reduce((acc, f) => acc + (f.end - f.start), 0); },
+      listHtml(list, tr) {
+        return list.length ? list.map((f, i) => {
+          const x = this.src(f.token) || {name: '?', color: '#888'};
+          const editing = this.editing === i && this.editTrack === tr;
+          return `<li draggable="true" data-t="${tr}" data-i="${i}" class="${editing ? 'editing' : ''}"><span class="num">${tr === 'audio' ? '♪' : ''}${i + 1}</span><span class="dot" style="background:${x.color}"></span>
+            <span class="tname" title="${esc(x.name)}">${esc(x.name)}</span>
+            <span class="ft"><input data-f="start" value="${fmt2(f.start)}" aria-label="${t('Inicio')}"> → <input data-f="end" value="${fmt2(f.end)}" aria-label="${t('Final')}"></span>
+            <span class="dur">${fmt2(f.end - f.start)}</span>
+            <span class="tbtn"><button type="button" data-act="play" title="${t('Escuchar')}">▶</button><button type="button" data-act="edit" title="${t('Ajustar en la onda')}">✎</button><button type="button" data-act="up" title="${t('Subir')}">↑</button><button type="button" data-act="down" title="${t('Bajar')}">↓</button><button type="button" data-act="del" title="${t('Quitar')}">🗑</button></span></li>`;
+        }).join('') : `<li style="cursor:default"><span></span><span></span><span class="tname" style="color:var(--muted)">${t(tr === 'audio' ? 'Todavía no hay audio. Elige «🎵 Pista de audio», marca un tramo de una canción y agrégalo.' : 'Todavía no hay fragmentos. Marca un tramo en la onda y presiona «➕ Agregar fragmento».')}</span></li>`;
+      },
+      render() {
+        $('#edSources').innerHTML = this.sources.map((x, i) => `<span class="ed-src${i === this.active ? ' on' : ''}"><span class="dot" style="background:${x.color}"></span><button type="button" class="nm" data-src="${i}" title="${esc(x.name)}">${esc(x.name)}</button><button type="button" class="x" data-rm="${i}" title="${t('Quitar de la edición')}" aria-label="${t('Quitar de la edición')}">✕</button></span>`).join('');
+        $('#edFrags').innerHTML = this.listHtml(this.frags, 'main');
+        $('#edAFrags').innerHTML = this.listHtml(this.afrags, 'audio');
+        $('#edTotal').textContent = !this.frags.length ? '' : this.other()
+          ? tf('Video: {0} fragmentos · {1} · Pista de audio: {2}', this.frags.length, fmt2(this.total()), fmt2(this.total(this.afrags)))
+          : tf('Edición final: {0} fragmentos · {1}', this.frags.length, fmt2(this.total()));
+        $('#edSave').disabled = $('#edPreview').disabled = !this.frags.length || !!this.job;
+        $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
+          : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
+        $('#edCancelEdit').hidden = this.editing < 0;
+        this.draw();
+      },
+      playRange(a, b) { if (!this.el) return; this.el.currentTime = a; this.playEnd = b; this.el.play().catch(() => {}); },
+      async run(preview) {
+        if (!this.frags.length) return;
+        if (this.el) this.el.pause();
+        const mode = preview ? 'original' : $('#edMode').value;
+        $('#edPreviewBox').innerHTML = '';
+        try {
+          if (this.other() && !this.afrags.length) { this.say(t('Agrega al menos un fragmento a la pista de audio (o elige otro «Audio del video final»).')); return; }
+          const pack = list => list.map(f => ({token: f.token, start: f.start, end: f.end}));
+          const job = await api('/api/edit', {kind: this.kind, preview, mode, smooth: $('#edSmooth').checked, fragments: pack(this.frags),
+            audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags) : []});
+          this.job = job.id; this.render();
+          const poll = async () => {
+            let st; try { st = await api('/api/edit/' + job.id); } catch (error) { this.job = null; this.render(); this.say(t(error.message)); return; }
+            if (st.status === 'running') {
+              const pct = Math.round(st.percent);
+              this.say(preview ? tf('Preparando la vista previa… {0} %', pct)
+                : st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
+                : st.phase === 'separate' || st.phase === 'audio' ? tf(mode === 'music' ? 'Quitando la voz… {0} %' : 'Quitando la música… {0} %', pct)
+                : st.phase === 'save' ? tf('Guardando… {0} %', pct) : tf('Uniendo los fragmentos… {0} %', pct));
+              setTimeout(poll, 600); return;
+            }
+            this.job = null; this.render();
+            if (st.status !== 'done') { this.say(t(st.error || (st.status === 'cancelled' ? 'Cancelado.' : 'No se pudo guardar la edición.'))); return; }
+            if (preview) {
+              const tag = this.kind === 'video' ? 'video' : 'audio';
+              $('#edPreviewBox').innerHTML = `<${tag} controls autoplay src="/media/${st.media.token}"></${tag}>`;
+              this.say(t('Vista previa lista. No se guarda: cuando te guste, presiona «💾 Guardar edición».'), true);
+            } else {
+              Files.load();
+              $('#edStatus').classList.add('ok');
+              $('#edStatus').innerHTML = `✅ ${t('Guardado como')} <strong>${esc(st.output)}</strong> · <button class="link" type="button" id="edReveal">${t('Ver en la carpeta')}</button> · <button class="link" type="button" id="edUseIt">${t('Usarlo como fuente')}</button>`;
+              $('#edReveal').onclick = () => api(`/api/edit/${job.id}/reveal`, {}).catch(() => {});
+              $('#edUseIt').onclick = () => this.add(st.media);
+            }
+          };
+          setTimeout(poll, 400);
+        } catch (error) { this.job = null; this.render(); const msg = error.message || ''; this.say(msg.startsWith('Pista de audio: ') ? t('🎵 Pista de audio') + ': ' + t(msg.slice(16)) : t(msg)); }
+      },
+    };
+    $('#edSources').addEventListener('click', event => {
+      const b = event.target.closest('button'); if (!b) return;
+      if (b.dataset.rm !== undefined) Edit.remove(+b.dataset.rm); else if (b.dataset.src !== undefined) Edit.select(+b.dataset.src);
+    });
+    document.querySelectorAll('input[name=edKind]').forEach(r => r.addEventListener('change', () => {
+      const to = r.value;
+      if (to === 'video' && Edit.frags.some(f => Edit.src(f.token)?.kind === 'audio')) {
+        Edit.setKind('audio'); Edit.say(t('Hay canciones en la lista de fragmentos: un video solo se arma con fragmentos de video. Quítalas o vacía la edición.')); return;
+      }
+      if (to === 'audio' && Edit.afrags.length && !confirm(t('¿Pasar a edición de audio?\n\nSe quita la pista de audio del video. Los fragmentos de la lista principal se quedan (se usa su audio).'))) { Edit.setKind('video'); return; }
+      if (to === 'audio') Edit.afrags = [];
+      Edit.editing = -1; Edit.setKind(to); Edit.save(); Edit.render();
+    }));
+    $('#edVAudio').addEventListener('change', () => {
+      const v = $('#edVAudio').value;
+      if (v !== 'other' && Edit.afrags.length && !confirm(t('¿Quitar la pista de audio?\n\nSe borran sus fragmentos de la lista (tus archivos no se tocan).'))) { $('#edVAudio').value = Edit.vaudio; return; }
+      if (v !== 'other') Edit.afrags = [];
+      Edit.editing = -1; Edit.setVAudio(v); Edit.save(); Edit.render();
+    });
+    document.querySelectorAll('input[name=edTrack]').forEach(r => r.addEventListener('change', () => { Edit.track = r.value; Edit.editing = -1; Edit.render(); }));
+    $('#edAdd').addEventListener('click', async () => {
+      const button = $('#edAdd'); button.disabled = true; Edit.say(t('Elige el archivo en la ventana que se abrió…'));
+      try { const data = await api('/api/pick-file', {}); Edit.say(''); if (data.media) Edit.add(data.media); }
+      catch (error) { Edit.say(error.message); }
+      finally { button.disabled = false; }
+    });
+    // Arrastrar sobre la onda: marcar un tramo (o mover uno de sus bordes). Un clic sin arrastrar: ir a ese punto.
+    (() => {
+      const wave = $('#edWave'); let drag = null;
+      const timeAt = event => { const r = wave.getBoundingClientRect(); return Edit.view[0] + Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * (Edit.view[1] - Edit.view[0]); };
+      const px = t => (t - Edit.view[0]) / Math.max(0.001, Edit.view[1] - Edit.view[0]) * wave.clientWidth;
+      wave.addEventListener('pointerdown', event => {
+        if (!Edit.cur()) return;
+        const t0 = timeAt(event), x = px(t0);
+        const edge = Math.abs(x - px(Edit.sel[0])) < 7 ? 0 : Math.abs(x - px(Edit.sel[1])) < 7 ? 1 : -1;
+        drag = {t0, x0: event.clientX, edge, moved: false, prev: [...Edit.sel]};
+        wave.setPointerCapture(event.pointerId);
+      });
+      wave.addEventListener('pointermove', event => {
+        if (!drag) { const r = wave.getBoundingClientRect(), x = event.clientX - r.left; wave.style.cursor = Math.abs(x - px(Edit.sel[0])) < 7 || Math.abs(x - px(Edit.sel[1])) < 7 ? 'ew-resize' : 'crosshair'; return; }
+        if (Math.abs(event.clientX - drag.x0) >= 4) drag.moved = true;
+        if (!drag.moved) return;
+        const t1 = timeAt(event);
+        if (drag.edge === 0) Edit.setSel(t1, Edit.sel[1]); else if (drag.edge === 1) Edit.setSel(Edit.sel[0], t1); else Edit.setSel(drag.t0, t1);
+      });
+      wave.addEventListener('pointerup', () => {
+        if (drag && !drag.moved && Edit.el) { Edit.el.currentTime = drag.t0; Edit.draw(); }
+        drag = null;
+      });
+      wave.addEventListener('wheel', event => { if (!Edit.cur()) return; event.preventDefault(); Edit.zoom(event.deltaY < 0 ? 0.7 : 1.4); }, {passive: false});
+      new ResizeObserver(() => Edit.draw()).observe(wave);
+    })();
+    $('#edZoomIn').addEventListener('click', () => Edit.zoom(0.5));
+    $('#edZoomOut').addEventListener('click', () => Edit.zoom(2));
+    $('#edZoomAll').addEventListener('click', () => Edit.zoomAll());
+    // Escribir un inicio después del final (o un final antes del inicio) mueve el tramo completo, sin voltearlo.
+    $('#edStart').addEventListener('change', () => { const v = parseTime($('#edStart').value), [a, b] = Edit.sel; if (isNaN(v)) { Edit.setSel(a, b); return; } Edit.setSel(v, v >= b ? v + Math.max(0.1, b - a) : b); });
+    $('#edEnd').addEventListener('change', () => { const v = parseTime($('#edEnd').value), [a, b] = Edit.sel; if (isNaN(v)) { Edit.setSel(a, b); return; } Edit.setSel(v <= a ? Math.max(0, v - Math.max(0.1, b - a)) : a, v); });
+    $('#edMarkStart').addEventListener('click', () => Edit.setSel(Edit.el?.currentTime || 0, Math.max(Edit.sel[1], Edit.el?.currentTime || 0)));
+    $('#edMarkEnd').addEventListener('click', () => Edit.setSel(Math.min(Edit.sel[0], Edit.el?.currentTime || 0), Edit.el?.currentTime || 0));
+    $('#edPlaySel').addEventListener('click', () => Edit.playRange(...Edit.sel));
+    $('#edAddFrag').addEventListener('click', () => {
+      const m = Edit.cur(); if (!m) return;
+      const [a, b] = Edit.sel;
+      if (b - a < 0.1) { Edit.say(t('El tramo debe durar al menos 0.1 segundos.')); return; }
+      const tr = Edit.editing >= 0 ? Edit.editTrack : Edit.track, list = Edit.list(tr);
+      if (Edit.kind === 'video' && tr === 'main' && m.kind !== 'video') { Edit.say(t('En la pista de video solo van videos. Cambia a «🎵 Pista de audio» para agregar esta canción.')); return; }
+      if (Edit.editing >= 0) { list[Edit.editing] = {token: m.token, start: a, end: b}; Edit.say(tf('Fragmento {0} actualizado.', (tr === 'audio' ? '♪' : '') + (Edit.editing + 1)), true); Edit.editing = -1; }
+      else { list.push({token: m.token, start: a, end: b}); Edit.say(tf('Fragmento {0} agregado.', (tr === 'audio' ? '♪' : '') + list.length), true); }
+      Edit.save(); Edit.render();
+    });
+    $('#edCancelEdit').addEventListener('click', () => { Edit.editing = -1; Edit.render(); });
+    for (const box of [$('#edFrags'), $('#edAFrags')]) {
+      box.addEventListener('change', event => {
+        const li = event.target.closest('li[data-i]'), f = li && Edit.list(li.dataset.t)[+li.dataset.i]; if (!f) return;
+        const v = parseTime(event.target.value), d = Edit.src(f.token)?.duration || Infinity;
+        if (!isNaN(v)) f[event.target.dataset.f] = Math.min(Math.max(0, v), d);
+        if (f.end - f.start < 0.1) { if (event.target.dataset.f === 'start') f.start = Math.max(0, f.end - 0.1); else f.end = f.start + 0.1; }
+        Edit.save(); Edit.render();
+      });
+      box.addEventListener('click', event => {
+        const b = event.target.closest('button[data-act]'), li = b && b.closest('li[data-i]'); if (!li) return;
+        const tr = li.dataset.t, list = Edit.list(tr), i = +li.dataset.i, f = list[i], si = Edit.sources.findIndex(x => x.token === f.token);
+        if (b.dataset.act === 'play') Edit.select(si, [f.start, f.end]).then(() => Edit.playRange(f.start, f.end));
+        else if (b.dataset.act === 'edit') { Edit.editing = i; Edit.editTrack = tr; Edit.setTrack(tr); Edit.select(si, [f.start, f.end]); Edit.render(); $('#edViewer').scrollIntoView({behavior: 'smooth', block: 'center'}); }
+        else if (b.dataset.act === 'up' && i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; Edit.editing = -1; Edit.save(); Edit.render(); }
+        else if (b.dataset.act === 'down' && i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; Edit.editing = -1; Edit.save(); Edit.render(); }
+        else if (b.dataset.act === 'del') { list.splice(i, 1); Edit.editing = -1; Edit.save(); Edit.render(); }
+      });
+      let from = null;
+      box.addEventListener('dragstart', event => { if (event.target.matches && event.target.matches('input')) { event.preventDefault(); return; } const li = event.target.closest('li[data-i]'); from = li ? +li.dataset.i : null; event.dataTransfer.effectAllowed = 'move'; });
+      box.addEventListener('dragover', event => { if (from === null) return; event.preventDefault(); box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over')); event.target.closest('li[data-i]')?.classList.add('drag-over'); });
+      box.addEventListener('drop', event => {
+        event.preventDefault(); const li = event.target.closest('li[data-i]'); box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+        if (from === null || !li) return; const list = Edit.list(li.dataset.t), to = +li.dataset.i; const [item] = list.splice(from, 1); list.splice(to, 0, item); from = null; Edit.editing = -1; Edit.save(); Edit.render();
+      });
+      box.addEventListener('dragend', () => { from = null; box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over')); });
+    }
+    $('#edSmooth').addEventListener('change', () => Edit.save());
+    $('#edMode').addEventListener('change', () => { Edit.save(); $('#edSave').textContent = t($('#edMode').value === 'music' ? '🎵 Quitar la voz y guardar' : $('#edMode').value === 'voice' ? '🎤 Quitar la música y guardar' : '💾 Guardar edición'); });
+    $('#edPreview').addEventListener('click', () => Edit.run(true));
+    $('#edSave').addEventListener('click', () => Edit.run(false));
+    $('#edClear').addEventListener('click', () => {
+      if (!Edit.sources.length && !Edit.frags.length) return;
+      if (!confirm(t('¿Vaciar la edición?\n\nSe quitan las fuentes y la lista de fragmentos de este editor. Tus archivos y las ediciones que ya guardaste NO se borran.'))) return;
+      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
+    });
+    Edit.restore();
 
     function showInfo(info) {
       $('#version').textContent = `${t('Versión')} ${info.version}${info.build_date ? ' · ' + info.build_date : ''}`;

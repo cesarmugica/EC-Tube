@@ -5,7 +5,7 @@ Descarga **audio y video** de YouTube (y de los demás sitios que soporta yt-dlp
 - **Audio:** MP3 (128, 192 o 320 kbps), M4A (calidad original) o WAV. Con portada, título y artista dentro del archivo.
 - **Video:** MP4 de 360p a 4K. Hasta 1080p usa H.264, que se reproduce en cualquier lado.
 - Varias descargas a la vez, con progreso, cancelar y reintentar.
-- **✂ Editor para recortar** el inicio y el final de un audio o video (lo que bajaste o cualquier archivo de tu PC). Guarda una copia «(recorte)» en la carpeta de editados y no toca el original.
+- **✂ Editor de audio y video**: ves la onda del audio (silencios, bajadas de volumen), marcas tramos de una o varias canciones o videos y los unes en el orden que quieras. En video puedes dejar su audio, quitarlo o ponerle otra pista de audio. Escuchas el resultado antes de guardarlo y puedes quitarle la voz o la música. Guarda una copia «(edición)» en la carpeta de editados y no toca los originales.
 - **🎵 / 🎤 Separar:** en el editor puedes guardar **solo la música** (sin voz, para cantar encima) o **solo la voz** (sin música). Usa el modelo MDX-Net «Kim Vocal 2» de [UVR](https://github.com/TRvlvr/model_repo) con ONNX Runtime + DirectML (tarjeta de video NVIDIA/AMD/Intel, o procesador).
 - **🎤 Karaoke:** escribe la letra, márcala con la espaciadora mientras suena la música y crea un video (16:9 o 9:16) con la letra iluminándose sobre el video original, una imagen o un degradado.
 - **🎵 Reproductor** tipo Winamp con varias listas guardadas, tomando canciones de las carpetas de descargas y de editados.
