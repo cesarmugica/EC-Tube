@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 5.1.0 — 🤖 Subtítulos automáticos
+- 💬 Subtítulos → **🤖 Automático**: EC-Tube **escucha el audio del video en tu PC y escribe los subtítulos** con sus tiempos, en bloques como en las películas. Tú corriges lo que no quede bien.
+  - Idioma: español, inglés, portugués o que lo detecte solo. Calidad: ⚡ Rápida o 🎯 Mejor (más lenta).
+  - La primera vez baja el «oído» (~145 MB la rápida, ~480 MB la mejor); después funciona sin internet.
+
 ## 5.0.0 — 💬 Subtítulos
 Versión grande: editor con sonidos y animaciones encima (4.x) y ahora una pestaña nueva para subtítulos.
 - Pestañas en este orden: **Descargar y recortar · 💬 Subtítulos · Karaoke · Reproductor**.

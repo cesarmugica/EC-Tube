@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.0.0"
+APP_VERSION = "5.1.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1948,6 +1948,71 @@ class SubsExport:
 SUBS_JOBS: dict[str, SubsExport] = {}
 
 
+def _audio_16k(path: Path):
+    """El audio en mono a 16 kHz (lo que necesita el reconocimiento de voz)."""
+    import numpy as np
+
+    if not FFMPEG:
+        raise RuntimeError("No se encontró FFmpeg.")
+    result = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-i", str(path), "-vn", "-ac", "1",
+                             "-ar", "16000", "-f", "f32le", "pipe:1"], capture_output=True, creationflags=_no_window_flags())
+    if result.returncode != 0 or not result.stdout:
+        raise RuntimeError("No se pudo leer el audio del video.")
+    return np.frombuffer(result.stdout, dtype="<f4").copy()
+
+
+class AsrJob:
+    """🤖 Escuchar el audio y escribir los subtítulos (la primera vez baja el «oído»)."""
+
+    def __init__(self, source: Path, lang: str, quality: str) -> None:
+        from ectube_asr import MODELS
+
+        self.id = uuid.uuid4().hex[:12]
+        self.source, self.lang = source, lang if lang in ("es", "en", "pt") else None
+        self.quality = quality if quality in MODELS else "base"
+        self.status, self.phase, self.percent, self.error, self.blocks, self.heard = "running", "model", 0.0, "", [], ""
+        self.cancelled = False
+
+    def _progress(self, value: float) -> None:
+        self.percent = value
+
+    def run(self) -> None:
+        from ectube_asr import download_model, model_dir, model_ready, transcribe
+
+        try:
+            if not model_ready(HOME, self.quality):
+                self.phase = "model"
+                try:
+                    download_model(HOME, self.quality, self._progress, lambda: self.cancelled, f"EC-Tube/{APP_VERSION}")
+                except InterruptedError:
+                    raise
+                except Exception as exc:  # noqa: BLE001
+                    log(f"[oído] no se pudo bajar: {exc}")
+                    raise RuntimeError("No se pudo bajar el «oído» (¿sin internet?). Intenta otra vez.") from exc
+            self.phase, self.percent = "decode", 0.0
+            audio = _audio_16k(self.source)
+            if self.cancelled:
+                raise InterruptedError
+            self.phase = "listen"
+            log(f"[oído {self.id}] {self.source.name} ({len(audio) / 16000:.0f} s, {self.quality}, {self.lang or 'auto'})")
+            self.blocks, self.heard = transcribe(audio, model_dir(HOME, self.quality), self.lang, self._progress, lambda: self.cancelled)
+            if not self.blocks:
+                raise RuntimeError("No se escuchó voz en el video.")
+            self.status = "done"
+        except InterruptedError:
+            self.status = "cancelled"
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+            log(f"[oído {self.id}] error: {exc}")
+
+    def public(self) -> dict:
+        return {"id": self.id, "status": self.status, "phase": self.phase, "percent": round(self.percent, 1), "error": self.error,
+                "blocks": self.blocks if self.status == "done" else [], "lang": self.heard}
+
+
+ASR_JOBS: dict[str, AsrJob] = {}
+
+
 # ---------- voz guía (para «ajustar a la voz») ----------
 GUIDES: dict[str, dict] = {}
 GUIDES_LOCK = threading.Lock()
@@ -2398,6 +2463,13 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/subs/fetch/"):
             job = SUBS_FETCHES.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe esa búsqueda."}, 200 if job else 404)
+        elif path == "/api/subs/asr":
+            from ectube_asr import MODELS, model_ready
+
+            self.send_json({"ok": True, "models": {q: {"ready": model_ready(HOME, q), "mb": mb} for q, (_, mb) in MODELS.items()}})
+        elif path.startswith("/api/subs/auto/"):
+            job = ASR_JOBS.get(path.rsplit("/", 1)[-1])
+            self.send_json(job.public() if job else {"ok": False, "error": "No existe ese trabajo."}, 200 if job else 404)
         elif path.startswith("/api/subs/export/"):
             job = SUBS_JOBS.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
@@ -2636,6 +2708,23 @@ class Handler(BaseHTTPRequestHandler):
             job = DOWNLOADS.add([url], {"kind": "video", "audio_format": CONFIG["audio_format"], "audio_quality": CONFIG["audio_quality"],
                                         "video_quality": CONFIG["video_quality"], "folder": CONFIG["video_folder"], "playlist": False})[0]
             self.send_json({"ok": True, "job": job.public()})
+        elif path == "/api/subs/auto":
+            source = MEDIA.path(str(data.get("token") or ""))
+            if not source or not source.is_file():
+                self.send_json({"ok": False, "error": "Primero elige el video."}, 400)
+                return
+            if any(j.status == "running" for j in ASR_JOBS.values()):
+                self.send_json({"ok": False, "error": "Ya está escuchando otro video; espera a que termine."}, 400)
+                return
+            job = AsrJob(source, str(data.get("lang") or ""), str(data.get("quality") or "base"))
+            ASR_JOBS[job.id] = job
+            threading.Thread(target=job.run, daemon=True).start()
+            self.send_json({"ok": True, **job.public()})
+        elif re.fullmatch(r"/api/subs/auto/[0-9a-f]{12}/cancel", path):
+            job = ASR_JOBS.get(path.split("/")[4])
+            if job:
+                job.cancelled = True
+            self.send_json({"ok": True})
         elif path == "/api/subs/fetch":
             url = str(data.get("url") or "").strip()
             if not re.match(r"https?://", url):
@@ -3026,7 +3115,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _update_blocker() -> str:
-    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values()])
+    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values(), *ASR_JOBS.values()])
     return "Espera a que terminen las descargas y recortes." if DOWNLOADS.active() or trimming else ""
 
 
@@ -3040,14 +3129,34 @@ def _idle_watch(server: ThreadingHTTPServer) -> None:
     """Cerrar el servidor si la ventana se cerró y no hay descargas pendientes."""
     while True:
         time.sleep(15)
-        trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values()])
+        trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values(), *ASR_JOBS.values()])
         if time.time() - LAST_PING > IDLE_EXIT_SECONDS and not DOWNLOADS.active() and not trimming:
             log("Sin ventana abierta ni descargas: EC-Tube se cierra.")
             threading.Thread(target=server.shutdown, daemon=True).start()
             return
 
 
+def _selftest_asr() -> int:
+    """Prueba del «oído» en el programa ya compilado (la usa GitHub al armar el instalador)."""
+    from ectube_asr import download_model, model_dir, transcribe
+
+    out = Path(os.environ["ECTUBE_SELFTEST_OUT"])
+    try:
+        download_model(HOME, "base", lambda p: None, lambda: False)
+        blocks, lang = transcribe(_audio_16k(Path(os.environ["ECTUBE_SELFTEST_ASR"])), model_dir(HOME, "base"), None,
+                                  lambda p: None, lambda: False)
+        out.write_text(json.dumps({"ok": True, "lang": lang, "blocks": blocks}, ensure_ascii=False), encoding="utf-8")
+        return 0
+    except Exception as exc:  # noqa: BLE001
+        import traceback
+
+        out.write_text(json.dumps({"ok": False, "error": f"{exc}", "trace": traceback.format_exc()}), encoding="utf-8")
+        return 1
+
+
 def main() -> int:
+    if os.environ.get("ECTUBE_SELFTEST_ASR"):
+        return _selftest_asr()
     parser = argparse.ArgumentParser(description=f"EC-Tube {APP_VERSION}")
     parser.add_argument("--port", type=int, help=f"puerto (por defecto {DEFAULT_PORT})")
     parser.add_argument("--no-browser", action="store_true", help="no abrir la ventana")

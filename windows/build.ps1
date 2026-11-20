@@ -76,7 +76,12 @@ Invoke-Checked $python ($pythonArgs + @(
   '--hidden-import', 'ectube_karaoke',
   '--hidden-import', 'ectube_overlay',
   '--hidden-import', 'ectube_subs',
+  '--hidden-import', 'ectube_asr',
   '--collect-all', 'onnxruntime',
+  '--collect-all', 'faster_whisper',
+  '--collect-all', 'ctranslate2',
+  '--collect-all', 'tokenizers',
+  '--collect-all', 'av',
   '--exclude-module', 'tkinter',
   '--distpath', $distDir,
   '--workpath', (Join-Path $scriptDir '.build'),
@@ -90,6 +95,22 @@ foreach ($exe in 'yt-dlp.exe', 'deno.exe', 'ffmpeg.exe', 'ffprobe.exe') { Copy-I
 $ytv = & (Join-Path $binDir 'yt-dlp.exe') --version
 if ($LASTEXITCODE -ne 0) { throw 'yt-dlp.exe no corrió.' }
 Write-Host "yt-dlp $ytv · Deno $(& (Join-Path $binDir 'deno.exe') --version | Select-Object -First 1)"
+
+# Prueba del «oído» (subtítulos automáticos) en el programa YA compilado: baja el modelo y escucha una muestra.
+if ($env:GITHUB_ACTIONS) {
+  $tmp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
+  $wav = Join-Path $tmp 'muestra-voz.wav'
+  Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ggerganov/whisper.cpp/master/samples/jfk.wav' -OutFile $wav
+  $env:ECTUBE_HOME = Join-Path $tmp 'ectube-prueba'
+  $env:ECTUBE_SELFTEST_ASR = $wav
+  $env:ECTUBE_SELFTEST_OUT = Join-Path $tmp 'oido.json'
+  $proc = Start-Process -FilePath (Join-Path $appDir 'ectube.exe') -Wait -PassThru
+  $result = Get-Content $env:ECTUBE_SELFTEST_OUT -Raw -Encoding UTF8
+  Write-Host "Prueba del oído (código $($proc.ExitCode)): $result"
+  Remove-Item env:ECTUBE_SELFTEST_ASR, env:ECTUBE_SELFTEST_OUT, env:ECTUBE_HOME
+  $data = $result | ConvertFrom-Json
+  if (-not $data.ok -or $data.blocks.Count -lt 1 -or ($result -notmatch 'country')) { throw 'El oído (reconocimiento de voz) no funcionó en el programa compilado.' }
+}
 
 # --- Instalador ---
 $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1

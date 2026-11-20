@@ -26,6 +26,10 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip pyinstaller numpy onnxruntime-directml pillow
+          # faster-whisper sin sus dependencias: así no reemplaza onnxruntime-directml (el del separador de voz) por el normal
+          python -m pip install faster-whisper --no-deps
+          python -m pip install ctranslate2 tokenizers huggingface_hub av tqdm
+          python -c "import faster_whisper, ctranslate2, av; print('faster-whisper', faster_whisper.__version__, 'ctranslate2', ctranslate2.__version__)"
           python -c "import numpy, onnxruntime as o; print('onnxruntime', o.__version__, o.get_available_providers())"
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
 

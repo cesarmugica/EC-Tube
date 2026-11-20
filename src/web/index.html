@@ -678,7 +678,13 @@
           <p class="khelp">Usa el enlace de arriba (si bajaste el video con EC-Tube ya está puesto). Los automáticos de YouTube traen errores: revísalos en la lista.</p>
         </div>
         <div data-sm="auto" style="margin-top:12px" hidden>
-          <p class="s-msg">🤖 Muy pronto: EC-Tube va a escuchar el audio y escribir los subtítulos solo (tú corriges lo que no quede bien).</p>
+          <div class="row">
+            <label class="field">Idioma <select id="sAsrLang"><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="">Que lo detecte solo</option></select></label>
+            <label class="field">Calidad <select id="sAsrQ"><option value="base">⚡ Rápida</option><option value="small">🎯 Mejor (más lenta)</option></select></label>
+            <button id="sAsr" type="button">🤖 Escribir los subtítulos</button>
+            <button class="secondary" id="sAsrCancel" type="button" hidden>✕ Cancelar</button>
+          </div>
+          <p class="khelp" id="sAsrInfo">EC-Tube escucha el audio del video en tu PC y escribe los subtítulos con sus tiempos. Puede equivocarse con nombres o palabras raras: revísalos en la lista.</p>
         </div>
       </section>
 
@@ -1239,6 +1245,25 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "Que lo detecte solo": "Detect it automatically",
+      "Calidad": "Quality",
+      "⚡ Rápida": "⚡ Fast",
+      "🎯 Mejor (más lenta)": "🎯 Better (slower)",
+      "🤖 Escribir los subtítulos": "🤖 Write the subtitles",
+      "✕ Cancelar": "✕ Cancel",
+      "EC-Tube escucha el audio del video en tu PC y escribe los subtítulos con sus tiempos. Puede equivocarse con nombres o palabras raras: revísalos en la lista.": "EC-Tube listens to the video's audio on your PC and writes the subtitles with their times. It can get names or unusual words wrong: check them in the list.",
+      "El «oído» ya está en tu PC: funciona sin internet.": "The “ear” is already on your PC: it works without internet.",
+      "La primera vez baja el «oído» (~{0} MB); después funciona sin internet.": "The first time it downloads the “ear” (~{0} MB); after that it works without internet.",
+      "Bajando el «oído» (solo la primera vez)… {0} %": "Downloading the “ear” (only the first time)… {0} %",
+      "Leyendo el audio…": "Reading the audio…",
+      "Escuchando y escribiendo… {0} %": "Listening and writing… {0} %",
+      "lo que escuchó EC-Tube": "what EC-Tube heard",
+      "✅ {0} subtítulos escritos. Revísalos con ▶ Play y corrige texto o tiempos en la lista.": "✅ {0} subtitles written. Check them with ▶ Play and fix text or times in the list.",
+      "No se pudo bajar el «oído» (¿sin internet?). Intenta otra vez.": "Could not download the “ear” (no internet?). Try again.",
+      "No se escuchó voz en el video.": "No voice was heard in the video.",
+      "Ya está escuchando otro video; espera a que termine.": "It is already listening to another video; wait for it to finish.",
+      "No se pudo leer el audio del video.": "Could not read the video's audio.",
+      "No se pudo.": "It did not work.",
       "💬 Subtítulos": "💬 Subtitles",
       "(nuevos subtítulos)": "(new subtitles)",
       "(ya no está en su carpeta)": "(no longer in its folder)",
@@ -2826,6 +2851,37 @@
     $('#sImport').addEventListener('click', async () => {
       try { const d = await api('/api/subs/import', {}); if (d.blocks) { if (!d.blocks.length) { Subs.say(t('Ese archivo no trae subtítulos.')); return; } if (Subs.setBlocks(d.blocks, t('ese archivo'))) Subs.say(tf('✅ {0} subtítulos cargados del archivo.', d.blocks.length)); } }
       catch (error) { Subs.say(t(error.message)); }
+    });
+    const sAsrInfo = async () => {
+      try {
+        const m = (await api('/api/subs/asr')).models, q = $('#sAsrQ').value, x = m[q];
+        $('#sAsrInfo').textContent = t('EC-Tube escucha el audio del video en tu PC y escribe los subtítulos con sus tiempos. Puede equivocarse con nombres o palabras raras: revísalos en la lista.')
+          + ' ' + (x.ready ? t('El «oído» ya está en tu PC: funciona sin internet.') : tf('La primera vez baja el «oído» (~{0} MB); después funciona sin internet.', x.mb));
+      } catch (_) {}
+    };
+    $('#sAsrQ').addEventListener('change', sAsrInfo);
+    document.querySelector('input[name=sMethod][value=auto]').addEventListener('change', sAsrInfo);
+    $('#sAsr').addEventListener('click', async () => {
+      if (!Subs.p.source) { Subs.say(t('Primero elige el video.')); return; }
+      const b = $('#sAsr'), cancel = $('#sAsrCancel'); b.disabled = true; cancel.hidden = false;
+      try {
+        const job = await api('/api/subs/auto', {token: Subs.p.source.token, lang: $('#sAsrLang').value, quality: $('#sAsrQ').value});
+        cancel.onclick = () => api(`/api/subs/auto/${job.id}/cancel`, {}).catch(() => {});
+        const poll = async () => {
+          let j; try { j = await api('/api/subs/auto/' + job.id); } catch (error) { b.disabled = false; cancel.hidden = true; Subs.say(t(error.message)); return; }
+          if (j.status === 'running') {
+            const pct = Math.round(j.percent);
+            Subs.say(j.phase === 'model' ? tf('Bajando el «oído» (solo la primera vez)… {0} %', pct) : j.phase === 'decode' ? t('Leyendo el audio…') : tf('Escuchando y escribiendo… {0} %', pct), true);
+            setTimeout(poll, 900); return;
+          }
+          b.disabled = false; cancel.hidden = true; sAsrInfo();
+          if (j.status === 'cancelled') { Subs.say(t('Cancelado.')); return; }
+          if (j.status !== 'done') { Subs.say(t(j.error || 'No se pudo.')); return; }
+          if (Subs.setBlocks(j.blocks, t('lo que escuchó EC-Tube'))) Subs.say(tf('✅ {0} subtítulos escritos. Revísalos con ▶ Play y corrige texto o tiempos en la lista.', j.blocks.length));
+          $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
+        };
+        setTimeout(poll, 700);
+      } catch (error) { b.disabled = false; cancel.hidden = true; Subs.say(t(error.message)); }
     });
     $('#sFetch').addEventListener('click', async () => {
       const url = $('#sUrl').value.trim(), b = $('#sFetch');
