@@ -6,8 +6,8 @@ Descarga **audio y video** de YouTube (y de los demás sitios que soporta yt-dlp
 - **Video:** MP4 de 360p a 4K. Hasta 1080p usa H.264, que se reproduce en cualquier lado.
 - Varias descargas a la vez, con progreso, cancelar y reintentar.
 - **✂ Editor de audio y video**: ves la onda del audio (silencios, bajadas de volumen), marcas tramos de una o varias canciones o videos y los unes en el orden que quieras. En video puedes dejar su audio, quitarlo o ponerle otra pista de audio. Escuchas el resultado antes de guardarlo y puedes quitarle la voz o la música. Guarda una copia «(edición)» en la carpeta de editados y no toca los originales.
-- **🔊 Sonidos encima**: aplausos, «boing», risas, fanfarrias… (63 de fábrica, los mismos de EC-Tok) o **tus propios sonidos** (⭐ Mis sonidos). Suenan encima del audio o del video sin cortarlo; los mueves arrastrándolos en la línea de tiempo y puedes recortarlos, repetirlos y cambiarles el volumen.
-- **🎬 Animaciones encima (video)**: personajes del banco de EC-Tok con tu texto en el letrero, efectos, cintillos de texto o tus propias animaciones (GIF, WebP, WebM…). Las mueves y cambias de tamaño en un lienzo con el cuadro del video, y eliges cuándo salen y cuánto duran en la línea de tiempo. El banco se baja aparte (del repo de EC-Tok) y EC-Tube avisa cuando hay uno nuevo.
+- **🔊 Sonidos encima**: aplausos, «boing», risas, fanfarrias… (63 de fábrica) o **tus propios sonidos** (⭐ Mis sonidos). Suenan encima del audio o del video sin cortarlo; los mueves arrastrándolos en la línea de tiempo y puedes recortarlos, repetirlos y cambiarles el volumen.
+- **🎬 Animaciones encima (video)**: personajes del banco de animaciones EC-Tube con tu texto en el letrero, efectos, cintillos de texto o tus propias animaciones (GIF, WebP, WebM…). Las mueves y cambias de tamaño en un lienzo con el cuadro del video, y eliges cuándo salen y cuánto duran en la línea de tiempo. El banco se baja aparte y EC-Tube avisa cuando hay uno nuevo.
 - **🎵 / 🎤 Separar:** en el editor puedes guardar **solo la música** (sin voz, para cantar encima) o **solo la voz** (sin música). Usa el modelo MDX-Net «Kim Vocal 2» de [UVR](https://github.com/TRvlvr/model_repo) con ONNX Runtime + DirectML (tarjeta de video NVIDIA/AMD/Intel, o procesador).
 - **🎤 Karaoke:** escribe la letra, márcala con la espaciadora mientras suena la música y crea un video (16:9 o 9:16) con la letra iluminándose sobre el video original, una imagen o un degradado.
 - **🎵 Reproductor** tipo Winamp con varias listas guardadas, tomando canciones de las carpetas de descargas y de editados.
@@ -35,6 +35,6 @@ Todo se guarda por defecto en tu carpeta de usuario, en `EC-Tube Outputs`: `MUSI
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense) — descargas.
 - [Deno](https://deno.com) (MIT) — yt-dlp lo usa para resolver los retos de YouTube.
 - [FFmpeg](https://ffmpeg.org) (GPL, build de gyan.dev) — conversión y unión de audio y video.
-- Sonidos de fábrica (🔊 Sonidos encima): **CC0 / dominio público** — [Meta Open Sound](https://github.com/facebookincubator/meta-open-sound), [Kenney](https://kenney.nl), [OpenGameArt](https://opengameart.org) y algunos sintetizados por EC-Tok. Los sonidos que cada quien agrega son responsabilidad de quien los usa.
+- Sonidos de fábrica (🔊 Sonidos encima): **CC0 / dominio público** — [Meta Open Sound](https://github.com/facebookincubator/meta-open-sound), [Kenney](https://kenney.nl), [OpenGameArt](https://opengameart.org) y algunos sintetizados especialmente (también CC0). Los sonidos que cada quien agrega son responsabilidad de quien los usa.
 
 Uso personal. Descarga solo contenido tuyo, libre o con permiso de sus autores; los términos de YouTube no permiten descargar fuera de su app.

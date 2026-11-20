@@ -1148,7 +1148,7 @@
       "✅ Banco de animaciones listo. Ya puedes usarlas en ✂ Edición → 🎬 Animaciones encima.": "✅ Animation bank ready. You can now use them in ✂ Edit → 🎬 Animations on top.",
       "🆕 ¡Hay un banco de animaciones nuevo! (banco {0})": "🆕 There is a new animation bank! (bank {0})",
       "📥 Actualizar animaciones": "📥 Update animations",
-      "🎬 Baja gratis el banco de animaciones de EC-Tok ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.": "🎬 Download the free EC-Tok animation bank ({0} MB) to put animations on top of your videos: characters with your text on the sign, effects and more.",
+      "🎬 Baja gratis el banco de animaciones EC-Tube ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.": "🎬 Download the free EC-Tube animation bank ({0} MB) to put animations on top of your videos: characters with your text on the sign, effects and more.",
       "📥 Descargar": "📥 Download",
       "Ahora no": "Not now",
       "Preparando las animaciones… {0} %": "Preparing the animations… {0} %",
@@ -2165,7 +2165,7 @@
         else if (b.state === 'done' && this.wasBusy) text = t('✅ Banco de animaciones listo. Ya puedes usarlas en ✂ Edición → 🎬 Animaciones encima.');
         else if (b.published && !b.error && $('#updateBox').hidden && (b.dismissed || 0) < b.latest) {
           if (b.installed && b.latest > b.installed) { text = tf('🆕 ¡Hay un banco de animaciones nuevo! (banco {0})', b.latest); btn = t('📥 Actualizar animaciones'); }
-          else if (!b.installed) { text = tf('🎬 Baja gratis el banco de animaciones de EC-Tok ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.', mb); btn = t('📥 Descargar'); }
+          else if (!b.installed) { text = tf('🎬 Baja gratis el banco de animaciones EC-Tube ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.', mb); btn = t('📥 Descargar'); }
         }
         $('#bankBar').hidden = !text; $('#bankBarText').textContent = text;
         $('#bankBarBtn').textContent = btn; $('#bankBarBtn').hidden = !btn; $('#bankBarLater').hidden = !btn;

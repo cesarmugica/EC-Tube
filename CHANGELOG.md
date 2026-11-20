@@ -1,18 +1,21 @@
 # Historial de versiones
 
+## 4.2.1
+- El aviso dice «Baja gratis el banco de animaciones EC-Tube».
+
 ## 4.2.0 — 🎬 Animaciones encima del video
 - ✂ Edición de **video**: nueva sección **🎬 Animaciones encima**. **➕ Agregar animación** abre una ventana con:
-  - **🪧 Con letrero**: los personajes del banco de EC-Tok; escribes el texto (con emojis) y va en su letrero, siguiendo el movimiento del personaje.
+  - **🪧 Con letrero**: los personajes del banco de animaciones EC-Tube; escribes el texto (con emojis) y va en su letrero, siguiendo el movimiento del personaje.
   - **✨ Efectos**: bola disco, ecualizador, corazones, fuegos artificiales… (estas no muestran texto).
   - **📢 Cintillo de texto**: tipo alerta, con tu texto y el color del borde.
   - **⭐ Mis animaciones**: «📂 Agregar mis animaciones…» trae GIF, WebP, PNG, APNG, WebM, MP4, MOV… de tu PC.
 - **Lienzo** con el cuadro del video: arrastras la animación a donde quieras y la agrandas o achicas jalando la esquina azul, o escribiendo X, Y, **ancho y alto** (con o sin mantener la proporción).
 - **Línea de tiempo**: la arrastras para elegir cuándo sale y estiras su borde derecho para cambiar cuánto dura. Entrada con rebote y salida suave (se puede quitar).
-- **Banco de animaciones**: EC-Tube tiene su propio banco (se baja una vez del mismo lugar que el de EC-Tok) y **avisa cuando sale un banco nuevo**, igual que EC-Tok. Ya trae las animaciones básicas.
+- **Banco de animaciones EC-Tube**: se baja una vez y EC-Tube **avisa cuando sale un banco nuevo**. Ya trae las animaciones básicas.
 - En edición de audio solo están los 🔊 sonidos encima (las animaciones son para video).
 
 ## 4.1.0 — 🔊 Sonidos encima
-- ✂ Edición: nueva sección **🔊 Sonidos encima**. Con **➕ Agregar sonido** se abre una ventana para **probar (▶) y elegir (➕)** entre los **63 sonidos de fábrica** (aplausos, ovación, «boing», risas, fanfarrias, voces, monedas… los mismos de EC-Tok, libres de uso CC0), con buscador y categorías.
+- ✂ Edición: nueva sección **🔊 Sonidos encima**. Con **➕ Agregar sonido** se abre una ventana para **probar (▶) y elegir (➕)** entre los **63 sonidos de fábrica** (aplausos, ovación, «boing», risas, fanfarrias, voces, monedas…, libres de uso CC0), con buscador y categorías.
 - **⭐ Mis sonidos**: «📂 Agregar mis sonidos…» trae tus propios sonidos de la PC (uno o varios; de un video se toma solo el audio). Se quedan guardados para la próxima. Los que agregues son tu responsabilidad (derechos de autor).
 - Los sonidos **siempre suenan encima** del audio o del video final, sin cortarlo (también en un video sin audio, o con otra pista de audio). En la **línea de tiempo** de la edición final los arrastras a donde quieras; en su renglón ajustas dónde suena, qué pedazo del sonido usar, cuántas veces se repite y su volumen (0 a 200 %). ⧉ lo duplica para ponerlo en otro lado.
 - Si estás oyendo la vista previa, el sonido nuevo se pone donde va la vista previa, y con clic en la línea de tiempo la vista previa salta a ese punto.
