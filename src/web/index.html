@@ -263,6 +263,8 @@
     .s-ctl input[type=range] { flex: 1 1 260px; accent-color: var(--accent); }
     .s-msg { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: .9rem; }
     .s-msg.rec { border-color: #eb5757; background: color-mix(in srgb, #eb5757 14%, var(--bg)); }
+    #sTextMsg { margin-top: 12px; } .s-bar { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin-top: 8px; }
+    .s-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s; }
     .s-blocks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; max-height: 60vh; overflow: auto; }
     .s-blocks li { display: grid; grid-template-columns: 36px auto 1fr auto; gap: 8px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
     .s-blocks li.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
@@ -682,6 +684,7 @@
           <label class="kmethod"><input type="radio" name="sMethod" value="youtube"><span><b>▶ De YouTube</b><small>Traer los subtítulos que YouTube ya tiene del video (también los automáticos)</small></span></label>
           <label class="kmethod"><input type="radio" name="sMethod" value="auto"><span><b>🤖 Automático</b><small>EC-Tube escucha el audio y escribe los subtítulos; tú corriges</small></span></label>
         </div>
+        <div class="s-msg" id="sTextMsg" hidden><span id="sTextMsgT"></span><div class="s-bar" id="sTextBar" hidden><i></i></div></div>
         <div data-sm="script" style="margin-top:12px">
           <textarea id="sScript" spellcheck="true" placeholder="Pega aquí tu guion. Un renglón = un subtítulo.&#10;Para que un subtítulo salga en dos renglones, sepáralos con « / »."></textarea>
           <div class="row" style="margin-top:8px">
@@ -1266,6 +1269,7 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "Empezando…": "Starting…",
       "Sí, continuar": "Yes, continue",
       "Sí": "Yes",
       "🧹 Borrar y comenzar de nuevo": "🧹 Clear and start over",
@@ -2718,6 +2722,7 @@
         if (src && !sVideo.src.endsWith(src)) { sVideo.src = src; } else if (!src) sVideo.removeAttribute('src');
       },
       fill() {
+        if (!$('#sAsr').disabled && !$('#sFetch').disabled) $('#sTextMsg').hidden = true;
         const p = this.p; $('#sTitle').value = p.title || ''; $('#sUrl').value = p.url || ''; $('#sLang').value = p.lang || 'es'; $('#sScript').value = p.script || '';
         this.loadVideo(); this.fillStyle(); this.render();
       },
@@ -2747,7 +2752,7 @@
         if (!lines.length) { $('#sScript').focus(); return; }
         if (this.p.blocks.length && !await ask(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} renglones de tu guion?\n\nLos tiempos que ya marcaste se pierden. Tu video no cambia.', this.p.blocks.length, lines.length))) return;
         this.p.blocks = lines.map(text => ({text, start: null, end: null})); this.sel = 0; this.save(); this.render();
-        this.say(tf('{0} subtítulos listos. Ahora presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada uno.', lines.length));
+        this.say2(tf('{0} subtítulos listos. Ahora presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada uno.', lines.length));
         $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
       },
       async setBlocks(blocks, what) {
@@ -2755,6 +2760,12 @@
         this.p.blocks = blocks; this.sel = -1; this.save(); this.render(); return true;
       },
       say(text, rec = false) { $('#sMsg').textContent = text; $('#sMsg').classList.toggle('rec', rec); },
+      // avisos de «2 · El texto» junto a su botón (y con barra de avance si se da el %)
+      say2(text, pct = null, rec = false) {
+        $('#sTextMsg').hidden = !text; $('#sTextMsgT').textContent = text || ''; $('#sTextMsg').classList.toggle('rec', rec);
+        $('#sTextBar').hidden = pct == null; if (pct != null) $('#sTextBar').firstElementChild.style.width = Math.max(2, Math.min(100, pct)) + '%';
+        this.say(text || '', rec);
+      },
       // ---- tiempos ----
       current(tm) { return this.p.blocks.findIndex(b => b.start != null && b.end != null && tm >= b.start && tm < b.end); },
       tick() {
@@ -2893,7 +2904,7 @@
         poll();
       } catch (error) { b.disabled = false; msg.textContent = t(error.message); }
     });
-    document.querySelectorAll('input[name=sMethod]').forEach(r => r.addEventListener('change', () => document.querySelectorAll('[data-sm]').forEach(el => { el.hidden = el.dataset.sm !== r.value; })));
+    document.querySelectorAll('input[name=sMethod]').forEach(r => r.addEventListener('change', () => { document.querySelectorAll('[data-sm]').forEach(el => { el.hidden = el.dataset.sm !== r.value; }); if (!$('#sAsr').disabled && !$('#sFetch').disabled) $('#sTextMsg').hidden = true; }));
     $('#sUseScript').addEventListener('click', () => Subs.useScript());
     $('#sImport').addEventListener('click', async () => {
       try { const d = await api('/api/subs/import', {}); if (d.blocks) { if (!d.blocks.length) { Subs.say(t('Ese archivo no trae subtítulos.')); return; } if (await Subs.setBlocks(d.blocks, t('ese archivo'))) Subs.say(tf('✅ {0} subtítulos cargados del archivo.', d.blocks.length)); } }
@@ -2910,38 +2921,38 @@
     document.querySelector('input[name=sMethod][value=auto]').addEventListener('change', sAsrInfo);
     $('#sAsr').addEventListener('click', async () => {
       if (!Subs.p.source) { Subs.say(t('Primero elige el video.')); return; }
-      const b = $('#sAsr'), cancel = $('#sAsrCancel'); b.disabled = true; cancel.hidden = false;
+      const b = $('#sAsr'), cancel = $('#sAsrCancel'); b.disabled = true; cancel.hidden = false; Subs.say2(t('Empezando…'), 0, true);
       try {
         const job = await api('/api/subs/auto', {token: Subs.p.source.token, lang: $('#sAsrLang').value, quality: $('#sAsrQ').value});
         cancel.onclick = () => api(`/api/subs/auto/${job.id}/cancel`, {}).catch(() => {});
         const poll = async () => {
-          let j; try { j = await api('/api/subs/auto/' + job.id); } catch (error) { b.disabled = false; cancel.hidden = true; Subs.say(t(error.message)); return; }
+          let j; try { j = await api('/api/subs/auto/' + job.id); } catch (error) { b.disabled = false; cancel.hidden = true; Subs.say2(t(error.message)); return; }
           if (j.status === 'running') {
             const pct = Math.round(j.percent);
-            Subs.say(j.phase === 'model' ? tf('Bajando el «oído» (solo la primera vez)… {0} %', pct) : j.phase === 'decode' ? t('Leyendo el audio…') : tf('Escuchando y escribiendo… {0} %', pct), true);
+            Subs.say2(j.phase === 'model' ? tf('Bajando el «oído» (solo la primera vez)… {0} %', pct) : j.phase === 'decode' ? t('Leyendo el audio…') : tf('Escuchando y escribiendo… {0} %', pct), j.phase === 'decode' ? 0 : pct, true);
             setTimeout(poll, 900); return;
           }
           b.disabled = false; cancel.hidden = true; sAsrInfo();
-          if (j.status === 'cancelled') { Subs.say(t('Cancelado.')); return; }
-          if (j.status !== 'done') { Subs.say(t(j.error || 'No se pudo.')); return; }
-          if (await Subs.setBlocks(j.blocks, t('lo que escuchó EC-Tube'))) Subs.say(tf('✅ {0} subtítulos escritos. Revísalos con ▶ Play y corrige texto o tiempos en la lista.', j.blocks.length));
+          if (j.status === 'cancelled') { Subs.say2(t('Cancelado.')); return; }
+          if (j.status !== 'done') { Subs.say2(t(j.error || 'No se pudo.')); return; }
+          if (await Subs.setBlocks(j.blocks, t('lo que escuchó EC-Tube'))) Subs.say2(tf('✅ {0} subtítulos escritos. Revísalos con ▶ Play y corrige texto o tiempos en la lista.', j.blocks.length));
           $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
         };
         setTimeout(poll, 700);
-      } catch (error) { b.disabled = false; cancel.hidden = true; Subs.say(t(error.message)); }
+      } catch (error) { b.disabled = false; cancel.hidden = true; Subs.say2(t(error.message)); }
     });
     $('#sFetch').addEventListener('click', async () => {
       const url = $('#sUrl').value.trim(), b = $('#sFetch');
       if (!/^https?:\/\//.test(url)) { Subs.say(t('Pega arriba el enlace de YouTube del video (https://…).')); $('#sUrl').focus(); return; }
-      b.disabled = true; Subs.say(t('Buscando los subtítulos en YouTube…'));
+      b.disabled = true; Subs.say2(t('Buscando los subtítulos en YouTube…'), null, true);
       try {
         const job = await api('/api/subs/fetch', {url, lang: $('#sLang').value}); Subs.p.url = url;
         const poll = async () => {
           const j = await api('/api/subs/fetch/' + job.id);
           if (j.status === 'running') { setTimeout(poll, 800); return; }
           b.disabled = false;
-          if (j.status !== 'done') { Subs.say(t(j.error)); return; }
-          if (await Subs.setBlocks(j.blocks, 'YouTube')) Subs.say(tf('✅ {0} subtítulos de YouTube. Revísalos: los automáticos traen errores. Los tiempos ya vienen puestos.', j.blocks.length));
+          if (j.status !== 'done') { Subs.say2(t(j.error)); return; }
+          if (await Subs.setBlocks(j.blocks, 'YouTube')) Subs.say2(tf('✅ {0} subtítulos de YouTube. Revísalos: los automáticos traen errores. Los tiempos ya vienen puestos.', j.blocks.length));
           $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
         };
         setTimeout(poll, 800);

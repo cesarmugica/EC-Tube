@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.1.3
+- 💬 Subtítulos: al presionar «🤖 Escribir los subtítulos» (o «▶ Traer subtítulos de YouTube»), el avance sale **justo arriba del botón, con barra**: «Bajando el oído… %», «Leyendo el audio…», «Escuchando y escribiendo… %». Antes solo salía abajo, en «3 · Tiempos», y parecía que no pasaba nada.
+
 ## 5.1.2
 - Las preguntas de confirmación («¿Borrar…?», «¿Quitar…?», «¿Vaciar…?») ahora salen en una **ventanita con el estilo de EC-Tube** en vez del aviso del navegador: la pregunta arriba, lo que se pierde, y en verde lo que **NO** se borra. Botones Cancelar / Sí, continuar (Esc cancela, Enter acepta).
 
