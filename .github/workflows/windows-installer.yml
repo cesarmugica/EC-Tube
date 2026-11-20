@@ -25,7 +25,7 @@ jobs:
       - name: Instalar PyInstaller e Inno Setup
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip pyinstaller numpy onnxruntime-directml
+          python -m pip install --upgrade pip pyinstaller numpy onnxruntime-directml pillow
           python -c "import numpy, onnxruntime as o; print('onnxruntime', o.__version__, o.get_available_providers())"
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
 

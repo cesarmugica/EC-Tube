@@ -25,9 +25,9 @@ import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "4.1.0"
+APP_VERSION = "4.2.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -226,6 +226,7 @@ DEFAULT_CONFIG = {
     "karaoke_folder": "",        # videos de karaoke terminados
     "playlist": False,
     "language": "",  # "es" o "en"; vacío = el del instalador o el de Windows
+    "bank_dismissed": 0,  # el banco de animaciones que dijiste «Ahora no» (para no volver a avisar de ese)
 }
 AUDIO_FORMATS = {"mp3", "m4a", "wav"}
 AUDIO_QUALITIES = {"320", "192", "128"}
@@ -561,7 +562,7 @@ DOWNLOADS = Downloads()
 AUDIO_EXTS = {".mp3", ".m4a", ".aac", ".wav", ".ogg", ".opus", ".flac"}
 VIDEO_EXTS = {".mp4", ".m4v", ".mov", ".webm", ".mkv"}
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-MEDIA_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".bmp": "image/bmp",".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav",
+MEDIA_TYPES = {".gif": "image/gif", ".apng": "image/apng", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".bmp": "image/bmp",".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav",
                ".ogg": "audio/ogg", ".opus": "audio/ogg", ".flac": "audio/flac", ".mp4": "video/mp4",
                ".m4v": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm", ".mkv": "video/x-matroska"}
 
@@ -895,6 +896,206 @@ def effects_remove(effect_id: str) -> None:
         path.unlink()
 
 
+# ---------- Animaciones encima del video (banco de EC-Tok, cintillos y las tuyas) ----------
+ANIM_BASE = WEB_ROOT / "anim"           # las básicas que trae EC-Tok (también vienen en el instalador de EC-Tube)
+ANIM_BANK = HOME / "banco"              # el banco completo: se baja de los releases «banco-N» del repo de EC-Tok
+ANIM_MINE = HOME / "mis-animaciones"    # las de cada quien
+BANK_RELEASES = "https://api.github.com/repos/cesarmugica/EC-Tok/releases?per_page=40"
+BANK = {"state": "idle", "percent": 0.0, "error": "", "latest": 0, "url": "", "size": 0, "checked": False, "checked_at": 0.0}
+ANIM_LOCK = threading.Lock()
+SCENES: dict = {}
+
+
+def reload_scenes() -> None:
+    from ectube_overlay import load_scenes
+
+    global SCENES
+    SCENES = load_scenes(ANIM_BASE, ANIM_BANK)
+
+
+def bank_check() -> None:
+    import urllib.request
+
+    try:
+        request = urllib.request.Request(BANK_RELEASES, headers={"User-Agent": f"EC-Tube/{APP_VERSION}", "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
+            releases = json.loads(response.read())
+        best = (0, "", 0)
+        for rel in releases:
+            tag = rel.get("tag_name") or ""
+            if not tag.startswith("banco-") or rel.get("draft") or not tag[6:].isdigit():
+                continue
+            zipa = next((a for a in rel.get("assets", []) if a["name"].lower().endswith(".zip")), None)
+            if zipa and int(tag[6:]) > best[0]:
+                best = (int(tag[6:]), zipa["browser_download_url"], int(zipa.get("size") or 0))
+        BANK.update(latest=best[0], url=best[1], size=best[2], checked=True, checked_at=time.time(), error="")
+    except Exception as exc:  # noqa: BLE001
+        BANK.update(checked=True, checked_at=time.time(), error="No se pudo buscar el banco (¿sin internet?).")
+        log(f"Banco de animaciones (buscar): {exc}")
+
+
+def bank_installed() -> int:
+    with contextlib.suppress(OSError, ValueError):
+        return int((ANIM_BANK / "version.txt").read_text(encoding="utf-8").strip())
+    return 0
+
+
+def bank_status() -> dict:
+    from ectube_overlay import ANIM_EXTS as EXTS
+
+    if BANK["state"] not in ("downloading", "installing") and time.time() - BANK["checked_at"] > 3600:
+        BANK["checked_at"] = time.time()
+        threading.Thread(target=bank_check, daemon=True).start()
+    count = sum(1 for p in ANIM_BANK.glob("*") if p.suffix.lower() in EXTS) if ANIM_BANK.is_dir() else 0
+    return {**BANK, "installed": bank_installed(), "count": count, "published": bool(BANK["url"]),
+            "dismissed": int(CONFIG.get("bank_dismissed") or 0)}
+
+
+def _bank_download() -> None:
+    import urllib.request
+    import zipfile
+
+    from ectube_overlay import ANIM_EXTS as EXTS
+
+    BANK.update(state="downloading", percent=0.0, error="")
+    tmp = HOME / "banco-descarga.zip"
+    try:
+        HOME.mkdir(parents=True, exist_ok=True)
+        if not BANK["url"]:
+            bank_check()
+        if not BANK["url"]:
+            raise RuntimeError("todavía no hay banco publicado")
+        version = BANK["latest"]
+        request = urllib.request.Request(BANK["url"], headers={"User-Agent": f"EC-Tube/{APP_VERSION}"})
+        with urllib.request.urlopen(request, timeout=60) as response, tmp.open("wb") as out:  # noqa: S310
+            total = int(response.headers.get("Content-Length") or 0)
+            got = 0
+            while chunk := response.read(256 * 1024):
+                out.write(chunk)
+                got += len(chunk)
+                BANK["percent"] = round(got * 100 / total, 1) if total else 0.0
+        BANK.update(state="installing")
+        new = HOME / "banco-nuevo"
+        shutil.rmtree(new, ignore_errors=True)
+        with zipfile.ZipFile(tmp) as zf:
+            for info in zf.infolist():
+                name = Path(info.filename).name  # sin carpetas (y sin «../»)
+                if not name or info.is_dir() or (Path(name).suffix.lower() not in EXTS and name not in ("escenas.json", "version.txt")):
+                    continue
+                new.mkdir(parents=True, exist_ok=True)
+                with zf.open(info) as src, (new / name).open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+        (new / "version.txt").write_text(str(version), encoding="utf-8")
+        with ANIM_LOCK:
+            shutil.rmtree(ANIM_BANK, ignore_errors=True)
+            new.replace(ANIM_BANK)
+            reload_scenes()
+        BANK.update(state="done", percent=100.0)
+        log(f"Banco de animaciones {version} instalado")
+    except Exception as exc:  # noqa: BLE001
+        BANK.update(state="error", error="No se pudo descargar el banco (¿sin internet?)." if BANK["url"] else "Todavía no hay banco publicado.")
+        log(f"Banco de animaciones: {exc}")
+    finally:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+
+
+def bank_download() -> None:
+    if BANK["state"] in ("downloading", "installing"):
+        return
+    threading.Thread(target=_bank_download, daemon=True).start()
+
+
+def anims_public() -> dict:
+    from ectube_overlay import ANIM_EXTS as EXTS, anim_label
+
+    items = []
+    for folder, prefix, url in ((ANIM_BASE, "a", "/anim/"), (ANIM_BANK, "k", "/banco/"), (ANIM_MINE, "u", "/mis-animaciones/")):
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.iterdir(), key=lambda x: x.name.lower()):
+            if not path.is_file() or path.suffix.lower() not in EXTS or "-parte-" in path.name:
+                continue
+            sc = SCENES.get(path.name) if prefix != "u" else None
+            box = None
+            if sc and sc.get("track"):
+                tr = sc["track"]
+                box = [tr[0][0], tr[0][1], min(b[2] for b in tr), min(b[3] for b in tr), tr[0][4] if len(tr[0]) > 4 else 0]
+            elif sc and sc.get("sign"):
+                x, y, w, h = sc["sign"][:4]
+                box = [x + w / 2, y + h / 2, w, h, 0]
+            group = "mine" if prefix == "u" else "text" if box else "fx"
+            items.append({"id": f"{prefix}/{path.name}", "name": anim_label(path.stem), "url": url + quote(path.name),
+                          "video": path.suffix.lower() in (".webm", ".mp4"), "group": group, "text": bool(box), "sign": box,
+                          "ratio": float(sc.get("ratio") or 0) if sc else 0,
+                          # para que el texto siga al letrero en el lienzo (los personajes en video)
+                          "track": sc.get("track") if sc and sc.get("video") else None,
+                          "fps": float((sc.get("video") or {}).get("fps") or 16) if sc and sc.get("video") else 0})
+    return {"items": items, "bank": bank_status()}
+
+
+def anim_path(anim_id: str) -> Path | None:
+    from ectube_overlay import ANIM_EXTS as EXTS
+
+    kind, _, name = str(anim_id).partition("/")
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        return None
+    folder = {"a": ANIM_BASE, "k": ANIM_BANK, "u": ANIM_MINE}.get(kind)
+    path = folder / name if folder else None
+    return path if path and path.is_file() and path.suffix.lower() in EXTS else None
+
+
+def anims_add(paths: list[str]) -> dict:
+    """Copiar animaciones de la PC a «Mis animaciones». Los videos que el navegador no abre se pasan a WebM."""
+    from ectube_overlay import ANIM_EXTS as EXTS, IMPORT_EXTS
+
+    ANIM_MINE.mkdir(parents=True, exist_ok=True)
+    added, errors = 0, []
+    for raw in paths:
+        src = Path(raw)
+        ext = src.suffix.lower()
+        if not src.is_file() or ext not in IMPORT_EXTS:
+            errors.append(f"«{src.name}» no es una animación compatible.")
+            continue
+        stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", src.stem).strip(" .")[:80] or "animacion"
+        out_ext = ext if ext in EXTS else ".png" if ext in (".jpg", ".jpeg") else ".webm"
+        with ANIM_LOCK:
+            name = next(f"{stem}{'' if n == 1 else f' {n}'}{out_ext}" for n in range(1, 10000)
+                        if not (ANIM_MINE / f"{stem}{'' if n == 1 else f' {n}'}{out_ext}").exists())
+        target = ANIM_MINE / name
+        try:
+            if ext in EXTS:
+                shutil.copy2(src, target)
+            elif out_ext == ".png":
+                from PIL import Image
+
+                Image.open(src).convert("RGBA").save(target)
+            else:
+                if not FFMPEG:
+                    raise RuntimeError
+                if probe(src)["duration"] > 120:
+                    errors.append(f"«{src.name}» dura más de 2 minutos.")
+                    continue
+                result = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-i", str(src), "-an",
+                                         "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "0", "-crf", "32", "-deadline", "realtime",
+                                         "-cpu-used", "8", str(target)], capture_output=True, creationflags=_no_window_flags())
+                if result.returncode != 0:
+                    raise RuntimeError
+            added += 1
+        except Exception:  # noqa: BLE001
+            with contextlib.suppress(OSError):
+                target.unlink()
+            errors.append(f"«{src.name}» no se pudo leer.")
+    return {"added": added, "errors": errors}
+
+
+def anims_remove(anim_id: str) -> None:
+    path = anim_path(anim_id)
+    if not path or path.parent != ANIM_MINE:
+        raise ValueError("Esa animación no es de «Mis animaciones».")
+    path.unlink()
+
+
 def waveform(path: Path, buckets: int = 1600) -> dict:
     """La onda: el nivel más alto de cada pedacito (0 a 1), para ver dónde hay silencios o baja el volumen."""
     import numpy as np
@@ -931,8 +1132,12 @@ class EditJob:
 
     def __init__(self, kind: str, fragments: list[tuple[Path, float, float]], mode: str = "original",
                  smooth: bool = True, preview: bool = False, audio_mode: str = "own",
-                 audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None) -> None:
+                 audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None,
+                 overlays: list[dict] | None = None) -> None:
         self.id = uuid.uuid4().hex[:12]
+        # animaciones encima del video: {render (para ectube_overlay.render), at, x, y, w, h (fracciones del cuadro)}
+        self.overlays = overlays if kind == "video" else []
+        self.overlay_files: list[Path] = []
         # efectos: {path, at, start, end, repeat, volume}; siempre suenan ENCIMA del sonido de la edición
         self.effects = effects or []
         self.kind, self.fragments, self.smooth, self.preview = kind, fragments, smooth, preview
@@ -944,6 +1149,7 @@ class EditJob:
         self.mode = "original" if preview or mode not in TRIM_WORDS or self.audio_mode == "none" else mode
         self.total = sum(end - start for _, start, end in fragments)
         self.effects = [e for e in self.effects if e["at"] < self.total]
+        self.overlays = [o for o in (self.overlays or []) if o["at"] < self.total]
         first = fragments[0][0]
         if kind == "video":
             ext = ".mp4"
@@ -1067,6 +1273,19 @@ class EditJob:
                 chains.append(self._audio_chain(f"[{aidx}:a:0]", dur, f"a{i}"))
                 vlabels.append(f"[a{i}]")
         count = len(self.fragments)
+        if self.overlay_files:  # animaciones encima, cada una en su lugar y a su tiempo
+            cur = "v"
+            for k, (ov, path) in enumerate(zip(self.overlays, self.overlay_files)):
+                args.extend(["-i", str(path)])
+                n += 1
+                x, y = round(ov["x"] * width), round(ov["y"] * height)
+                chains.append(f"[{n - 1}:v]setpts=PTS-STARTPTS+{ov['at']:.3f}/TB[ov{k}]")
+                chains.append(f"[{cur}][ov{k}]overlay=x={x}:y={y}:eof_action=pass:format=auto[vo{k}]")
+                cur = f"vo{k}"
+            chains.append(f"[{cur}]format=yuv420p[vfinal]")
+            vout = "[vfinal]"
+        else:
+            vout = "[v]"
         fx = with_fx and bool(self.effects)
         has_audio = self.audio_mode != "none" or fx
         if self.audio_mode == "own":
@@ -1083,7 +1302,7 @@ class EditJob:
         if fx:
             self._fx_chains("[a]", add_input, chains, "mix")
             alabel = "[mix]"
-        maps = ["-map", "[v]"] + (["-map", alabel] if has_audio else [])
+        maps = ["-map", vout] + (["-map", alabel] if has_audio else [])
         args += ["-filter_complex", ";".join(chains), *maps]
         if self.preview:
             args += ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"]
@@ -1109,13 +1328,38 @@ class EditJob:
             log(f"[edición {self.id}] error: {''.join(errors[-6:])[:600]}")
             raise RuntimeError(friendly_error("".join(errors[-20:])) if errors else "No se pudo guardar la edición.")
 
+    def _render_overlays(self) -> None:
+        """Dibujar cada animación (con su texto) a su tamaño; las que ya se hicieron antes se reusan."""
+        from ectube_overlay import cache_key, overlay_size, render
+
+        if not self.overlays:
+            return
+        info = probe(self.fragments[0][0])
+        width, height = (info["width"] or 1280) // 2 * 2, (info["height"] or 720) // 2 * 2
+        cache = EDIT_TMP / "animaciones"
+        cache.mkdir(parents=True, exist_ok=True)
+        self.phase = "anims"
+        for k, ov in enumerate(self.overlays):
+            if self.cancelled:
+                raise InterruptedError
+            w, h = overlay_size(ov["w"], ov["h"], width, height)
+            out = cache / f"{cache_key(ov['render'], w, h)}.mov"
+            if not out.exists():
+                tmp = out.with_suffix(".tmp.mov")
+                render(ov["render"], w, h, tmp, FFMPEG, _no_window_flags())
+                tmp.replace(out)
+            self.overlay_files.append(out)
+            self.percent = 10.0 * (k + 1) / len(self.overlays)
+
     def run(self) -> None:
         temp: Path | None = None
         try:
+            self._render_overlays()
+            self.phase = "join"
             log(f"[edición {self.id}] {len(self.fragments)} fragmentos, {self.total:.1f} s, {self.kind}, {self.mode}"
                 + (" (vista previa)" if self.preview else ""))
             if self.mode == "original":
-                self._join(self.output, 100.0)
+                self._join(self.output, 90.0 if self.overlays else 100.0, base=10.0 if self.overlays else 0.0)
             else:  # primero se une todo y luego se separa la voz o la música del resultado
                 EDIT_TMP.mkdir(parents=True, exist_ok=True)
                 temp = EDIT_TMP / f"unido-{self.id}{self.output.suffix}"
@@ -1185,7 +1429,7 @@ def clear_edit_tmp() -> None:
     if EDIT_TMP.is_dir():
         for item in EDIT_TMP.iterdir():
             with contextlib.suppress(OSError):
-                item.unlink()
+                shutil.rmtree(item) if item.is_dir() else item.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -1682,18 +1926,19 @@ def karaoke_align(guide_path: Path, source: Path, lines: list[dict]) -> list:
     return result
 
 
-def pick_files(initial: str, title: tuple[str, str] | None = None) -> list[str]:
-    """Elegir varias canciones para el reproductor."""
+def pick_files(initial: str, title: tuple[str, str] | None = None, exts: set | None = None) -> list[str]:
+    """Elegir varias canciones para el reproductor (o varios archivos de los tipos de `exts`)."""
     if not IS_WINDOWS:
         return []
-    patterns = ";".join("*" + ext for ext in sorted(AUDIO_EXTS | VIDEO_EXTS))
+    exts = exts or (AUDIO_EXTS | VIDEO_EXTS)
+    patterns = ";".join("*" + ext for ext in sorted(exts))
     english = current_language() == "en"
     script = (
         "Add-Type -AssemblyName System.Windows.Forms;"
         "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false; Opacity=0; StartPosition='CenterScreen'}; $owner.Show(); $owner.Activate();"
         "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true;"
         f"$d.Title = '{(title or ('Choose songs for the list', 'Elige canciones para la lista'))[0 if english else 1]}';"
-        f"$d.Filter = '{english and 'Audio and video' or 'Audio y video'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
+        f"$d.Filter = '{english and 'Files' or 'Archivos'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
         f"$d.InitialDirectory = '{initial.replace(chr(39), chr(39) * 2)}';"
         "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.FileNames -join \"`n\" }"
     )
@@ -1702,7 +1947,7 @@ def pick_files(initial: str, title: tuple[str, str] | None = None) -> list[str]:
                                 text=True, encoding="utf-8", errors="replace", creationflags=_no_window_flags(),
                                 timeout=600)
     return [line.strip() for line in result.stdout.splitlines()
-            if line.strip() and Path(line.strip()).suffix.lower() in AUDIO_EXTS | VIDEO_EXTS]
+            if line.strip() and Path(line.strip()).suffix.lower() in exts]
 
 
 def pick_file(kind: str = "media") -> str | None:
@@ -1938,6 +2183,18 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/karaoke/export/"):
             job = KARAOKE_JOBS.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
+        elif path == "/api/anims":
+            self.send_json({"ok": True, **anims_public()})
+        elif path == "/api/bank/status":
+            self.send_json({"ok": True, **bank_status()})
+        elif path.startswith(("/anim/", "/banco/", "/mis-animaciones/")):
+            prefix = {"anim": "a", "banco": "k", "mis-animaciones": "u"}[path.split("/")[1]]
+            target = anim_path(prefix + "/" + unquote(path.rsplit("/", 1)[-1]))
+            if target:
+                self._send_path(target)
+            else:
+                self.send_error(404)
+            return
         elif path == "/api/effects":
             self.send_json({"ok": True, **effects_public()})
         elif path.startswith(("/efectos/", "/mis-efectos/")):
@@ -1994,6 +2251,27 @@ class Handler(BaseHTTPRequestHandler):
             folder = Path(CONFIG[key])
             folder.mkdir(parents=True, exist_ok=True)
             open_in_explorer(folder)
+            self.send_json({"ok": True})
+        elif path == "/api/anims/add":
+            from ectube_overlay import IMPORT_EXTS
+
+            chosen = pick_files(str(Path.home() / "Pictures" if (Path.home() / "Pictures").is_dir() else Path.home()),
+                                ("Choose your animations (GIF, WebP, PNG, WebM…)", "Elige tus animaciones (GIF, WebP, PNG, WebM…)"),
+                                IMPORT_EXTS)
+            result = anims_add(chosen) if chosen else {"added": 0, "errors": []}
+            self.send_json({"ok": True, **result, **anims_public()})
+        elif path == "/api/anims/remove":
+            try:
+                anims_remove(str(data.get("id") or ""))
+                self.send_json({"ok": True, **anims_public()})
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
+        elif path == "/api/bank/download":
+            bank_download()
+            self.send_json({"ok": True, **bank_status()})
+        elif path == "/api/bank/dismiss":
+            CONFIG["bank_dismissed"] = int(BANK.get("latest") or 0)
+            save_config(CONFIG)
             self.send_json({"ok": True})
         elif path == "/api/effects/add":
             chosen = pick_files(str(Path.home() / "Music" if (Path.home() / "Music").is_dir() else Path.home()),
@@ -2236,6 +2514,37 @@ class Handler(BaseHTTPRequestHandler):
                         "repeat": max(1, min(repeat, 50)), "volume": max(0.0, min(volume, 3.0))})
         return out
 
+    def _overlays(self, raw) -> list | str:
+        """Leer y revisar las animaciones encima del video. Regresa la lista o el error."""
+        if not raw:
+            return []
+        if not isinstance(raw, list) or len(raw) > 60:
+            return "Son demasiadas animaciones (máximo 60)."
+        out = []
+        for item in raw:
+            if not isinstance(item, dict):
+                return "Animación inválida."
+            try:
+                at, dur = float(item.get("at")), float(item.get("dur"))
+                x, y, w, h = (float(item.get(k)) for k in ("x", "y", "w", "h"))
+            except (TypeError, ValueError):
+                return "Tiempos o tamaño inválidos en una animación."
+            if at < 0 or dur < 0.2 or dur > 600 or w <= 0.01 or h <= 0.01 or w > 4 or h > 4:
+                return "Cada animación debe durar al menos 0.2 segundos y tener un tamaño válido."
+            text = str(item.get("text") or "")[:300]
+            if item.get("kind") == "banner":
+                spec = {"kind": "banner", "text": text, "dur": dur, "color": str(item.get("color") or "#FE2C55")[:7],
+                        "pop": item.get("pop") is not False}
+            else:
+                path = anim_path(item.get("id", ""))
+                if not path:
+                    return "Una de las animaciones ya no existe. Quítala de la lista."
+                scene = SCENES.get(path.name) if path.parent != ANIM_MINE else None
+                spec = {"kind": "anim", "path": str(path), "scene": scene, "text": text if scene else "", "dur": dur,
+                        "pop": item.get("pop") is not False}
+            out.append({"render": spec, "at": at, "x": x, "y": y, "w": w, "h": h})
+        return out
+
     def _start_edit(self, data: dict) -> None:
         kind = "video" if data.get("kind") == "video" else "audio"
         fragments = self._fragments(data.get("fragments"), VIDEO_EXTS if kind == "video" else AUDIO_EXTS | VIDEO_EXTS)
@@ -2253,6 +2562,10 @@ class Handler(BaseHTTPRequestHandler):
         if isinstance(effects, str):
             self.send_json({"ok": False, "error": effects}, 400)
             return
+        overlays = self._overlays(data.get("overlays")) if kind == "video" else []
+        if isinstance(overlays, str):
+            self.send_json({"ok": False, "error": overlays}, 400)
+            return
         if sum(e - s for _, s, e in fragments) > 3 * 3600:
             self.send_json({"ok": False, "error": "La edición final puede durar máximo 3 horas."}, 400)
             return
@@ -2265,7 +2578,7 @@ class Handler(BaseHTTPRequestHandler):
                 EDITS.pop(old.id, None)
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
-                          audio_mode, audio_fragments, effects)
+                          audio_mode, audio_fragments, effects, overlays)
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return
@@ -2297,7 +2610,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_media(self, token: str) -> None:
         """Servir el archivo con soporte de Range (para poder adelantar en el reproductor)."""
-        source = MEDIA.path(token)
+        self._send_path(MEDIA.path(token))
+
+    def _send_path(self, source: Path | None) -> None:
         if not source or not source.is_file():
             self.send_error(404)
             return
@@ -2450,6 +2765,8 @@ def main() -> int:
     ENGINE.refresh_version()
     threading.Thread(target=ENGINE.update, daemon=True).start()
     threading.Thread(target=clear_edit_tmp, daemon=True).start()
+    reload_scenes()
+    threading.Thread(target=bank_check, daemon=True).start()
     if not args.stay:
         threading.Thread(target=_idle_watch, args=(server,), daemon=True).start()
     if not args.no_browser:

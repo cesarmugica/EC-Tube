@@ -243,6 +243,36 @@
     .fxrows .warn { color: var(--warn); font-size: .8rem; width: 100%; }
     .fxrows button { padding: 4px 9px; }
     #fxPicker .modal-panel { width: min(760px, 100%); }
+    #anPicker .modal-panel { width: min(900px, 100%); }
+    #bankBar { margin-top: 8px; } #bankBar .btns { display: flex; gap: 8px; }
+    .an-stage { position: relative; width: 100%; max-width: 760px; margin: 0 auto; background: #000; border-radius: 10px; overflow: hidden; user-select: none; touch-action: none; }
+    .an-stage video.base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+    .an-stage .ovl { position: absolute; cursor: move; }
+    .an-stage .ovl.off { opacity: .28; }
+    .an-stage .ovl.on { outline: 2px dashed #56ccf2; outline-offset: 1px; }
+    .an-stage .ovl > img, .an-stage .ovl > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+    .an-stage .ovl .sg { position: absolute; display: flex; align-items: center; justify-content: center; text-align: center; color: #3b2314; font-weight: 900; line-height: 1.08; overflow: hidden; pointer-events: none; padding: 0 4%; box-sizing: border-box; }
+    .an-stage .ovl .bn { position: absolute; inset: 0; border-radius: 14px; border: 3px solid var(--c, #FE2C55); background: rgba(22,22,28,.93); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px 12px; box-sizing: border-box; overflow: hidden; line-height: 1.1; pointer-events: none; }
+    .an-stage .ovl .rs { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 4px; background: #56ccf2; border: 2px solid #fff; cursor: nwse-resize; display: none; }
+    .an-stage .ovl.on .rs { display: block; }
+    .an-time { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: .88rem; } .an-time input { flex: 1; accent-color: var(--accent); }
+    .fxline .chip.an { background: #56ccf2; } .fxline .chip .grip { position: absolute; right: 0; top: 0; bottom: 0; width: 7px; cursor: ew-resize; background: rgba(0,0,0,.25); }
+    .fxrows li.on.an { border-color: #56ccf2; }
+    .fxrows input.tx { flex: 1 1 220px; min-width: 140px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 4px 8px; font: inherit; font-size: .86rem; }
+    .fxrows input.px { width: 64px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 3px 6px; font-size: .82rem; }
+    .fxrows .note { color: var(--muted); font-size: .8rem; flex: 1 1 220px; }
+    .sw { display: inline-flex; gap: 4px; vertical-align: middle; } .sw button { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid transparent; }
+    .sw button.on { border-color: #fff; }
+    .an-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 46vh; overflow: auto; }
+    .an-item { position: relative; border: 2px solid var(--border); border-radius: 10px; background: #2a2f33 repeating-conic-gradient(#30353a 0 25%, #2a2f33 0 50%) 0 0 / 16px 16px; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 4px; }
+    .an-item.on { border-color: var(--accent); }
+    .an-item .th { height: 110px; display: grid; place-items: center; } .an-item .th img, .an-item .th video { max-width: 100%; max-height: 110px; }
+    .an-item span { font-size: .74rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 4px; }
+    .an-item .del { position: absolute; top: 4px; right: 4px; padding: 2px 6px; }
+    .an-item .tag { position: absolute; top: 4px; left: 4px; font-size: .9rem; }
+    .an-pick { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+    .an-pick input[type=text] { flex: 1 1 260px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); padding: 9px 12px; font: inherit; }
+    .an-bank { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: .88rem; }
     .fx-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
     .fx-tabs button.on { background: var(--accent); color: #fff; }
     .fx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; max-height: 52vh; overflow: auto; }
@@ -310,6 +340,7 @@
 
   <main>
     <div class="update" id="updateBox" hidden><span id="updateText"></span><button type="button" id="updateButton">⬆ Actualizar</button></div>
+    <div class="update" id="bankBar" hidden><span id="bankBarText"></span><span class="btns"><button type="button" id="bankBarBtn"></button><button type="button" class="secondary" id="bankBarLater">Ahora no</button></span></div>
     <nav class="tabs" role="tablist">
       <button type="button" class="on" data-tab="download" role="tab">⬇ Descargar y recortar</button>
       <button type="button" data-tab="player" role="tab">🎵 Reproductor</button>
@@ -424,6 +455,19 @@
       </div>
       <div class="fxline" id="fxLine"></div>
       <ol class="fxrows" id="fxRows"></ol>
+      <div id="anBox" hidden>
+        <div class="fx-head">
+          <h3 class="ed-h3">🎬 Animaciones encima</h3>
+          <small>Personajes con tu texto en el letrero, efectos, cintillos o tus propias animaciones, encima del video.</small>
+          <span style="flex:1"></span>
+          <button class="secondary" type="button" id="anOpen">➕ Agregar animación</button>
+        </div>
+        <div class="an-stage" id="anStage"><video class="base" id="anVideo" muted preload="auto"></video></div>
+        <div class="an-time"><span>Viendo</span><input type="range" id="anScrub" min="0" max="1" step="0.01" value="0" aria-label="Momento del video que se ve en el lienzo"><span id="anTimeLbl">0:00.00</span></div>
+        <p class="ed-help">Arrastra la animación en el lienzo para moverla y jala la esquina azul para cambiar su tamaño. En la línea de tiempo la mueves para elegir cuándo sale y estiras su borde derecho para cambiar cuánto dura.</p>
+        <div class="fxline" id="anLine"></div>
+        <ol class="fxrows" id="anRows"></ol>
+      </div>
       <div class="ed-foot">
         <span class="grow field" id="edTotal"></span>
         <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
@@ -490,6 +534,20 @@
         <ul class="lib" id="lib"></ul>
       </section>
     </div>
+
+    <section id="anPicker" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="anTitle">
+      <div class="modal-panel">
+        <header><h2 id="anTitle">🎬 Agregar animación</h2><button class="secondary" type="button" id="anClose">Cerrar</button></header>
+        <div class="modal-body">
+          <div class="an-bank" id="anBank" hidden></div>
+          <div class="fx-tabs" id="anTabs"></div>
+          <input id="anSearch" type="search" placeholder="Buscar animación…" aria-label="Buscar animación…" style="width:100%;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);padding:9px 12px;font:inherit">
+          <div class="an-grid" id="anGrid"></div>
+          <div class="an-pick" id="anPick"></div>
+          <p class="ed-help" id="anNote">Algunas animaciones no muestran texto (efectos como la bola disco, el ecualizador o los corazones): se pueden agregar, pero el texto no aparece.</p>
+        </div>
+      </div>
+    </section>
 
     <section id="fxPicker" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="fxTitle">
       <div class="modal-panel">
@@ -1037,6 +1095,72 @@
       "Son demasiados efectos (máximo 200).": "Too many sounds (maximum 200).",
       "Cada efecto debe durar al menos 0.05 segundos.": "Each sound must be at least 0.05 seconds long.",
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
+      "🎬 Animaciones encima": "🎬 Animations on top",
+      "Personajes con tu texto en el letrero, efectos, cintillos o tus propias animaciones, encima del video.": "Characters with your text on the sign, effects, banners or your own animations, on top of the video.",
+      "➕ Agregar animación": "➕ Add animation",
+      "Viendo": "Showing",
+      "Momento del video que se ve en el lienzo": "Moment of the video shown on the canvas",
+      "Arrastra la animación en el lienzo para moverla y jala la esquina azul para cambiar su tamaño. En la línea de tiempo la mueves para elegir cuándo sale y estiras su borde derecho para cambiar cuánto dura.": "Drag the animation on the canvas to move it and pull the blue corner to resize it. On the timeline, move it to choose when it appears and stretch its right edge to change how long it lasts.",
+      "🎬 Agregar animación": "🎬 Add animation",
+      "Buscar animación…": "Search animation…",
+      "Algunas animaciones no muestran texto (efectos como la bola disco, el ecualizador o los corazones): se pueden agregar, pero el texto no aparece.": "Some animations do not show text (effects like the disco ball, the equalizer or the hearts): you can add them, but the text does not appear.",
+      "⏳ Instalando el banco de animaciones…": "⏳ Installing the animation bank…",
+      "⏳ Bajando el banco de animaciones… {0} %": "⏳ Downloading the animation bank… {0} %",
+      "El banco completo de animaciones (personajes con letrero y efectos, {0} MB) todavía no está en esta PC. Mientras, puedes usar las básicas.": "The full animation bank (characters with signs and effects, {0} MB) is not on this PC yet. Meanwhile, you can use the basic ones.",
+      "Bajar banco": "Download bank",
+      "Por ahora solo están las animaciones básicas.": "For now only the basic animations are available.",
+      "🆕 Hay animaciones nuevas (banco {0}).": "🆕 There are new animations (bank {0}).",
+      "Actualizar animaciones": "Update animations",
+      "🪧 Con letrero (texto)": "🪧 With sign (text)",
+      "✨ Efectos (sin texto)": "✨ Effects (no text)",
+      "📢 Cintillo de texto": "📢 Text banner",
+      "⭐ Mis animaciones": "⭐ My animations",
+      "Texto del cintillo (puedes poner emojis 🎉)": "Banner text (you can use emojis 🎉)",
+      "Agregar": "Add",
+      "Tu texto aquí": "Your text here",
+      "Lleva texto": "Has text",
+      "Quitar de Mis animaciones": "Remove from My animations",
+      "Todavía no tienes animaciones tuyas. Presiona «📂 Agregar mis animaciones…» para traerlas de tu PC (GIF, WebP, PNG, WebM, MOV…).": "You have no animations of your own yet. Press “📂 Add my animations…” to bring them from your PC (GIF, WebP, PNG, WebM, MOV…).",
+      "Baja el banco para tener todos los personajes con letrero.": "Download the bank to get all the characters with signs.",
+      "No hay animaciones con ese nombre.": "No animations with that name.",
+      "Agregar mis animaciones…": "Add my animations…",
+      "Texto del letrero (puedes poner emojis 💜)": "Sign text (you can use emojis 💜)",
+      "Esta animación no muestra texto.": "This animation does not show text.",
+      "Elige una animación (▶ al pasar el mouse).": "Choose an animation (▶ on mouse over).",
+      "{0} animación(es) agregada(s) a ⭐ Mis animaciones.": "{0} animation(s) added to ⭐ My animations.",
+      "¿Quitar «{0}» de ⭐ Mis animaciones?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.": "Remove “{0}” from ⭐ My animations?\n\nThe copy EC-Tube saved is deleted. Your original file is NOT deleted and the edits you already saved do not change.",
+      "Primero agrega fragmentos de video a la edición; las animaciones van encima.": "First add video fragments to the edit; the animations go on top.",
+      "Cintillo": "Banner",
+      "«{0}» agregada en {1}. Muévela en el lienzo y en la línea de tiempo.": "“{0}” added at {1}. Move it on the canvas and on the timeline.",
+      "Jala para cambiar el tamaño": "Pull to resize",
+      "Aquí verás la edición final y sus animaciones.": "Here you will see the final edit and its animations.",
+      "Texto del letrero": "Sign text",
+      "Sale en": "Appears at",
+      "Dura": "Lasts",
+      "Ancho": "Width",
+      "Alto": "Height",
+      "Proporción": "Keep ratio",
+      "Entrada con rebote": "Bounce in",
+      "Verla en el lienzo": "See it on the canvas",
+      "Duplicar": "Duplicate",
+      "⚠ Queda después del final del video: no se va a ver. Muévela más atrás.": "⚠ It is after the end of the video: it will not be seen. Move it earlier.",
+      "Se corta al final del video.": "It is cut at the end of the video.",
+      "✅ Banco de animaciones listo. Ya puedes usarlas en ✂ Edición → 🎬 Animaciones encima.": "✅ Animation bank ready. You can now use them in ✂ Edit → 🎬 Animations on top.",
+      "🆕 ¡Hay un banco de animaciones nuevo! (banco {0})": "🆕 There is a new animation bank! (bank {0})",
+      "📥 Actualizar animaciones": "📥 Update animations",
+      "🎬 Baja gratis el banco de animaciones de EC-Tok ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.": "🎬 Download the free EC-Tok animation bank ({0} MB) to put animations on top of your videos: characters with your text on the sign, effects and more.",
+      "📥 Descargar": "📥 Download",
+      "Ahora no": "Not now",
+      "Preparando las animaciones… {0} %": "Preparing the animations… {0} %",
+      "¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos, los sonidos y las animaciones encima de este editor. Tus archivos, «Mis sonidos», «Mis animaciones» y las ediciones que ya guardaste NO se borran.": "Clear the edit?\n\nThe sources, the fragment list, and the sounds and animations on top are removed from this editor. Your files, “My sounds”, “My animations” and the edits you already saved are NOT deleted.",
+      "Son demasiadas animaciones (máximo 60).": "Too many animations (maximum 60).",
+      "Animación inválida.": "Invalid animation.",
+      "Tiempos o tamaño inválidos en una animación.": "Invalid times or size in an animation.",
+      "Cada animación debe durar al menos 0.2 segundos y tener un tamaño válido.": "Each animation must last at least 0.2 seconds and have a valid size.",
+      "Una de las animaciones ya no existe. Quítala de la lista.": "One of the animations no longer exists. Remove it from the list.",
+      "Esa animación no es de «Mis animaciones».": "That animation is not in “My animations”.",
+      "No se pudo descargar el banco (¿sin internet?).": "Could not download the bank (no internet?).",
+      "Todavía no hay banco publicado.": "No bank has been published yet.",
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
@@ -1346,7 +1470,7 @@
     const fmt2 = t => { t = Math.max(0, t || 0); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t - h * 3600 - m * 60;
       const ss = (s < 10 ? '0' : '') + s.toFixed(2); return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
     const Edit = {
-      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], fx: [], fxOn: -1, vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], view: [0, 0], el: null, playEnd: null, editing: -1, job: null,
+      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], fx: [], fxOn: -1, ov: [], ovOn: -1, vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], view: [0, 0], el: null, playEnd: null, editing: -1, job: null,
       COLORS: ['#8569ff', '#25c2a0', '#f2994a', '#eb5757', '#56ccf2', '#f2c94c', '#bb6bd9', '#6fcf97'],
       say(text, ok = false) { $('#edStatus').textContent = text; $('#edStatus').classList.toggle('ok', ok); },
       src(token) { return this.sources.find(x => x.token === token); },
@@ -1356,12 +1480,14 @@
         const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end}));
         try { localStorage.setItem('ectube-edit', JSON.stringify({kind: this.kind, smooth: $('#edSmooth').checked, mode: $('#edMode').value, vaudio: this.vaudio,
           sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
-          fx: this.fx.map(({id, name, seconds, url, at, start, end, repeat, volume}) => ({id, name, seconds, url, at, start, end, repeat, volume}))})); } catch (_) {}
+          fx: this.fx.map(({id, name, seconds, url, at, start, end, repeat, volume}) => ({id, name, seconds, url, at, start, end, repeat, volume})),
+          ov: this.ov})); } catch (_) {}
       },
       async restore() {
         let data; try { data = JSON.parse(localStorage.getItem('ectube-edit') || 'null'); } catch (_) {}
         if (!data) { this.render(); return; }
         this.fx = Array.isArray(data.fx) ? data.fx.filter(x => x && x.id) : [];
+        this.ov = Array.isArray(data.ov) ? data.ov.filter(x => x && (x.id || x.kind === 'banner')) : [];
         this.setKind(data.kind === 'video' ? 'video' : 'audio');
         $('#edSmooth').checked = data.smooth !== false; $('#edMode').value = data.mode || 'original';
         const tokens = [];
@@ -1376,6 +1502,7 @@
       setKind(kind) {
         this.kind = kind; document.querySelector(`input[name=edKind][value=${kind}]`).checked = true;
         $('#edHelpAudio').hidden = kind !== 'audio'; $('#edHelpVideo').hidden = $('#edVideoOpts').hidden = kind !== 'video';
+        $('#anBox').hidden = kind !== 'video';
         this.syncTracks();
       },
       setVAudio(v) { this.vaudio = v; $('#edVAudio').value = v; this.syncTracks(); },
@@ -1515,7 +1642,7 @@
         $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
           : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
         $('#edCancelEdit').hidden = this.editing < 0;
-        this.draw(); Fx.render();
+        this.draw(); Fx.render(); if (typeof An !== 'undefined') An.render();
       },
       playRange(a, b) { if (!this.el) return; this.el.currentTime = a; this.playEnd = b; this.el.play().catch(() => {}); },
       async run(preview) {
@@ -1528,7 +1655,8 @@
           const pack = list => list.map(f => ({token: f.token, start: f.start, end: f.end}));
           const job = await api('/api/edit', {kind: this.kind, preview, mode, smooth: $('#edSmooth').checked, fragments: pack(this.frags),
             audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags) : [],
-            effects: this.fx.map(({id, at, start, end, repeat, volume}) => ({id, at, start, end, repeat, volume}))});
+            effects: this.fx.map(({id, at, start, end, repeat, volume}) => ({id, at, start, end, repeat, volume})),
+            overlays: this.kind === 'video' ? this.ov.map(({id, kind, text, color, at, dur, x, y, w, h, pop}) => ({id, kind, text, color, at, dur, x, y, w, h, pop})) : []});
           this.job = job.id; this.render();
           const poll = async () => {
             let st; try { st = await api('/api/edit/' + job.id); } catch (error) { this.job = null; this.render(); this.say(t(error.message)); return; }
@@ -1538,6 +1666,7 @@
                 : st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
                 : st.phase === 'separate' || st.phase === 'audio' ? tf(mode === 'music' ? 'Quitando la voz… {0} %' : 'Quitando la música… {0} %', pct)
                 : st.phase === 'save' ? tf('Guardando… {0} %', pct) : st.phase === 'effects' ? tf('Poniendo los sonidos encima… {0} %', pct)
+                : st.phase === 'anims' ? tf('Preparando las animaciones… {0} %', pct)
                 : tf('Uniendo los fragmentos… {0} %', pct));
               setTimeout(poll, 600); return;
             }
@@ -1743,6 +1872,316 @@
       else if (b.dataset.act === 'del') { Fx.stop(); Edit.fx.splice(i, 1); Edit.fxOn = -1; Edit.save(); Fx.render(); }
     });
     (() => { let w = 0; new ResizeObserver(() => { const now = $('#fxLine').clientWidth; if (now !== w) { w = now; Fx.render(); } }).observe($('#fxLine')); })();
+
+    // ---------- Animaciones encima del video ----------
+    const An = {
+      lib: null, tab: 'text', pick: null, color: '#FE2C55', T: 0, drag: null,
+      COLORS: ['#FE2C55', '#25F4EE', '#8569ff', '#f2c94c', '#25c2a0'],
+      TABS: [['text', '🪧 Con letrero (texto)'], ['fx', '✨ Efectos (sin texto)'], ['banner', '📢 Cintillo de texto'], ['mine', '⭐ Mis animaciones']],
+      total() { return Edit.total(); },
+      size() { const v = $('#anVideo'); return [v.videoWidth || 1280, v.videoHeight || 720]; },
+      find(id) { return (this.lib?.items || []).find(x => x.id === id); },
+      async load(force) { if (!this.lib || force) this.lib = await api('/api/anims'); return this.lib; },
+      async open() {
+        $('#anPicker').hidden = false; $('#anSearch').value = '';
+        try { await this.load(true); } catch (error) { $('#anGrid').textContent = t(error.message); return; }
+        this.renderPicker();
+      },
+      close() { $('#anPicker').hidden = true; $('#anGrid').querySelectorAll('video').forEach(v => v.pause()); },
+      bankHtml(b) {
+        const busy = b.state === 'downloading' || b.state === 'installing', mb = b.size ? Math.round(b.size / 1048576) : 0;
+        if (busy) return b.state === 'installing' ? t('⏳ Instalando el banco de animaciones…') : tf('⏳ Bajando el banco de animaciones… {0} %', Math.round(b.percent || 0));
+        if (!b.installed) return b.published ? `<span style="flex:1">${tf('El banco completo de animaciones (personajes con letrero y efectos, {0} MB) todavía no está en esta PC. Mientras, puedes usar las básicas.', mb)}</span><button type="button" data-bank="dl">📥 ${t('Bajar banco')}</button>`
+          : `<span>${t(b.error || 'Por ahora solo están las animaciones básicas.')}</span>`;
+        if (b.latest > b.installed) return `<span style="flex:1">${tf('🆕 Hay animaciones nuevas (banco {0}).', b.latest)}</span><button type="button" data-bank="dl">📥 ${t('Actualizar animaciones')}</button>`;
+        return '';
+      },
+      renderPicker() {
+        const lib = this.lib || {items: [], bank: {}}, q = $('#anSearch').value.trim().toLowerCase();
+        const bank = this.bankHtml(lib.bank || {}); $('#anBank').innerHTML = bank; $('#anBank').hidden = !bank;
+        const count = g => lib.items.filter(x => x.group === g).length;
+        $('#anTabs').innerHTML = this.TABS.map(([k, label]) => `<button type="button" class="secondary${this.tab === k ? ' on' : ''}" data-tab="${k}">${t(label)}${k !== 'banner' ? ` (${count(k)})` : ''}</button>`).join('');
+        $('#anSearch').hidden = this.tab === 'banner';
+        if (this.tab === 'banner') {
+          $('#anGrid').innerHTML = `<div class="an-stage" style="aspect-ratio:16/5;max-width:100%;background:#2a2f33"><div class="ovl" style="left:10%;top:22%;width:80%;height:56%"><div class="bn" id="anBnPrev" style="--c:${this.color};font-size:22px"></div></div></div>`;
+          $('#anPick').innerHTML = `<input type="text" id="anText" maxlength="300" placeholder="${t('Texto del cintillo (puedes poner emojis 🎉)')}" value="${esc(this.lastText || '')}">
+            <span class="sw">${this.COLORS.map(c => `<button type="button" data-color="${c}" class="${c === this.color ? 'on' : ''}" style="background:${c}" title="${c}"></button>`).join('')}</span>
+            <button type="button" id="anAdd">➕ ${t('Agregar')}</button>`;
+          $('#anBnPrev').textContent = $('#anText').value || t('Tu texto aquí'); $('#anNote').hidden = true; return;
+        }
+        $('#anNote').hidden = this.tab !== 'fx';
+        let items = lib.items.filter(x => q ? true : x.group === this.tab);
+        if (q) items = items.filter(x => x.name.toLowerCase().includes(q));
+        $('#anGrid').innerHTML = items.length ? items.map(x => `<div class="an-item${this.pick === x.id ? ' on' : ''}" data-id="${esc(x.id)}" title="${esc(x.name)}">
+            ${x.text ? '<span class="tag" title="' + t('Lleva texto') + '">🪧</span>' : ''}
+            <div class="th">${x.video ? `<video muted loop playsinline preload="none" data-src="${esc(x.url)}"></video>` : `<img loading="lazy" src="${esc(x.url)}" alt="">`}</div>
+            <span>${esc(x.name)}</span>${x.group === 'mine' ? `<button type="button" class="secondary del" data-del="${esc(x.id)}" title="${t('Quitar de Mis animaciones')}">🗑</button>` : ''}</div>`).join('')
+          : `<p class="ed-help">${t(this.tab === 'mine' && !q ? 'Todavía no tienes animaciones tuyas. Presiona «📂 Agregar mis animaciones…» para traerlas de tu PC (GIF, WebP, PNG, WebM, MOV…).' : this.tab === 'text' && !q ? 'Baja el banco para tener todos los personajes con letrero.' : 'No hay animaciones con ese nombre.')}</p>`;
+        // los videos se cargan cuando se ven, y se mueven al pasar el mouse
+        const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const v = e.target; if (!v.src) { v.src = v.dataset.src; v.preload = 'metadata'; } io.unobserve(v); } }), {root: $('#anGrid')});
+        $('#anGrid').querySelectorAll('video').forEach(v => io.observe(v));
+        const sel = this.find(this.pick);
+        $('#anPick').innerHTML = (this.tab === 'mine' ? `<button type="button" class="secondary" id="anMine">📂 ${t('Agregar mis animaciones…')}</button>` : '')
+          + (sel ? `<b>${esc(sel.name)}</b>` + (sel.text ? `<input type="text" id="anText" maxlength="300" placeholder="${t('Texto del letrero (puedes poner emojis 💜)')}" value="${esc(this.lastText || '')}">`
+            : `<span class="ed-help" style="margin:0">${t('Esta animación no muestra texto.')}</span>`) + `<button type="button" id="anAdd">➕ ${t('Agregar')}</button>`
+            : `<span class="ed-help" style="margin:0">${t('Elige una animación (▶ al pasar el mouse).')}</span>`);
+      },
+      async addMine() {
+        const b = $('#anMine'); if (b) b.disabled = true;
+        try { const d = await api('/api/anims/add', {}); this.lib = {items: d.items, bank: d.bank}; this.renderPicker();
+          if (d.errors.length || d.added) Edit.say((d.added ? tf('{0} animación(es) agregada(s) a ⭐ Mis animaciones.', d.added) : '') + ' ' + d.errors.join(' '), !d.errors.length); }
+        catch (error) { Edit.say(t(error.message)); } finally { if (b) b.disabled = false; }
+      },
+      async delMine(id) {
+        const x = this.find(id); if (!x) return;
+        const used = Edit.ov.filter(o => o.id === id).length;
+        if (!confirm(tf('¿Quitar «{0}» de ⭐ Mis animaciones?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.', x.name)
+          + (used ? '\n\n' + tf('También se quita de esta edición ({0} vez/veces).', used) : ''))) return;
+        try { const d = await api('/api/anims/remove', {id}); this.lib = {items: d.items, bank: d.bank}; } catch (error) { Edit.say(t(error.message)); return; }
+        if (used) { Edit.ov = Edit.ov.filter(o => o.id !== id); Edit.ovOn = -1; Edit.save(); this.render(); }
+        if (this.pick === id) this.pick = null; this.renderPicker();
+      },
+      // tamaño natural de una animación (para que no salga estirada)
+      natural(url, video) {
+        return new Promise(res => {
+          const el = document.createElement(video ? 'video' : 'img'); let done = false; const ok = (w, h) => { if (!done) { done = true; res(w && h ? w / h : 1); } };
+          if (video) { el.preload = 'metadata'; el.onloadedmetadata = () => ok(el.videoWidth, el.videoHeight); } else el.onload = () => ok(el.naturalWidth, el.naturalHeight);
+          el.onerror = () => ok(1, 1); el.src = url; setTimeout(() => ok(1, 1), 4000);
+        });
+      },
+      async add() {
+        if (!Edit.frags.length) { Edit.say(t('Primero agrega fragmentos de video a la edición; las animaciones van encima.')); this.close(); return; }
+        const [W, H] = this.size(), T = Math.min(this.T, Math.max(0, this.total() - 0.2)), text = $('#anText') ? $('#anText').value.trim() : '';
+        this.lastText = text;
+        let o;
+        if (this.tab === 'banner') {
+          if (!text) { $('#anText').focus(); return; }
+          o = {kind: 'banner', name: t('Cintillo'), text, color: this.color, at: T, dur: 5, x: 0.2, y: 0.06, w: 0.6, h: 0.13, pop: true, lock: false};
+        } else {
+          const x = this.find(this.pick); if (!x) return;
+          const ratio = x.ratio || await this.natural(x.url, x.video);   // ancho / alto de la animación
+          let h = x.text ? 0.75 : 0.5, w = h * ratio * H / W;
+          if (w > 0.9) { w = 0.9; h = w / ratio * W / H; }
+          o = {kind: 'anim', id: x.id, name: x.name, url: x.url, video: x.video, sign: x.sign, track: x.track, fps: x.fps, hasText: x.text, text: x.text ? text : '',
+               at: T, dur: x.text ? 5 : 4, x: (1 - w) / 2, y: x.text ? 1 - h : (1 - h) / 2, w, h, pop: true, lock: true};
+        }
+        o.dur = Math.max(0.2, Math.min(o.dur, this.total() - o.at));
+        Edit.ov.push(o); Edit.ovOn = Edit.ov.length - 1; Edit.save(); this.close(); this.render();
+        Edit.say(tf('«{0}» agregada en {1}. Muévela en el lienzo y en la línea de tiempo.', o.name, fmt2(o.at)), true);
+        $('#anStage').scrollIntoView({behavior: 'smooth', block: 'center'});
+      },
+      // el lienzo muestra el cuadro del video final en el momento T
+      async seek(T) {
+        this.T = Math.max(0, Math.min(T, this.total())); $('#anScrub').value = this.T; $('#anTimeLbl').textContent = fmt2(this.T);
+        let acc = 0, f = null;
+        for (const fr of Edit.frags) { const d = fr.end - fr.start; if (this.T < acc + d || fr === Edit.frags[Edit.frags.length - 1]) { f = fr; break; } acc += d; }
+        const v = $('#anVideo');
+        if (f) {
+          const want = '/media/' + f.token, at = Math.min(f.end, f.start + (this.T - acc));
+          if (!v.src.endsWith(want)) { v.src = want; await new Promise(r => { v.onloadedmetadata = r; setTimeout(r, 3000); }); this.aspect(); }
+          try { v.currentTime = at; } catch (_) {}
+        } else v.removeAttribute('src');
+        this.paint(); this.lineHead();
+      },
+      aspect() { const [W, H] = this.size(); $('#anStage').style.aspectRatio = `${W} / ${H}`; },
+      fit(el, box, start) {  // texto lo más grande que quepa
+        const span = el.firstElementChild; if (!span) return; let fs = box * start; span.style.fontSize = fs + 'px';
+        while (fs > 6 && (span.scrollWidth > el.clientWidth * 0.94 || span.offsetHeight > el.clientHeight * 0.9)) { fs *= 0.92; span.style.fontSize = fs + 'px'; }
+      },
+      paint() {
+        const st = $('#anStage'); st.querySelectorAll('.ovl').forEach(x => x.remove());
+        if (Edit.kind !== 'video') return;
+        Edit.ov.forEach((o, i) => {
+          const live = this.T >= o.at && this.T <= o.at + o.dur;
+          if (!live && i !== Edit.ovOn) return;
+          const el = document.createElement('div'); el.className = 'ovl' + (i === Edit.ovOn ? ' on' : '') + (live ? '' : ' off'); el.dataset.ov = i;
+          Object.assign(el.style, {left: o.x * 100 + '%', top: o.y * 100 + '%', width: o.w * 100 + '%', height: o.h * 100 + '%'});
+          if (o.kind === 'banner') el.innerHTML = `<div class="bn" style="--c:${esc(o.color)}"><span>${esc(o.text)}</span></div>`;
+          else {
+            el.innerHTML = o.video ? `<video src="${esc(o.url)}" muted loop autoplay playsinline></video>` : `<img src="${esc(o.url)}" alt="">`;
+            if (o.sign && o.text) { const [cx, cy, sw, sh, deg] = o.sign; el.insertAdjacentHTML('beforeend', `<div class="sg" style="left:${cx - sw / 2}%;top:${cy - sh / 2}%;width:${sw}%;height:${sh}%;transform:rotate(${deg || 0}deg)"><span>${esc(o.text)}</span></div>`); }
+          }
+          el.insertAdjacentHTML('beforeend', '<div class="rs" title="' + t('Jala para cambiar el tamaño') + '"></div>');
+          st.appendChild(el);
+          const sg = el.querySelector('.sg, .bn'); if (sg) this.fit(sg, sg.clientHeight, o.kind === 'banner' ? 0.55 : 0.45);
+          const vid = el.querySelector('video'), sgn = el.querySelector('.sg');
+          if (vid && sgn && o.track && o.track.length && vid.requestVideoFrameCallback) {
+            // el texto sigue al letrero cuadro por cuadro (como en EC-Tok)
+            const span = sgn.firstElementChild; span.style.width = span.clientWidth + 'px'; span.style.flex = 'none';
+            const n = o.track.length, fps = o.fps || 16;
+            const onFrame = (_now, meta) => {
+              if (!sgn.isConnected) return;
+              const [cx, cy, bw, bh, deg] = o.track[Math.min(n - 1, Math.max(0, Math.round(meta.mediaTime * fps)))];
+              Object.assign(sgn.style, {left: cx - bw / 2 + '%', top: cy - bh / 2 + '%', width: bw + '%', height: bh + '%', transform: `rotate(${deg || 0}deg)`});
+              vid.requestVideoFrameCallback(onFrame);
+            };
+            vid.requestVideoFrameCallback(onFrame);
+          }
+        });
+      },
+      lanes() {
+        const T = Math.max(0.001, this.total()), ends = [], lane = [];
+        Edit.ov.map((o, i) => i).sort((a, b) => Edit.ov[a].at - Edit.ov[b].at).forEach(i => {
+          const o = Edit.ov[i]; let l = ends.findIndex(e => e <= o.at); if (l < 0) { l = ends.length; ends.push(0); }
+          ends[l] = o.at + Math.max(o.dur, T * 0.08); lane[i] = l;
+        });
+        return {lane, count: Math.max(1, ends.length)};
+      },
+      lineHead() { const h = $('#anHead'), T = this.total(); if (h && T) h.style.left = Math.min(100, this.T / T * 100) + '%'; },
+      render() {
+        if (Edit.kind !== 'video') return;
+        const T = this.total(); $('#anScrub').max = Math.max(0.01, T);
+        if (this.T > T) this.T = T;
+        const line = $('#anLine'), {lane, count} = this.lanes();
+        line.style.height = (22 + count * 24) + 'px';
+        if (!Edit.frags.length) { line.innerHTML = `<div class="empty">${t('Aquí verás la edición final y sus animaciones.')}</div>`; $('#anRows').innerHTML = ''; this.paint(); return; }
+        let acc = 0, html = '';
+        Edit.frags.forEach((f, i) => { const x = Edit.src(f.token) || {color: '#888'}; html += `<div class="blk" style="left:${acc / T * 100}%;width:${(f.end - f.start) / T * 100}%;background:${x.color}"><b>${i + 1}</b></div>`; acc += f.end - f.start; });
+        const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600], step = steps.find(s => T / s <= 8) || 1200;
+        for (let s = 0; s < T; s += step) html += `<span class="tick" style="left:${s / T * 100}%">${fmt2(s).replace(/\.00$/, '')}</span>`;
+        Edit.ov.forEach((o, i) => {
+          const out = o.at >= T, w = Math.min(o.dur, Math.max(0, T - o.at)) / T * 100;
+          html += `<div class="chip an${i === Edit.ovOn ? ' on' : ''}${out ? ' out' : ''}" data-ov="${i}" style="left:${Math.min(o.at / T * 100, 99)}%;width:${w}%;top:${2 + lane[i] * 24}px" title="${esc(o.name)} · ${fmt2(o.at)} · ${fmt2(o.dur)}">${o.kind === 'banner' ? '📢' : '🎬'} ${esc(o.text || o.name)}<span class="grip"></span></div>`;
+        });
+        html += `<div class="head" id="anHead"></div>`; line.innerHTML = html; this.lineHead();
+        const [W, H] = this.size(), px = (v, n) => Math.round(v * n);
+        $('#anRows').innerHTML = Edit.ov.map((o, i) => {
+          const out = o.at >= T, cut = !out && o.at + o.dur > T + 0.01;
+          const textCell = o.kind === 'banner' ? `<input class="tx" data-k="text" value="${esc(o.text)}" placeholder="${t('Texto del cintillo')}"><span class="sw">${this.COLORS.map(c => `<button type="button" data-color="${c}" class="${c === o.color ? 'on' : ''}" style="background:${c}"></button>`).join('')}</span>`
+            : o.hasText ? `<input class="tx" data-k="text" value="${esc(o.text)}" placeholder="${t('Texto del letrero')}">` : `<span class="note">${t('Esta animación no muestra texto.')}</span>`;
+          return `<li data-ov="${i}" class="an${i === Edit.ovOn ? ' on' : ''}"><span class="nm" title="${esc(o.name)}">${o.kind === 'banner' ? '📢' : '🎬'} ${esc(o.name)}</span>${textCell}
+            <label>${t('Sale en')} <input class="tm" data-k="at" value="${fmt2(o.at)}"></label>
+            <label>${t('Dura')} <input class="tm" data-k="dur" value="${fmt2(o.dur)}"></label>
+            <label>X <input class="px" data-k="x" type="number" value="${px(o.x, W)}"></label><label>Y <input class="px" data-k="y" type="number" value="${px(o.y, H)}"></label>
+            <label>${t('Ancho')} <input class="px" data-k="w" type="number" min="10" value="${px(o.w, W)}"></label><label>${t('Alto')} <input class="px" data-k="h" type="number" min="10" value="${px(o.h, H)}"></label>
+            <label class="check"><input type="checkbox" data-k="lock" ${o.lock ? 'checked' : ''}> ${t('Proporción')}</label>
+            <label class="check"><input type="checkbox" data-k="pop" ${o.pop !== false ? 'checked' : ''}> ${t('Entrada con rebote')}</label>
+            <span><button type="button" class="secondary" data-act="see" title="${t('Verla en el lienzo')}">👁</button><button type="button" class="secondary" data-act="dup" title="${t('Duplicar')}">⧉</button><button type="button" class="secondary" data-act="del" title="${t('Quitar')}">🗑</button></span>
+            ${out ? `<span class="warn">${t('⚠ Queda después del final del video: no se va a ver. Muévela más atrás.')}</span>` : cut ? `<span class="warn">${t('Se corta al final del video.')}</span>` : ''}</li>`;
+        }).join('');
+        this.seek(this.T);
+      },
+      select(i, see) { Edit.ovOn = i; const o = Edit.ov[i]; if (see && o && !(this.T >= o.at && this.T <= o.at + o.dur)) this.T = Math.min(o.at + Math.min(1, o.dur / 2), this.total()); this.render(); },
+    };
+    $('#anOpen').addEventListener('click', () => An.open());
+    $('#anClose').addEventListener('click', () => An.close());
+    $('#anPicker').addEventListener('click', event => { if (event.target === $('#anPicker')) An.close(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#anPicker').hidden) An.close(); });
+    $('#anSearch').addEventListener('input', () => An.renderPicker());
+    $('#anTabs').addEventListener('click', event => { const b = event.target.closest('[data-tab]'); if (b) { An.tab = b.dataset.tab; An.pick = null; An.renderPicker(); } });
+    $('#anGrid').addEventListener('click', event => {
+      const del = event.target.closest('[data-del]'); if (del) { An.delMine(del.dataset.del); return; }
+      const it = event.target.closest('.an-item'); if (!it) return;
+      if ($('#anText')) An.lastText = $('#anText').value;
+      An.pick = it.dataset.id; An.renderPicker(); $('#anText')?.focus();
+    });
+    $('#anGrid').addEventListener('dblclick', event => { const it = event.target.closest('.an-item'); if (it) { An.pick = it.dataset.id; An.add(); } });
+    $('#anGrid').addEventListener('mouseover', event => { const v = event.target.closest('.an-item')?.querySelector('video'); if (v) { if (!v.src) v.src = v.dataset.src; v.play().catch(() => {}); } });
+    $('#anGrid').addEventListener('mouseout', event => { const v = event.target.closest('.an-item')?.querySelector('video'); if (v && !event.relatedTarget?.closest?.('.an-item')?.contains(v)) v.pause(); });
+    $('#anPick').addEventListener('click', event => {
+      const b = event.target.closest('button'); if (!b) return;
+      if (b.id === 'anAdd') An.add(); else if (b.id === 'anMine') An.addMine();
+      else if (b.dataset.color) { An.color = b.dataset.color; An.lastText = $('#anText').value; An.renderPicker(); }
+    });
+    $('#anPick').addEventListener('input', event => { if (event.target.id === 'anText') { An.lastText = event.target.value; const p = $('#anBnPrev'); if (p) p.textContent = event.target.value || t('Tu texto aquí'); } });
+    $('#anPick').addEventListener('keydown', event => { if (event.key === 'Enter' && event.target.id === 'anText') An.add(); });
+    $('#anBank').addEventListener('click', async event => { if (event.target.closest('[data-bank]')) { try { await api('/api/bank/download', {}); Bank.poll(); } catch (error) { Edit.say(t(error.message)); } } });
+    $('#anScrub').addEventListener('input', () => An.seek(+$('#anScrub').value));
+    // mover y cambiar el tamaño en el lienzo
+    (() => {
+      const st = $('#anStage');
+      st.addEventListener('pointerdown', event => {
+        const el = event.target.closest('.ovl'); if (!el) { if (Edit.ovOn >= 0) { Edit.ovOn = -1; An.render(); } return; }
+        const i = +el.dataset.ov, o = Edit.ov[i], r = st.getBoundingClientRect();
+        An.drag = {i, mode: event.target.closest('.rs') ? 'size' : 'move', x0: event.clientX, y0: event.clientY, o0: {...o}, W: r.width, H: r.height};
+        if (Edit.ovOn !== i) { Edit.ovOn = i; An.paint(); An.render(); }
+        st.setPointerCapture(event.pointerId); event.preventDefault();
+      });
+      st.addEventListener('pointermove', event => {
+        const d = An.drag; if (!d) return;
+        const o = Edit.ov[d.i], dx = (event.clientX - d.x0) / d.W, dy = (event.clientY - d.y0) / d.H;
+        if (d.mode === 'move') { o.x = Math.min(0.98, Math.max(-o.w + 0.02, d.o0.x + dx)); o.y = Math.min(0.98, Math.max(-o.h + 0.02, d.o0.y + dy)); }
+        else { o.w = Math.max(0.03, d.o0.w + dx); o.h = o.lock ? o.w * d.o0.h / d.o0.w : Math.max(0.03, d.o0.h + dy); }
+        const el = st.querySelector(`.ovl[data-ov="${d.i}"]`);
+        if (el) { Object.assign(el.style, {left: o.x * 100 + '%', top: o.y * 100 + '%', width: o.w * 100 + '%', height: o.h * 100 + '%'}); }
+      });
+      const end = () => { if (!An.drag) return; An.drag = null; Edit.save(); An.render(); };
+      st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
+      new ResizeObserver(() => An.paint()).observe(st);
+    })();
+    // línea de tiempo: arrastrar = cuándo sale; borde derecho = cuánto dura; clic en lo vacío = ver ese momento
+    (() => {
+      const line = $('#anLine'); let drag = null;
+      const timeAt = event => { const r = line.getBoundingClientRect(); return Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * An.total(); };
+      line.addEventListener('pointerdown', event => {
+        const chip = event.target.closest('.chip'); if (!chip) { An.seek(timeAt(event)); return; }
+        const i = +chip.dataset.ov, o = Edit.ov[i];
+        drag = {i, mode: event.target.closest('.grip') ? 'dur' : 'at', offset: timeAt(event) - o.at, x0: event.clientX, moved: false};
+        line.setPointerCapture(event.pointerId); event.preventDefault();
+      });
+      line.addEventListener('pointermove', event => {
+        if (!drag) return; if (Math.abs(event.clientX - drag.x0) >= 3) drag.moved = true; if (!drag.moved) return;
+        const o = Edit.ov[drag.i], T = An.total(), t0 = timeAt(event);
+        if (drag.mode === 'at') o.at = Math.round(Math.min(Math.max(0, t0 - drag.offset), Math.max(0, T - 0.2)) * 100) / 100;
+        else o.dur = Math.round(Math.max(0.2, Math.min(t0, T) - o.at) * 100) / 100;
+        const chip = line.querySelector(`.chip[data-ov="${drag.i}"]`);
+        if (chip) { chip.style.left = o.at / T * 100 + '%'; chip.style.width = Math.min(o.dur, T - o.at) / T * 100 + '%'; }
+      });
+      const end = () => { if (!drag) return; const d = drag; drag = null; if (!d.moved) { An.select(d.i, true); return; } Edit.ovOn = d.i; Edit.save(); An.T = Edit.ov[d.i].at + Math.min(0.5, Edit.ov[d.i].dur / 2); An.render(); };
+      line.addEventListener('pointerup', end); line.addEventListener('pointercancel', end);
+      (() => { let w = 0; new ResizeObserver(() => { const now = line.clientWidth; if (now !== w) { w = now; if (Edit.kind === 'video') An.render(); } }).observe(line); })();
+    })();
+    $('#anRows').addEventListener('change', event => {
+      const li = event.target.closest('li[data-ov]'), k = event.target.dataset.k; if (!li || !k) return;
+      const o = Edit.ov[+li.dataset.ov], [W, H] = An.size(), v = event.target.value;
+      if (k === 'text') o.text = v.slice(0, 300);
+      else if (k === 'lock' || k === 'pop') o[k] = event.target.checked;
+      else if (k === 'at' || k === 'dur') { const n = parseTime(v); if (!isNaN(n)) o[k] = k === 'dur' ? Math.max(0.2, n) : Math.max(0, n); }
+      else if (k === 'x' || k === 'w') { const n = +v; if (!isNaN(n)) { if (k === 'w') { const old = o.w; o.w = Math.max(10, n) / W; if (o.lock) o.h = o.h * o.w / old; } else o.x = n / W; } }
+      else if (k === 'y' || k === 'h') { const n = +v; if (!isNaN(n)) { if (k === 'h') { const old = o.h; o.h = Math.max(10, n) / H; if (o.lock) o.w = o.w * o.h / old; } else o.y = n / H; } }
+      Edit.ovOn = +li.dataset.ov; Edit.save(); An.render();
+    });
+    $('#anRows').addEventListener('input', event => {  // el texto se ve en el lienzo mientras escribes
+      if (event.target.dataset.k !== 'text') return; const li = event.target.closest('li[data-ov]'); const o = Edit.ov[+li.dataset.ov]; o.text = event.target.value.slice(0, 300); Edit.ovOn = +li.dataset.ov; An.paint(); Edit.save();
+    });
+    $('#anRows').addEventListener('click', event => {
+      const li = event.target.closest('li[data-ov]'); if (!li) return;
+      const i = +li.dataset.ov, o = Edit.ov[i], b = event.target.closest('button');
+      if (!b) { if (Edit.ovOn !== i && !event.target.closest('input')) An.select(i, true); return; }
+      if (b.dataset.color) { o.color = b.dataset.color; Edit.save(); An.render(); }
+      else if (b.dataset.act === 'see') An.select(i, true);
+      else if (b.dataset.act === 'dup') { Edit.ov.splice(i + 1, 0, {...o, at: Math.min(o.at + o.dur, Math.max(0, An.total() - 0.2))}); Edit.save(); An.select(i + 1, true); }
+      else if (b.dataset.act === 'del') { Edit.ov.splice(i, 1); Edit.ovOn = -1; Edit.save(); An.render(); }
+    });
+    $('#anVideo').addEventListener('loadedmetadata', () => { An.aspect(); An.paint(); });
+
+    // ---------- Aviso del banco de animaciones (igual que en EC-Tok) ----------
+    const Bank = {
+      info: null, timer: null,
+      show(b) {
+        this.info = b; const busy = b.state === 'downloading' || b.state === 'installing', mb = b.size ? Math.round(b.size / 1048576) : 0;
+        let text = '', btn = '';
+        if (busy) text = b.state === 'installing' ? t('⏳ Instalando el banco de animaciones…') : tf('⏳ Bajando el banco de animaciones… {0} %', Math.round(b.percent || 0));
+        else if (b.state === 'done' && this.wasBusy) text = t('✅ Banco de animaciones listo. Ya puedes usarlas en ✂ Edición → 🎬 Animaciones encima.');
+        else if (b.published && !b.error && $('#updateBox').hidden && (b.dismissed || 0) < b.latest) {
+          if (b.installed && b.latest > b.installed) { text = tf('🆕 ¡Hay un banco de animaciones nuevo! (banco {0})', b.latest); btn = t('📥 Actualizar animaciones'); }
+          else if (!b.installed) { text = tf('🎬 Baja gratis el banco de animaciones de EC-Tok ({0} MB) para ponerlas encima de tus videos: personajes con tu texto en el letrero, efectos y más.', mb); btn = t('📥 Descargar'); }
+        }
+        $('#bankBar').hidden = !text; $('#bankBarText').textContent = text;
+        $('#bankBarBtn').textContent = btn; $('#bankBarBtn').hidden = !btn; $('#bankBarLater').hidden = !btn;
+        if (An.lib) {
+          An.lib.bank = b;
+          if (b.state === 'done' && this.wasBusy && !this.reloaded) { this.reloaded = true; An.load(true).then(() => { if (!$('#anPicker').hidden) An.renderPicker(); }); }
+          else if (!$('#anPicker').hidden) { const h = An.bankHtml(b); $('#anBank').innerHTML = h; $('#anBank').hidden = !h; }
+        }
+        clearTimeout(this.timer); this.timer = null; if (busy) this.timer = setTimeout(() => this.poll(), 800);
+        if (busy) { this.wasBusy = true; this.reloaded = false; }
+      },
+      async poll() { try { this.show(await api('/api/bank/status')); } catch (_) {} },
+    };
+    $('#bankBarBtn').addEventListener('click', async () => { try { await api('/api/bank/download', {}); Bank.poll(); } catch (error) { say(error.message); } });
+    $('#bankBarLater').addEventListener('click', async () => { try { await api('/api/bank/dismiss', {}); } catch (_) {} $('#bankBar').hidden = true; });
+    setTimeout(() => Bank.poll(), 2500); setInterval(() => { if (!Bank.timer || !(Bank.info && /download|install/.test(Bank.info.state))) Bank.poll(); }, 10 * 60 * 1000);
     $('#edSources').addEventListener('click', event => {
       const b = event.target.closest('button'); if (!b) return;
       if (b.dataset.rm !== undefined) Edit.remove(+b.dataset.rm); else if (b.dataset.src !== undefined) Edit.select(+b.dataset.src);
@@ -1846,9 +2285,9 @@
     $('#edPreview').addEventListener('click', () => Edit.run(true));
     $('#edSave').addEventListener('click', () => Edit.run(false));
     $('#edClear').addEventListener('click', () => {
-      if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length) return;
-      if (!confirm(t('¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos y los sonidos encima de este editor. Tus archivos, «Mis sonidos» y las ediciones que ya guardaste NO se borran.'))) return;
-      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
+      if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length && !Edit.ov.length) return;
+      if (!confirm(t('¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos, los sonidos y las animaciones encima de este editor. Tus archivos, «Mis sonidos», «Mis animaciones» y las ediciones que ya guardaste NO se borran.'))) return;
+      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
     });
     Edit.restore();
 
