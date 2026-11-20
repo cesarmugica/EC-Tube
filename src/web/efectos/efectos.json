@@ -1,0 +1,695 @@
+[
+ {
+  "file": "aplausos.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Aplausos",
+   "en": "Applause",
+   "pt": "Aplausos"
+  },
+  "seconds": 4.7,
+  "credit": "EC-Tok (sintetizado, CC0)"
+ },
+ {
+  "file": "ovacion.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Ovación",
+   "en": "Ovation",
+   "pt": "Ovação"
+  },
+  "seconds": 5.04,
+  "credit": "EC-Tok (sintetizado, CC0)"
+ },
+ {
+  "file": "redoble-platillo.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Redoble y platillo",
+   "en": "Drumroll and cymbal",
+   "pt": "Rufar e prato"
+  },
+  "seconds": 4.05,
+  "credit": "EC-Tok (sintetizado, CC0)"
+ },
+ {
+  "file": "corneta.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Corneta (air horn)",
+   "en": "Air horn",
+   "pt": "Corneta (air horn)"
+  },
+  "seconds": 2.25,
+  "credit": "EC-Tok (sintetizado, CC0)"
+ },
+ {
+  "file": "ta-da.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "¡Ta-dá!",
+   "en": "Ta-da!",
+   "pt": "Tcharam!"
+  },
+  "seconds": 2.25,
+  "credit": "EC-Tok (sintetizado, CC0)"
+ },
+ {
+  "file": "fanfarria-orquesta.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Fanfarria orquesta",
+   "en": "Orchestra fanfare",
+   "pt": "Fanfarra orquestra"
+  },
+  "seconds": 2.93,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "fanfarria-orquesta-2.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Fanfarria orquesta 2",
+   "en": "Orchestra fanfare 2",
+   "pt": "Fanfarra orquestra 2"
+  },
+  "seconds": 3.94,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "victoria-piano.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Victoria (piano)",
+   "en": "Victory (piano)",
+   "pt": "Vitória (piano)"
+  },
+  "seconds": 3.03,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "victoria-marimba.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Victoria (marimba)",
+   "en": "Victory (mallet)",
+   "pt": "Vitória (marimba)"
+  },
+  "seconds": 3.79,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "victoria-electronica.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Victoria (electrónica)",
+   "en": "Victory (electronic)",
+   "pt": "Vitória (eletrônica)"
+  },
+  "seconds": 2.93,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "guitarra-rockera.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Guitarra rockera",
+   "en": "Rock guitar",
+   "pt": "Guitarra roqueira"
+  },
+  "seconds": 2.43,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "guitarra-acustica.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Guitarra acústica",
+   "en": "Acoustic guitar",
+   "pt": "Violão"
+  },
+  "seconds": 3.6,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "fanfarria-8bit.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Fanfarria 8-bit",
+   "en": "8-bit fanfare",
+   "pt": "Fanfarra 8-bit"
+  },
+  "seconds": 0.57,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "fanfarria-8bit-2.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Fanfarria 8-bit 2",
+   "en": "8-bit fanfare 2",
+   "pt": "Fanfarra 8-bit 2"
+  },
+  "seconds": 0.34,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "fuegos-artificiales.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Fuegos artificiales",
+   "en": "Fireworks",
+   "pt": "Fogos de artifício"
+  },
+  "seconds": 1.23,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "fuegos-artificiales-2.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Fuegos artificiales 2",
+   "en": "Fireworks 2",
+   "pt": "Fogos de artifício 2"
+  },
+  "seconds": 1.36,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "cañon-confeti.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Cañón de confeti",
+   "en": "Confetti cannon",
+   "pt": "Canhão de confete"
+  },
+  "seconds": 1.28,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "jingle-alegre.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Jingle caribeño",
+   "en": "Steel drum jingle",
+   "pt": "Jingle caribenho"
+  },
+  "seconds": 1.41,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "jingle-alegre-2.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Jingle caribeño 2",
+   "en": "Steel drum jingle 2",
+   "pt": "Jingle caribenho 2"
+  },
+  "seconds": 1.44,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "jingle-pizzicato.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Jingle pizzicato",
+   "en": "Pizzicato jingle",
+   "pt": "Jingle pizzicato"
+  },
+  "seconds": 1.38,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "jingle-retro.mp3",
+  "cat": "fiesta",
+  "name": {
+   "es": "Jingle retro",
+   "en": "Retro jingle",
+   "pt": "Jingle retrô"
+  },
+  "seconds": 1.8,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-congratulations.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Congratulations!»",
+   "en": "“Congratulations!”",
+   "pt": "«Congratulations!»"
+  },
+  "seconds": 1.33,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-you-win.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«You win!»",
+   "en": "“You win!”",
+   "pt": "«You win!»"
+  },
+  "seconds": 0.94,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-winner.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Winner!»",
+   "en": "“Winner!”",
+   "pt": "«Winner!»"
+  },
+  "seconds": 1.38,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "voz-flawless-victory.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Flawless victory!»",
+   "en": "“Flawless victory!”",
+   "pt": "«Flawless victory!»"
+  },
+  "seconds": 1.83,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "voz-new-highscore.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«New high score!»",
+   "en": "“New high score!”",
+   "pt": "«New high score!»"
+  },
+  "seconds": 1.15,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-level-up.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Level up!»",
+   "en": "“Level up!”",
+   "pt": "«Level up!»"
+  },
+  "seconds": 0.78,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-mission-completed.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Mission completed!»",
+   "en": "“Mission completed!”",
+   "pt": "«Mission completed!»"
+  },
+  "seconds": 1.33,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-combo.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Combo!»",
+   "en": "“Combo!”",
+   "pt": "«Combo!»"
+  },
+  "seconds": 1.04,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "voz-fight.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Fight!» (batalla)",
+   "en": "“Fight!” (battle)",
+   "pt": "«Fight!» (batalha)"
+  },
+  "seconds": 0.86,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "voz-final-round.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Final round!»",
+   "en": "“Final round!”",
+   "pt": "«Final round!»"
+  },
+  "seconds": 1.67,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "voz-ready-go.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Ready?» «Go!»",
+   "en": "“Ready?” “Go!”",
+   "pt": "«Ready?» «Go!»"
+  },
+  "seconds": 1.12,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-sudden-death.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Sudden death!»",
+   "en": "“Sudden death!”",
+   "pt": "«Sudden death!»"
+  },
+  "seconds": 1.46,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "voz-you-lose.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«You lose!»",
+   "en": "“You lose!”",
+   "pt": "«You lose!»"
+  },
+  "seconds": 1.23,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "voz-game-over.mp3",
+  "cat": "voces",
+  "name": {
+   "es": "«Game over»",
+   "en": "“Game over”",
+   "pt": "«Game over»"
+  },
+  "seconds": 1.28,
+  "credit": "Kenney (CC0)"
+ },
+ {
+  "file": "risa-mujer.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Risa (mujer)",
+   "en": "Laugh (woman)",
+   "pt": "Risada (mulher)"
+  },
+  "seconds": 1.25,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "risa-mujer-2.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Risa (mujer) 2",
+   "en": "Laugh (woman) 2",
+   "pt": "Risada (mulher) 2"
+  },
+  "seconds": 1.72,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "risa-hombre.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Risa (hombre)",
+   "en": "Laugh (man)",
+   "pt": "Risada (homem)"
+  },
+  "seconds": 1.54,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "risa-hombre-2.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Risa (hombre) 2",
+   "en": "Laugh (man) 2",
+   "pt": "Risada (homem) 2"
+  },
+  "seconds": 1.62,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "risa-malvada.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Risa malvada",
+   "en": "Evil laugh",
+   "pt": "Risada malvada"
+  },
+  "seconds": 2.93,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "risa-ogro.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Risa de ogro",
+   "en": "Ogre laugh",
+   "pt": "Risada de ogro"
+  },
+  "seconds": 1.67,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "eructo.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Eructo 😅",
+   "en": "Burp 😅",
+   "pt": "Arroto 😅"
+  },
+  "seconds": 0.34,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "boing.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Boing",
+   "en": "Boing",
+   "pt": "Boing"
+  },
+  "seconds": 0.76,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "banjo-chistoso.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Banjo chistoso",
+   "en": "Funny banjo",
+   "pt": "Banjo engraçado"
+  },
+  "seconds": 3.32,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "triste-trombon.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Perdiste (triste)",
+   "en": "You lost (sad)",
+   "pt": "Perdeu (triste)"
+  },
+  "seconds": 3.0,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "triste-piano.mp3",
+  "cat": "risas",
+  "name": {
+   "es": "Perdiste (piano)",
+   "en": "You lost (piano)",
+   "pt": "Perdeu (piano)"
+  },
+  "seconds": 4.05,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "subir-nivel.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Subir de nivel",
+   "en": "Level up",
+   "pt": "Subir de nível"
+  },
+  "seconds": 2.04,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "subir-nivel-2.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Subir de nivel 2",
+   "en": "Level up 2",
+   "pt": "Subir de nível 2"
+  },
+  "seconds": 3.03,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "power-up.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Power-up",
+   "en": "Power-up",
+   "pt": "Power-up"
+  },
+  "seconds": 1.75,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "monedas.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Monedas",
+   "en": "Coins",
+   "pt": "Moedas"
+  },
+  "seconds": 4.57,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "moneda-retro.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Moneda retro",
+   "en": "Retro coin",
+   "pt": "Moeda retrô"
+  },
+  "seconds": 2.59,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "magia.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Magia",
+   "en": "Magic",
+   "pt": "Magia"
+  },
+  "seconds": 2.35,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "campanitas.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Campanitas",
+   "en": "Bell tree",
+   "pt": "Sininhos"
+  },
+  "seconds": 5.04,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "ding.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Ding",
+   "en": "Ding",
+   "pt": "Ding"
+  },
+  "seconds": 1.65,
+  "credit": "EC-Tok (sintetizado, CC0)"
+ },
+ {
+  "file": "notificacion.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Notificación",
+   "en": "Notification",
+   "pt": "Notificação"
+  },
+  "seconds": 0.18,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "subida.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Subida (riser)",
+   "en": "Riser",
+   "pt": "Subida (riser)"
+  },
+  "seconds": 1.8,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "whoosh.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Whoosh",
+   "en": "Whoosh",
+   "pt": "Whoosh"
+  },
+  "seconds": 0.26,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "swoosh.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Swoosh",
+   "en": "Swoosh",
+   "pt": "Swoosh"
+  },
+  "seconds": 0.63,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "silbato.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Silbato de árbitro",
+   "en": "Referee whistle",
+   "pt": "Apito de juiz"
+  },
+  "seconds": 0.42,
+  "credit": "OpenGameArt (CC0)"
+ },
+ {
+  "file": "tambor-militar.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Tambor (marcha)",
+   "en": "Marching snare",
+   "pt": "Tambor (marcha)"
+  },
+  "seconds": 4.18,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "platillo.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Golpe y platillo",
+   "en": "Snare and crash",
+   "pt": "Caixa e prato"
+  },
+  "seconds": 2.04,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "laser.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Láser",
+   "en": "Laser",
+   "pt": "Laser"
+  },
+  "seconds": 1.02,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ },
+ {
+  "file": "campanas-viento.mp3",
+  "cat": "efectos",
+  "name": {
+   "es": "Campanas de viento",
+   "en": "Wind chimes",
+   "pt": "Sinos de vento"
+  },
+  "seconds": 5.04,
+  "credit": "Meta Open Sound — Oculus Audio Pack (CC0)"
+ }
+]

@@ -223,6 +223,33 @@
     .ed-times { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 10px; }
     .ed-times input, .frags input { width: 92px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding: 6px 8px; font-variant-numeric: tabular-nums; }
     .ed-h3 { margin: 18px 0 8px; font-size: 1rem; }
+    .fx-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 8px; }
+    .fx-head .ed-h3 { margin: 0; } .fx-head small { color: var(--muted); font-weight: 400; font-size: .84rem; }
+    .fxline { position: relative; height: 40px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); overflow: hidden; user-select: none; touch-action: none; }
+    .fxline .blk { position: absolute; top: 0; bottom: 18px; opacity: .3; border-right: 1px solid var(--bg); }
+    .fxline .blk b { position: absolute; left: 3px; top: 1px; font-size: 10px; opacity: .9; }
+    .fxline .tick { position: absolute; bottom: 0; font-size: 10px; color: var(--muted); padding-left: 2px; border-left: 1px solid var(--border); height: 16px; line-height: 16px; }
+    .fxline .chip { position: absolute; height: 20px; min-width: 8px; border-radius: 6px; background: #f2c94c; color: #1d1d1d; font-size: 11px; font-weight: 600; line-height: 20px; padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+    .fxline .chip.on { outline: 2px solid #fff; } .fxline .chip.out { background: #8a8a8a; } .fxline .chip:active { cursor: grabbing; }
+    .fxline .head { position: absolute; top: 0; bottom: 0; width: 2px; background: #eb5757; pointer-events: none; }
+    .fxline .empty { position: absolute; inset: 0 0 18px; display: grid; place-items: center; color: var(--muted); font-size: .84rem; }
+    .fxrows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+    .fxrows li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); font-size: .88rem; }
+    .fxrows li.on { border-color: #f2c94c; }
+    .fxrows .nm { flex: 0 1 220px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    #fxSearch { width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); padding: 9px 12px; font: inherit; }
+    .fxrows input.tm, .fxrows input.rp { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 3px 6px; font-size: .82rem; font-variant-numeric: tabular-nums; }
+    .fxrows input.tm { width: 76px; } .fxrows input.rp { width: 52px; } .fxrows input[type=range] { width: 90px; vertical-align: middle; }
+    .fxrows .warn { color: var(--warn); font-size: .8rem; width: 100%; }
+    .fxrows button { padding: 4px 9px; }
+    #fxPicker .modal-panel { width: min(760px, 100%); }
+    .fx-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .fx-tabs button.on { background: var(--accent); color: #fff; }
+    .fx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; max-height: 52vh; overflow: auto; }
+    .fx-item { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 10px; padding: 6px 6px 6px 10px; background: var(--bg); }
+    .fx-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .88rem; }
+    .fx-item .sec { color: var(--muted); font-size: .76rem; } .fx-item button { padding: 4px 8px; }
+    .fx-item.playing { border-color: #f2c94c; }
     .tracks.frags li { grid-template-columns: 26px 12px minmax(0, 1fr) auto auto auto; cursor: grab; }
     .tracks.frags li.editing { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
     .frags .ft { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .82rem; }
@@ -389,6 +416,14 @@
         <ol class="tracks frags" id="edAFrags"></ol>
         <p class="ed-help">Si la pista de audio dura más que el video, se corta al final; si dura menos, lo que falta queda en silencio.</p>
       </div>
+      <div class="fx-head">
+        <h3 class="ed-h3">🔊 Sonidos encima</h3>
+        <small>Aplausos, «boing», risas… suenan encima del audio o del video, sin cortarlo.</small>
+        <span class="grow" style="flex:1"></span>
+        <button class="secondary" type="button" id="fxOpen">➕ Agregar sonido</button>
+      </div>
+      <div class="fxline" id="fxLine"></div>
+      <ol class="fxrows" id="fxRows"></ol>
       <div class="ed-foot">
         <span class="grow field" id="edTotal"></span>
         <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
@@ -455,6 +490,21 @@
         <ul class="lib" id="lib"></ul>
       </section>
     </div>
+
+    <section id="fxPicker" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="fxTitle">
+      <div class="modal-panel">
+        <header><h2 id="fxTitle">🔊 Agregar sonido</h2><button class="secondary" type="button" id="fxClose">Cerrar</button></header>
+        <div class="modal-body">
+          <input id="fxSearch" type="search" placeholder="Buscar sonido…" aria-label="Buscar sonido…">
+          <div class="fx-tabs" id="fxTabs"></div>
+          <div class="fx-grid" id="fxGrid"></div>
+          <div class="modal-actions">
+            <span class="grow" id="fxNote">▶ para probar, ➕ para ponerlo en la edición. Los sonidos de fábrica son libres de uso (CC0). Los que tú agregues son tu responsabilidad (derechos de autor).</span>
+            <button class="secondary" type="button" id="fxMine">📂 Agregar mis sonidos…</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section id="editor" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="editorTitle">
       <div class="modal-panel">
@@ -949,6 +999,44 @@
       "La edición final puede durar máximo 3 horas.": "The final edit can be at most 3 hours long.",
       "Hay demasiadas ediciones de este archivo.": "There are too many edits of this file.",
       "No existe esa edición.": "That edit does not exist.",
+      "🔊 Sonidos encima": "🔊 Sounds on top",
+      "Aplausos, «boing», risas… suenan encima del audio o del video, sin cortarlo.": "Applause, “boing”, laughs… they play on top of the audio or video, without cutting it.",
+      "➕ Agregar sonido": "➕ Add sound",
+      "🔊 Agregar sonido": "🔊 Add sound",
+      "Buscar sonido…": "Search sound…",
+      "Todos": "All",
+      "⭐ Mis sonidos": "⭐ My sounds",
+      "🎉 Festejo": "🎉 Celebration",
+      "🗣 Voces (en inglés)": "🗣 Voices (English)",
+      "😂 Risas y chistosos": "😂 Laughs and funny",
+      "✨ Efectos": "✨ Effects",
+      "▶ para probar, ➕ para ponerlo en la edición. Los sonidos de fábrica son libres de uso (CC0). Los que tú agregues son tu responsabilidad (derechos de autor).": "▶ to try it, ➕ to put it in the edit. The built-in sounds are free to use (CC0). The ones you add are your responsibility (copyright).",
+      "📂 Agregar mis sonidos…": "📂 Add my sounds…",
+      "Probar": "Try",
+      "Quitar de Mis sonidos": "Remove from My sounds",
+      "Poner en la edición": "Put in the edit",
+      "Todavía no tienes sonidos tuyos. Presiona «📂 Agregar mis sonidos…» para traerlos de tu PC.": "You have no sounds of your own yet. Press “📂 Add my sounds…” to bring them from your PC.",
+      "No hay sonidos con ese nombre.": "No sounds with that name.",
+      "Primero agrega fragmentos a la edición; los sonidos van encima de ellos.": "First add fragments to the edit; the sounds go on top of them.",
+      "Sonido «{0}» puesto en {1}. Arrástralo en la línea de tiempo para moverlo.": "Sound “{0}” placed at {1}. Drag it on the timeline to move it.",
+      "Elige tus sonidos en la ventana que se abrió…": "Choose your sounds in the window that opened…",
+      "{0} sonido(s) agregado(s) a ⭐ Mis sonidos.": "{0} sound(s) added to ⭐ My sounds.",
+      "¿Quitar «{0}» de ⭐ Mis sonidos?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.": "Remove “{0}” from ⭐ My sounds?\n\nThe copy EC-Tube saved is deleted. Your original file is NOT deleted and the edits you already saved do not change.",
+      "También se quita de esta edición ({0} vez/veces).": "It is also removed from this edit ({0} time(s)).",
+      "Aquí verás la edición final y sus sonidos encima.": "Here you will see the final edit and its sounds on top.",
+      "Suena en": "Plays at",
+      "Pedazo": "Part",
+      "Repetir": "Repeat",
+      "Escuchar el sonido": "Play the sound",
+      "Duplicar (para ponerlo en otro lado)": "Duplicate (to place it somewhere else)",
+      "⚠ Queda después del final de la edición: no se va a oír. Muévelo más atrás.": "⚠ It is after the end of the edit: it will not be heard. Move it earlier.",
+      "Se corta al final de la edición.": "It is cut at the end of the edit.",
+      "Poniendo los sonidos encima… {0} %": "Adding the sounds on top… {0} %",
+      "¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos y los sonidos encima de este editor. Tus archivos, «Mis sonidos» y las ediciones que ya guardaste NO se borran.": "Clear the edit?\n\nThe sources, the fragment list and the sounds on top are removed from this editor. Your files, “My sounds” and the edits you already saved are NOT deleted.",
+      "Uno de los efectos ya no existe. Quítalo de la lista.": "One of the sounds no longer exists. Remove it from the list.",
+      "Son demasiados efectos (máximo 200).": "Too many sounds (maximum 200).",
+      "Cada efecto debe durar al menos 0.05 segundos.": "Each sound must be at least 0.05 seconds long.",
+      "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
@@ -1258,7 +1346,7 @@
     const fmt2 = t => { t = Math.max(0, t || 0); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t - h * 3600 - m * 60;
       const ss = (s < 10 ? '0' : '') + s.toFixed(2); return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
     const Edit = {
-      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], view: [0, 0], el: null, playEnd: null, editing: -1, job: null,
+      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], fx: [], fxOn: -1, vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], view: [0, 0], el: null, playEnd: null, editing: -1, job: null,
       COLORS: ['#8569ff', '#25c2a0', '#f2994a', '#eb5757', '#56ccf2', '#f2c94c', '#bb6bd9', '#6fcf97'],
       say(text, ok = false) { $('#edStatus').textContent = text; $('#edStatus').classList.toggle('ok', ok); },
       src(token) { return this.sources.find(x => x.token === token); },
@@ -1267,11 +1355,13 @@
       save() {
         const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end}));
         try { localStorage.setItem('ectube-edit', JSON.stringify({kind: this.kind, smooth: $('#edSmooth').checked, mode: $('#edMode').value, vaudio: this.vaudio,
-          sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags)})); } catch (_) {}
+          sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
+          fx: this.fx.map(({id, name, seconds, url, at, start, end, repeat, volume}) => ({id, name, seconds, url, at, start, end, repeat, volume}))})); } catch (_) {}
       },
       async restore() {
         let data; try { data = JSON.parse(localStorage.getItem('ectube-edit') || 'null'); } catch (_) {}
         if (!data) { this.render(); return; }
+        this.fx = Array.isArray(data.fx) ? data.fx.filter(x => x && x.id) : [];
         this.setKind(data.kind === 'video' ? 'video' : 'audio');
         $('#edSmooth').checked = data.smooth !== false; $('#edMode').value = data.mode || 'original';
         const tokens = [];
@@ -1425,7 +1515,7 @@
         $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
           : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
         $('#edCancelEdit').hidden = this.editing < 0;
-        this.draw();
+        this.draw(); Fx.render();
       },
       playRange(a, b) { if (!this.el) return; this.el.currentTime = a; this.playEnd = b; this.el.play().catch(() => {}); },
       async run(preview) {
@@ -1437,7 +1527,8 @@
           if (this.other() && !this.afrags.length) { this.say(t('Agrega al menos un fragmento a la pista de audio (o elige otro «Audio del video final»).')); return; }
           const pack = list => list.map(f => ({token: f.token, start: f.start, end: f.end}));
           const job = await api('/api/edit', {kind: this.kind, preview, mode, smooth: $('#edSmooth').checked, fragments: pack(this.frags),
-            audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags) : []});
+            audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags) : [],
+            effects: this.fx.map(({id, at, start, end, repeat, volume}) => ({id, at, start, end, repeat, volume}))});
           this.job = job.id; this.render();
           const poll = async () => {
             let st; try { st = await api('/api/edit/' + job.id); } catch (error) { this.job = null; this.render(); this.say(t(error.message)); return; }
@@ -1446,7 +1537,8 @@
               this.say(preview ? tf('Preparando la vista previa… {0} %', pct)
                 : st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
                 : st.phase === 'separate' || st.phase === 'audio' ? tf(mode === 'music' ? 'Quitando la voz… {0} %' : 'Quitando la música… {0} %', pct)
-                : st.phase === 'save' ? tf('Guardando… {0} %', pct) : tf('Uniendo los fragmentos… {0} %', pct));
+                : st.phase === 'save' ? tf('Guardando… {0} %', pct) : st.phase === 'effects' ? tf('Poniendo los sonidos encima… {0} %', pct)
+                : tf('Uniendo los fragmentos… {0} %', pct));
               setTimeout(poll, 600); return;
             }
             this.job = null; this.render();
@@ -1454,6 +1546,7 @@
             if (preview) {
               const tag = this.kind === 'video' ? 'video' : 'audio';
               $('#edPreviewBox').innerHTML = `<${tag} controls autoplay src="/media/${st.media.token}"></${tag}>`;
+              Fx.watchPreview();
               this.say(t('Vista previa lista. No se guarda: cuando te guste, presiona «💾 Guardar edición».'), true);
             } else {
               Files.load();
@@ -1467,6 +1560,189 @@
         } catch (error) { this.job = null; this.render(); const msg = error.message || ''; this.say(msg.startsWith('Pista de audio: ') ? t('🎵 Pista de audio') + ': ' + t(msg.slice(16)) : t(msg)); }
       },
     };
+
+    // ---------- Sonidos encima (efectos): siempre suenan ENCIMA del audio o video final ----------
+    const Fx = {
+      lib: null, tab: 'all', audio: new Audio(), playing: null, drag: null,
+      CATS: [['all', 'Todos'], ['mine', '⭐ Mis sonidos'], ['fiesta', '🎉 Festejo'], ['voces', '🗣 Voces (en inglés)'], ['risas', '😂 Risas y chistosos'], ['efectos', '✨ Efectos']],
+      name(x) { return typeof x.name === 'string' ? x.name : (x.name[LANG] || x.name.es); },
+      total() { return Edit.total(); },
+      len(f) { return (f.end - f.start) * f.repeat; },
+      async load(force) { if (!this.lib || force) { const d = await api('/api/effects'); this.lib = d; } return this.lib; },
+      async open() {
+        $('#fxPicker').hidden = false; $('#fxSearch').value = '';
+        try { await this.load(); } catch (error) { $('#fxGrid').textContent = t(error.message); return; }
+        this.renderPicker(); $('#fxSearch').focus();
+      },
+      close() { $('#fxPicker').hidden = true; this.stop(); },
+      stop() { this.audio.pause(); this.playing = null; document.querySelectorAll('.fx-item.playing').forEach(x => x.classList.remove('playing')); document.querySelectorAll('[data-fxplay]').forEach(b => b.textContent = '▶'); },
+      play(url, from = 0, to = null, key = null, times = 1) {
+        if (this.playing === key && key !== null) { this.stop(); return; }
+        this.stop(); this.playing = key; const a = this.audio; let left = times;
+        a.src = url; a.currentTime = from;
+        a.ontimeupdate = () => { if (to !== null && a.currentTime >= to) { if (--left > 0) a.currentTime = from; else this.stop(); } };
+        a.onended = () => { if (--left > 0) { a.currentTime = from; a.play().catch(() => {}); } else this.stop(); };
+        a.play().catch(() => {});
+        return true;
+      },
+      renderPicker() {
+        const lib = this.lib || {bank: [], mine: []}, q = $('#fxSearch').value.trim().toLowerCase();
+        $('#fxTabs').innerHTML = this.CATS.map(([k, label]) => `<button type="button" class="secondary${this.tab === k ? ' on' : ''}" data-tab="${k}">${t(label)}${k === 'mine' ? ` (${lib.mine.length})` : ''}</button>`).join('');
+        let items = [...lib.mine, ...lib.bank];
+        if (this.tab !== 'all' && !q) items = items.filter(x => x.cat === this.tab);  // al buscar, busca en todos
+        if (q) items = items.filter(x => this.name(x).toLowerCase().includes(q));
+        $('#fxGrid').innerHTML = items.length ? items.map(x => `<div class="fx-item${this.playing === x.id ? ' playing' : ''}" data-id="${esc(x.id)}">
+            <button type="button" class="secondary" data-fxplay="${esc(x.id)}" title="${t('Probar')}">${this.playing === x.id ? '⏸' : '▶'}</button>
+            <span class="nm" title="${esc(this.name(x))}">${x.cat === 'mine' ? '⭐ ' : ''}${esc(this.name(x))}</span><span class="sec">${(+x.seconds || 0).toFixed(1)} s</span>
+            ${x.cat === 'mine' ? `<button type="button" class="secondary" data-fxdel="${esc(x.id)}" title="${t('Quitar de Mis sonidos')}">🗑</button>` : ''}
+            <button type="button" data-fxadd="${esc(x.id)}" title="${t('Poner en la edición')}">➕</button></div>`).join('')
+          : `<p class="ed-help">${t(this.tab === 'mine' && !q ? 'Todavía no tienes sonidos tuyos. Presiona «📂 Agregar mis sonidos…» para traerlos de tu PC.' : 'No hay sonidos con ese nombre.')}</p>`;
+      },
+      find(id) { const lib = this.lib || {bank: [], mine: []}; return [...lib.mine, ...lib.bank].find(x => x.id === id); },
+      // Dónde poner un sonido nuevo: donde va la vista previa (si la hay); si no, al inicio.
+      here() { const p = $('#edPreviewBox audio, #edPreviewBox video'); return p && p.currentTime > 0 ? Math.min(p.currentTime, Math.max(0, this.total() - 0.05)) : 0; },
+      add(id) {
+        const x = this.find(id); if (!x) return;
+        if (!Edit.frags.length) { Edit.say(t('Primero agrega fragmentos a la edición; los sonidos van encima de ellos.')); this.close(); return; }
+        const at = this.here(), secs = +x.seconds || 1;
+        Edit.fx.push({id: x.id, name: this.name(x), seconds: secs, url: x.url, at, start: 0, end: secs, repeat: 1, volume: 1});
+        Edit.fxOn = Edit.fx.length - 1; Edit.save(); this.render(); this.close();
+        Edit.say(tf('Sonido «{0}» puesto en {1}. Arrástralo en la línea de tiempo para moverlo.', this.name(x), fmt2(at)), true);
+        $('#fxLine').scrollIntoView({behavior: 'smooth', block: 'center'});
+      },
+      async addMine() {
+        const b = $('#fxMine'); b.disabled = true; $('#fxNote').textContent = t('Elige tus sonidos en la ventana que se abrió…');
+        try {
+          const d = await api('/api/effects/add', {}); this.lib = {bank: d.bank, mine: d.mine};
+          if (d.added) this.tab = 'mine';
+          $('#fxNote').textContent = (d.added ? tf('{0} sonido(s) agregado(s) a ⭐ Mis sonidos.', d.added) : '') + (d.errors.length ? ' ' + d.errors.join(' ') : '') || t('▶ para probar, ➕ para ponerlo en la edición. Los sonidos de fábrica son libres de uso (CC0). Los que tú agregues son tu responsabilidad (derechos de autor).');
+          this.renderPicker();
+        } catch (error) { $('#fxNote').textContent = t(error.message); }
+        finally { b.disabled = false; }
+      },
+      async delMine(id) {
+        const x = this.find(id); if (!x) return;
+        const used = Edit.fx.filter(f => f.id === id).length;
+        if (!confirm(tf('¿Quitar «{0}» de ⭐ Mis sonidos?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.', this.name(x))
+          + (used ? '\n\n' + tf('También se quita de esta edición ({0} vez/veces).', used) : ''))) return;
+        try { const d = await api('/api/effects/remove', {id}); this.lib = {bank: d.bank, mine: d.mine}; } catch (error) { $('#fxNote').textContent = t(error.message); return; }
+        if (used) { Edit.fx = Edit.fx.filter(f => f.id !== id); Edit.fxOn = -1; Edit.save(); this.render(); }
+        this.renderPicker();
+      },
+      lanes() {  // acomodar los sonidos en renglones para que no se encimen en la línea de tiempo
+        const T = Math.max(0.001, this.total()), ends = [], lane = [];
+        Edit.fx.map((f, i) => i).sort((a, b) => Edit.fx[a].at - Edit.fx[b].at).forEach(i => {
+          const f = Edit.fx[i], minW = T * 0.06; let l = ends.findIndex(e => e <= f.at);
+          if (l < 0) { l = ends.length; ends.push(0); }
+          ends[l] = f.at + Math.max(this.len(f), minW); lane[i] = l;
+        });
+        return {lane, count: Math.max(1, ends.length)};
+      },
+      render() {
+        const line = $('#fxLine'), T = this.total();
+        const {lane, count} = this.lanes();
+        line.style.height = (22 + count * 24) + 'px';
+        if (!Edit.frags.length) { line.innerHTML = `<div class="empty">${t('Aquí verás la edición final y sus sonidos encima.')}</div>`; $('#fxRows').innerHTML = ''; return; }
+        let acc = 0, html = '';
+        Edit.frags.forEach((f, i) => { const x = Edit.src(f.token) || {color: '#888'}, w = (f.end - f.start) / T * 100;
+          html += `<div class="blk" style="left:${acc / T * 100}%;width:${w}%;background:${x.color}"><b>${i + 1}</b></div>`; acc += f.end - f.start; });
+        const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600], step = steps.find(s => T / s <= 8) || 1200;
+        for (let s = 0; s < T; s += step) html += `<span class="tick" style="left:${s / T * 100}%">${fmt2(s).replace(/\.00$/, '')}</span>`;
+        Edit.fx.forEach((f, i) => {
+          const out = f.at >= T, left = Math.min(f.at, T) / T * 100, w = Math.min(this.len(f), Math.max(0, T - f.at)) / T * 100;
+          html += `<div class="chip${i === Edit.fxOn ? ' on' : ''}${out ? ' out' : ''}" data-fx="${i}" style="left:${Math.min(left, 99)}%;width:${w}%;top:${2 + lane[i] * 24}px" title="${esc(f.name)} · ${fmt2(f.at)}">🔊 ${esc(f.name)}</div>`;
+        });
+        html += `<div class="head" id="fxHead" hidden></div>`;
+        line.innerHTML = html; this.head();
+        $('#fxRows').innerHTML = Edit.fx.map((f, i) => {
+          const out = f.at >= T, cut = !out && f.at + this.len(f) > T + 0.01;
+          return `<li data-fx="${i}" class="${i === Edit.fxOn ? 'on' : ''}"><span class="nm" title="${esc(f.name)}">🔊 ${esc(f.name)}</span>
+            <label>${t('Suena en')} <input class="tm" data-k="at" value="${fmt2(f.at)}"></label>
+            <label>${t('Pedazo')} <input class="tm" data-k="start" value="${fmt2(f.start)}"> → <input class="tm" data-k="end" value="${fmt2(f.end)}"></label>
+            <label>${t('Repetir')} × <input class="rp" data-k="repeat" type="number" min="1" max="50" value="${f.repeat}"></label>
+            <label>🔉 <input data-k="volume" type="range" min="0" max="200" step="5" value="${Math.round(f.volume * 100)}"> <span>${Math.round(f.volume * 100)} %</span></label>
+            <span><button type="button" class="secondary" data-act="play" title="${t('Escuchar el sonido')}">${this.playing === 'row' + i ? '⏸' : '▶'}</button><button type="button" class="secondary" data-act="dup" title="${t('Duplicar (para ponerlo en otro lado)')}">⧉</button><button type="button" class="secondary" data-act="del" title="${t('Quitar')}">🗑</button></span>
+            ${out ? `<span class="warn">${t('⚠ Queda después del final de la edición: no se va a oír. Muévelo más atrás.')}</span>` : cut ? `<span class="warn">${t('Se corta al final de la edición.')}</span>` : ''}</li>`;
+        }).join('');
+      },
+      // la rayita roja: dónde va la vista previa de la edición final
+      head() {
+        const h = $('#fxHead'), p = $('#edPreviewBox audio, #edPreviewBox video'), T = this.total();
+        if (!h) return; h.hidden = !p || !T; if (p && T) h.style.left = Math.min(100, p.currentTime / T * 100) + '%';
+      },
+      watchPreview() { const p = $('#edPreviewBox audio, #edPreviewBox video'); if (p) ['timeupdate', 'seeked'].forEach(e => p.addEventListener(e, () => this.head())); },
+    };
+    $('#fxOpen').addEventListener('click', () => Fx.open());
+    $('#fxClose').addEventListener('click', () => Fx.close());
+    $('#fxPicker').addEventListener('click', event => { if (event.target === $('#fxPicker')) Fx.close(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#fxPicker').hidden) Fx.close(); });
+    $('#fxSearch').addEventListener('input', () => Fx.renderPicker());
+    $('#fxMine').addEventListener('click', () => Fx.addMine());
+    $('#fxTabs').addEventListener('click', event => { const b = event.target.closest('[data-tab]'); if (b) { Fx.tab = b.dataset.tab; Fx.renderPicker(); } });
+    $('#fxGrid').addEventListener('click', event => {
+      const b = event.target.closest('button'); if (!b) return;
+      if (b.dataset.fxplay) { const x = Fx.find(b.dataset.fxplay); Fx.play(x.url, 0, null, x.id); Fx.renderPicker(); }
+      else if (b.dataset.fxadd) Fx.add(b.dataset.fxadd);
+      else if (b.dataset.fxdel) Fx.delMine(b.dataset.fxdel);
+    });
+    Fx.audio.addEventListener('pause', () => {  // terminó o se pausó: los botones vuelven a ▶
+      if (!Fx.audio.paused) return;
+      Fx.playing = null; document.querySelectorAll('[data-fxplay], #fxRows [data-act=play]').forEach(x => x.textContent = '▶');
+      document.querySelectorAll('.fx-item.playing').forEach(x => x.classList.remove('playing'));
+    });
+    // Mover un sonido: arrastrarlo en la línea de tiempo. Clic en lo vacío: llevar ahí la vista previa.
+    (() => {
+      const line = $('#fxLine');
+      const timeAt = event => { const r = line.getBoundingClientRect(); return Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * Fx.total(); };
+      line.addEventListener('pointerdown', event => {
+        const chip = event.target.closest('.chip');
+        if (!chip) { const p = $('#edPreviewBox audio, #edPreviewBox video'); if (p) { p.currentTime = timeAt(event); Fx.head(); } return; }
+        const i = +chip.dataset.fx, f = Edit.fx[i];
+        Fx.drag = {i, offset: timeAt(event) - f.at, moved: false, x0: event.clientX};
+        Edit.fxOn = i; line.setPointerCapture(event.pointerId); event.preventDefault();
+      });
+      line.addEventListener('pointermove', event => {
+        const d = Fx.drag; if (!d) return;
+        if (Math.abs(event.clientX - d.x0) >= 3) d.moved = true;
+        if (!d.moved) return;
+        const f = Edit.fx[d.i], T = Fx.total();
+        f.at = Math.round(Math.min(Math.max(0, timeAt(event) - d.offset), Math.max(0, T - 0.05)) * 100) / 100;
+        const chip = line.querySelector(`.chip[data-fx="${d.i}"]`);
+        if (chip) { chip.style.left = f.at / T * 100 + '%'; chip.style.width = Math.min(Fx.len(f), T - f.at) / T * 100 + '%'; chip.title = f.name + ' · ' + fmt2(f.at); }
+        const input = $(`#fxRows li[data-fx="${d.i}"] input[data-k=at]`); if (input) input.value = fmt2(f.at);
+      });
+      const end = () => { if (!Fx.drag) return; Fx.drag = null; Edit.save(); Fx.render(); };
+      line.addEventListener('pointerup', end); line.addEventListener('pointercancel', end);
+    })();
+    $('#fxRows').addEventListener('input', event => {
+      const li = event.target.closest('li[data-fx]'); if (!li || event.target.dataset.k !== 'volume') return;
+      const f = Edit.fx[+li.dataset.fx]; f.volume = +event.target.value / 100; event.target.nextElementSibling.textContent = event.target.value + ' %'; Edit.save();
+    });
+    $('#fxRows').addEventListener('change', event => {
+      const li = event.target.closest('li[data-fx]'), k = event.target.dataset.k; if (!li || !k || k === 'volume') return;
+      const f = Edit.fx[+li.dataset.fx];
+      if (k === 'repeat') f.repeat = Math.max(1, Math.min(50, Math.round(+event.target.value) || 1));
+      else {
+        const v = parseTime(event.target.value);
+        if (!isNaN(v)) {
+          if (k === 'at') f.at = Math.max(0, v);
+          else f[k] = Math.min(Math.max(0, v), f.seconds || v);
+          if (f.end - f.start < 0.05) { if (k === 'start') f.start = Math.max(0, f.end - 0.05); else f.end = f.start + 0.05; }
+        }
+      }
+      Edit.fxOn = +li.dataset.fx; Edit.save(); Fx.render();
+    });
+    $('#fxRows').addEventListener('click', event => {
+      const li = event.target.closest('li[data-fx]'); if (!li) return;
+      const i = +li.dataset.fx, f = Edit.fx[i], b = event.target.closest('button[data-act]');
+      if (Edit.fxOn !== i && !b) { Edit.fxOn = i; Fx.render(); return; }
+      if (!b) return;
+      Edit.fxOn = i;
+      if (b.dataset.act === 'play') { Fx.play(f.url, f.start, f.end, 'row' + i, f.repeat); Fx.render(); }
+      else if (b.dataset.act === 'dup') { Edit.fx.splice(i + 1, 0, {...f, at: Math.min(f.at + Math.max(1, Fx.len(f)), Math.max(0, Fx.total() - 0.05))}); Edit.fxOn = i + 1; Edit.save(); Fx.render(); }
+      else if (b.dataset.act === 'del') { Fx.stop(); Edit.fx.splice(i, 1); Edit.fxOn = -1; Edit.save(); Fx.render(); }
+    });
+    (() => { let w = 0; new ResizeObserver(() => { const now = $('#fxLine').clientWidth; if (now !== w) { w = now; Fx.render(); } }).observe($('#fxLine')); })();
     $('#edSources').addEventListener('click', event => {
       const b = event.target.closest('button'); if (!b) return;
       if (b.dataset.rm !== undefined) Edit.remove(+b.dataset.rm); else if (b.dataset.src !== undefined) Edit.select(+b.dataset.src);
@@ -1570,9 +1846,9 @@
     $('#edPreview').addEventListener('click', () => Edit.run(true));
     $('#edSave').addEventListener('click', () => Edit.run(false));
     $('#edClear').addEventListener('click', () => {
-      if (!Edit.sources.length && !Edit.frags.length) return;
-      if (!confirm(t('¿Vaciar la edición?\n\nSe quitan las fuentes y la lista de fragmentos de este editor. Tus archivos y las ediciones que ya guardaste NO se borran.'))) return;
-      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
+      if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length) return;
+      if (!confirm(t('¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos y los sonidos encima de este editor. Tus archivos, «Mis sonidos» y las ediciones que ya guardaste NO se borran.'))) return;
+      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
     });
     Edit.restore();
 

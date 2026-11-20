@@ -25,9 +25,9 @@ import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
-APP_VERSION = "4.0.2"
+APP_VERSION = "4.1.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -813,6 +813,88 @@ def probe(path: Path) -> dict:
     return info
 
 
+# ---------- Efectos de sonido (van encima del sonido de la edición) ----------
+FX_BANK = WEB_ROOT / "efectos"          # 63 sonidos de fábrica (CC0, los mismos de EC-Tok)
+FX_MINE = HOME / "mis-efectos"          # los que agrega cada quien (su responsabilidad)
+FX_MAX_SECONDS = 600
+FX_LOCK = threading.Lock()
+
+
+def _fx_index() -> list[dict]:
+    with contextlib.suppress(OSError, ValueError):
+        data = json.loads((FX_MINE / "lista.json").read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return [x for x in data if isinstance(x, dict) and (FX_MINE / str(x.get("file", ""))).is_file()]
+    return []
+
+
+def effects_public() -> dict:
+    bank = []
+    with contextlib.suppress(OSError, ValueError):
+        for item in json.loads((FX_BANK / "efectos.json").read_text(encoding="utf-8")):
+            bank.append({"id": "b/" + item["file"], "name": item["name"], "cat": item["cat"], "seconds": item["seconds"],
+                         "url": "/efectos/" + item["file"]})
+    mine = [{"id": "m/" + x["file"], "name": x.get("name") or x["file"], "cat": "mine", "seconds": x.get("seconds", 0),
+             "url": "/mis-efectos/" + x["file"]} for x in _fx_index()]
+    return {"bank": bank, "mine": mine}
+
+
+def effect_path(effect_id: str) -> Path | None:
+    kind, _, name = str(effect_id).partition("/")
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        return None
+    folder = {"b": FX_BANK, "m": FX_MINE}.get(kind)
+    path = folder / name if folder else None
+    return path if path and path.is_file() and path.suffix.lower() == ".mp3" else None
+
+
+def effects_add(paths: list[str]) -> dict:
+    """Copiar sonidos de la PC a «Mis sonidos» (se guardan como MP3, solo el audio)."""
+    if not FFMPEG:
+        raise RuntimeError("No se encontró FFmpeg.")
+    FX_MINE.mkdir(parents=True, exist_ok=True)
+    added, errors = 0, []
+    for raw in paths:
+        src = Path(raw)
+        info = probe(src) if src.is_file() else {"audio": False, "duration": 0}
+        if not info["audio"]:
+            errors.append(f"«{src.name}» no tiene audio.")
+            continue
+        if info["duration"] > FX_MAX_SECONDS:
+            errors.append(f"«{src.name}» dura más de 10 minutos.")
+            continue
+        stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", src.stem).strip(" .")[:80] or "sonido"
+        with FX_LOCK:
+            name = next(f"{stem}{'' if n == 1 else f' {n}'}.mp3" for n in range(1, 10000)
+                        if not (FX_MINE / f"{stem}{'' if n == 1 else f' {n}'}.mp3").exists())
+            (FX_MINE / name).touch()
+        result = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-i", str(src), "-vn",
+                                 "-ac", "2", "-ar", "48000", "-c:a", "libmp3lame", "-b:a", "192k", str(FX_MINE / name)],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                creationflags=_no_window_flags())
+        if result.returncode != 0:
+            with contextlib.suppress(OSError):
+                (FX_MINE / name).unlink()
+            errors.append(f"«{src.name}» no se pudo leer.")
+            continue
+        with FX_LOCK:
+            index = _fx_index()
+            index.append({"file": name, "name": src.stem, "seconds": round(probe(FX_MINE / name)["duration"], 2)})
+            (FX_MINE / "lista.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
+        added += 1
+    return {"added": added, "errors": errors}
+
+
+def effects_remove(effect_id: str) -> None:
+    path = effect_path(effect_id)
+    if not path or path.parent != FX_MINE:
+        raise ValueError("Ese sonido no es de «Mis sonidos».")
+    with FX_LOCK:
+        index = [x for x in _fx_index() if x.get("file") != path.name]
+        (FX_MINE / "lista.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
+        path.unlink()
+
+
 def waveform(path: Path, buckets: int = 1600) -> dict:
     """La onda: el nivel más alto de cada pedacito (0 a 1), para ver dónde hay silencios o baja el volumen."""
     import numpy as np
@@ -849,8 +931,10 @@ class EditJob:
 
     def __init__(self, kind: str, fragments: list[tuple[Path, float, float]], mode: str = "original",
                  smooth: bool = True, preview: bool = False, audio_mode: str = "own",
-                 audio_fragments: list[tuple[Path, float, float]] | None = None) -> None:
+                 audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None) -> None:
         self.id = uuid.uuid4().hex[:12]
+        # efectos: {path, at, start, end, repeat, volume}; siempre suenan ENCIMA del sonido de la edición
+        self.effects = effects or []
         self.kind, self.fragments, self.smooth, self.preview = kind, fragments, smooth, preview
         # Video: «own» = el audio de cada fragmento, «none» = sin audio, «other» = otra pista de audio (también por fragmentos)
         self.audio_mode = audio_mode if kind == "video" and audio_mode in ("own", "none", "other") else "own"
@@ -859,6 +943,7 @@ class EditJob:
             self.audio_mode = "none"
         self.mode = "original" if preview or mode not in TRIM_WORDS or self.audio_mode == "none" else mode
         self.total = sum(end - start for _, start, end in fragments)
+        self.effects = [e for e in self.effects if e["at"] < self.total]
         first = fragments[0][0]
         if kind == "video":
             ext = ".mp4"
@@ -887,7 +972,44 @@ class EditJob:
             fade = f",afade=t=in:d=0.015,afade=t=out:st={max(0.0, dur - 0.015):.3f}:d=0.015"
         return f"{label}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS{fade}[{out}]"
 
-    def command(self, output: Path) -> list[str]:
+    def _fx_chains(self, base: str, add_input, chains: list[str], out: str) -> None:
+        """Mezclar los efectos encima de `base` (dura lo mismo que la edición)."""
+        labels = []
+        for k, fx in enumerate(self.effects):
+            dur = fx["end"] - fx["start"]
+            idx = add_input(fx["path"], fx["start"], dur)
+            chain = f"[{idx}:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS"
+            if fx["repeat"] > 1:  # repetido: una copia tras otra
+                r = fx["repeat"]
+                chains.append(chain + f",asplit={r}" + "".join(f"[fx{k}r{j}]" for j in range(r)))
+                chain = "".join(f"[fx{k}r{j}]" for j in range(r)) + f"concat=n={r}:v=0:a=1"
+            delay = int(round(fx["at"] * 1000))
+            chains.append(chain + f",volume={fx['volume']:.2f},adelay={delay}:all=1[fx{k}]")
+            labels.append(f"[fx{k}]")
+        chains.append(f"{base}{''.join(labels)}amix=inputs={len(labels) + 1}:duration=first:dropout_transition=0:normalize=0[{out}]")
+
+    def fx_command(self, source: Path, output: Path) -> list[str]:
+        """Segunda pasada (cuando antes se quitó la voz o la música): poner los efectos encima."""
+        args = [FFMPEG, "-hide_banner", "-nostdin", "-y", "-i", str(source)]
+        chains: list[str] = []
+        n = 1
+
+        def add_input(path: Path, start: float, dur: float) -> int:
+            nonlocal n
+            args.extend(["-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(path)])
+            n += 1
+            return n - 1
+
+        chains.append("[0:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[base]")
+        self._fx_chains("[base]", add_input, chains, "mix")
+        args += ["-filter_complex", ";".join(chains)]
+        if self.kind == "video":
+            args += ["-map", "0:v:0", "-map", "[mix]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+        else:
+            args += ["-map", "[mix]", *AUDIO_CODECS.get(output.suffix.lower(), ["-c:a", "libmp3lame", "-b:a", "320k"])]
+        return args + ["-progress", "pipe:1", "-nostats", str(output)]
+
+    def command(self, output: Path, with_fx: bool = True) -> list[str]:
         if not FFMPEG:
             raise RuntimeError("No se encontró FFmpeg.")
         args = [FFMPEG, "-hide_banner", "-nostdin", "-y"]
@@ -921,6 +1043,9 @@ class EditJob:
                 if not probe(path)["audio"]:
                     raise RuntimeError(f"«{path.name}» no tiene audio.")
             track = audio_track(self.fragments, "a")
+            if with_fx and self.effects:
+                self._fx_chains(track, add_input, chains, "mix")
+                track = "[mix]"
             args += ["-filter_complex", ";".join(chains), "-map", track, "-vn"]
             if self.preview:
                 args += ["-c:a", "libmp3lame", "-b:a", "128k"]
@@ -942,36 +1067,41 @@ class EditJob:
                 chains.append(self._audio_chain(f"[{aidx}:a:0]", dur, f"a{i}"))
                 vlabels.append(f"[a{i}]")
         count = len(self.fragments)
-        maps: list[str] = []
+        fx = with_fx and bool(self.effects)
+        has_audio = self.audio_mode != "none" or fx
         if self.audio_mode == "own":
             chains.append("".join(vlabels) + f"concat=n={count}:v=1:a=1[v][a]")
-            maps = ["-map", "[v]", "-map", "[a]"]
         else:
             chains.append("".join(vlabels) + f"concat=n={count}:v=1:a=0[v]")
-            maps = ["-map", "[v]"]
             if self.audio_mode == "other":
                 track = audio_track(self.audio_fragments, "b")
                 # la pista de audio dura lo mismo que el video: si sobra se corta, si falta queda en silencio
                 chains.append(f"{track}apad,atrim=0:{self.total:.3f}[a]")
-                maps += ["-map", "[a]"]
+            elif fx:  # video sin audio, pero con efectos: los efectos suenan sobre silencio
+                chains.append(f"[{silence(self.total)}:a:0]anull[a]")
+        alabel = "[a]"
+        if fx:
+            self._fx_chains("[a]", add_input, chains, "mix")
+            alabel = "[mix]"
+        maps = ["-map", "[v]"] + (["-map", alabel] if has_audio else [])
         args += ["-filter_complex", ";".join(chains), *maps]
         if self.preview:
             args += ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"]
         else:
             args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
-        args += ["-c:a", "aac", "-b:a", "128k" if self.preview else "192k"] if self.audio_mode != "none" else ["-an"]
+        args += ["-c:a", "aac", "-b:a", "128k" if self.preview else "192k"] if has_audio else ["-an"]
         args += ["-movflags", "+faststart"]
         return args + ["-progress", "pipe:1", "-nostats", str(output)]
 
-    def _join(self, output: Path, share: float) -> None:
-        self.process = subprocess.Popen(self.command(output), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    def _join(self, output: Path, share: float, cmd: list[str] | None = None, base: float = 0.0) -> None:
+        self.process = subprocess.Popen(cmd or self.command(output), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                         encoding="utf-8", errors="replace", creationflags=_no_window_flags())
         errors: list[str] = []
         threading.Thread(target=lambda: errors.extend(self.process.stderr.readlines()), daemon=True).start()  # type: ignore[union-attr]
         for line in self.process.stdout:  # type: ignore[union-attr]
             if line.startswith(("out_time_us=", "out_time_ms=")):
                 with contextlib.suppress(ValueError):
-                    self.percent = min(share - 1, int(line.split("=", 1)[1]) / 1e6 / max(0.1, self.total) * share)
+                    self.percent = base + min(share - 1, int(line.split("=", 1)[1]) / 1e6 / max(0.1, self.total) * share)
         code = self.process.wait()
         if self.cancelled:
             raise InterruptedError
@@ -989,16 +1119,19 @@ class EditJob:
             else:  # primero se une todo y luego se separa la voz o la música del resultado
                 EDIT_TMP.mkdir(parents=True, exist_ok=True)
                 temp = EDIT_TMP / f"unido-{self.id}{self.output.suffix}"
-                self._join(temp, 25.0)
+                separated = EDIT_TMP / f"separado-{self.id}{self.output.suffix}" if self.effects else self.output
+                # los efectos se ponen al final, para que no se los coma el separador
+                self.process = None
+                self._join(temp, 25.0, self.command(temp, with_fx=False))
                 self.sub = TrimJob(temp, 0.0, self.total, self.mode)
-                self.sub.output = self.output
+                self.sub.output = separated
                 self.phase = "separate"
                 done = threading.Event()
 
                 def follow() -> None:
                     while not done.wait(0.4):
                         self.phase = self.sub.phase or "separate"  # type: ignore[union-attr]
-                        self.percent = 25 + self.sub.percent * 0.75  # type: ignore[union-attr]
+                        self.percent = 25 + self.sub.percent * (0.70 if self.effects else 0.75)  # type: ignore[union-attr]
 
                 threading.Thread(target=follow, daemon=True).start()
                 self.sub.run()
@@ -1007,6 +1140,13 @@ class EditJob:
                     raise InterruptedError
                 if self.sub.status != "done":
                     raise RuntimeError(self.sub.error or "No se pudo guardar la edición.")
+                if self.effects:
+                    self.phase = "effects"
+                    try:
+                        self._join(self.output, 5.0, self.fx_command(separated, self.output), base=95.0)
+                    finally:
+                        with contextlib.suppress(OSError):
+                            separated.unlink()
             self.status, self.percent = "done", 100.0
         except InterruptedError:
             self.status = "cancelled"
@@ -1542,7 +1682,7 @@ def karaoke_align(guide_path: Path, source: Path, lines: list[dict]) -> list:
     return result
 
 
-def pick_files(initial: str) -> list[str]:
+def pick_files(initial: str, title: tuple[str, str] | None = None) -> list[str]:
     """Elegir varias canciones para el reproductor."""
     if not IS_WINDOWS:
         return []
@@ -1552,7 +1692,7 @@ def pick_files(initial: str) -> list[str]:
         "Add-Type -AssemblyName System.Windows.Forms;"
         "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false; Opacity=0; StartPosition='CenterScreen'}; $owner.Show(); $owner.Activate();"
         "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true;"
-        f"$d.Title = '{english and 'Choose songs for the list' or 'Elige canciones para la lista'}';"
+        f"$d.Title = '{(title or ('Choose songs for the list', 'Elige canciones para la lista'))[0 if english else 1]}';"
         f"$d.Filter = '{english and 'Audio and video' or 'Audio y video'}|{patterns}|{english and 'All files' or 'Todos los archivos'}|*.*';"
         f"$d.InitialDirectory = '{initial.replace(chr(39), chr(39) * 2)}';"
         "if ($d.ShowDialog($owner) -eq 'OK') { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.FileNames -join \"`n\" }"
@@ -1798,6 +1938,14 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/karaoke/export/"):
             job = KARAOKE_JOBS.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
+        elif path == "/api/effects":
+            self.send_json({"ok": True, **effects_public()})
+        elif path.startswith(("/efectos/", "/mis-efectos/")):
+            fx = effect_path(("b/" if path.startswith("/efectos/") else "m/") + unquote(path.rsplit("/", 1)[-1]))
+            if fx:
+                self.send_file(fx)
+            else:
+                self.send_error(404)
         elif path.startswith("/img/") or path in ("/app.js", "/style.css", "/favicon.ico"):
             target = (WEB_ROOT / path.lstrip("/")).resolve()
             if WEB_ROOT.resolve() in target.parents and target.is_file():
@@ -1847,6 +1995,20 @@ class Handler(BaseHTTPRequestHandler):
             folder.mkdir(parents=True, exist_ok=True)
             open_in_explorer(folder)
             self.send_json({"ok": True})
+        elif path == "/api/effects/add":
+            chosen = pick_files(str(Path.home() / "Music" if (Path.home() / "Music").is_dir() else Path.home()),
+                                ("Choose your sounds (one or several)", "Elige tus sonidos (uno o varios)"))
+            try:
+                result = effects_add(chosen) if chosen else {"added": 0, "errors": []}
+                self.send_json({"ok": True, **result, **effects_public()})
+            except RuntimeError as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
+        elif path == "/api/effects/remove":
+            try:
+                effects_remove(str(data.get("id") or ""))
+                self.send_json({"ok": True, **effects_public()})
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
         elif path == "/api/pick-file":
             chosen = pick_file()
             if not chosen:
@@ -2051,6 +2213,29 @@ class Handler(BaseHTTPRequestHandler):
             out.append((source, start, end))
         return out
 
+    def _effects(self, raw) -> list | str:
+        """Leer y revisar los efectos de sonido. Regresa la lista o el error."""
+        if not raw:
+            return []
+        if not isinstance(raw, list) or len(raw) > 200:
+            return "Son demasiados efectos (máximo 200)."
+        out = []
+        for item in raw:
+            path = effect_path((item or {}).get("id", "")) if isinstance(item, dict) else None
+            if not path:
+                return "Uno de los efectos ya no existe. Quítalo de la lista."
+            try:
+                at, start, end = float(item.get("at")), float(item.get("start")), float(item.get("end"))
+                repeat, volume = int(item.get("repeat") or 1), float(item.get("volume") if item.get("volume") is not None else 1)
+            except (TypeError, ValueError):
+                return "Tiempos inválidos."
+            end = min(end, probe(path)["duration"] or end)
+            if at < 0 or start < 0 or end - start < 0.05:
+                return "Cada efecto debe durar al menos 0.05 segundos."
+            out.append({"path": path, "at": at, "start": start, "end": end,
+                        "repeat": max(1, min(repeat, 50)), "volume": max(0.0, min(volume, 3.0))})
+        return out
+
     def _start_edit(self, data: dict) -> None:
         kind = "video" if data.get("kind") == "video" else "audio"
         fragments = self._fragments(data.get("fragments"), VIDEO_EXTS if kind == "video" else AUDIO_EXTS | VIDEO_EXTS)
@@ -2064,6 +2249,10 @@ class Handler(BaseHTTPRequestHandler):
             if isinstance(audio_fragments, str):
                 self.send_json({"ok": False, "error": "Pista de audio: " + audio_fragments}, 400)
                 return
+        effects = self._effects(data.get("effects"))
+        if isinstance(effects, str):
+            self.send_json({"ok": False, "error": effects}, 400)
+            return
         if sum(e - s for _, s, e in fragments) > 3 * 3600:
             self.send_json({"ok": False, "error": "La edición final puede durar máximo 3 horas."}, 400)
             return
@@ -2076,7 +2265,7 @@ class Handler(BaseHTTPRequestHandler):
                 EDITS.pop(old.id, None)
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
-                          audio_mode, audio_fragments)
+                          audio_mode, audio_fragments, effects)
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return

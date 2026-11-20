@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 4.1.0 — 🔊 Sonidos encima
+- ✂ Edición: nueva sección **🔊 Sonidos encima**. Con **➕ Agregar sonido** se abre una ventana para **probar (▶) y elegir (➕)** entre los **63 sonidos de fábrica** (aplausos, ovación, «boing», risas, fanfarrias, voces, monedas… los mismos de EC-Tok, libres de uso CC0), con buscador y categorías.
+- **⭐ Mis sonidos**: «📂 Agregar mis sonidos…» trae tus propios sonidos de la PC (uno o varios; de un video se toma solo el audio). Se quedan guardados para la próxima. Los que agregues son tu responsabilidad (derechos de autor).
+- Los sonidos **siempre suenan encima** del audio o del video final, sin cortarlo (también en un video sin audio, o con otra pista de audio). En la **línea de tiempo** de la edición final los arrastras a donde quieras; en su renglón ajustas dónde suena, qué pedazo del sonido usar, cuántas veces se repite y su volumen (0 a 200 %). ⧉ lo duplica para ponerlo en otro lado.
+- Si estás oyendo la vista previa, el sonido nuevo se pone donde va la vista previa, y con clic en la línea de tiempo la vista previa salta a ese punto.
+- Si guardas «solo música» o «solo voz», los sonidos se ponen después de separar, para que no se pierdan.
+
 ## 4.0.2
 - ✂ Edición: las fuentes (canciones y videos) se listan **una por renglón**, con la SELECCIONADA resaltada.
 
