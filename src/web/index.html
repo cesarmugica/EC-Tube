@@ -203,7 +203,9 @@
     .ed-help { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
     .ed-sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .ed-src { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid var(--border); border-radius: 999px; padding: 4px 4px 4px 10px; background: var(--bg); color: var(--text); font-weight: 500; font-size: .86rem; }
-    .ed-src.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
+    .ed-src.on { border-color: var(--accent); border-width: 2px; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
+    .ed-src .sel { flex: none; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; }
+    #edNow { margin: 10px 0 4px; font-size: .95rem; } #edNow b { color: var(--accent); }
     .ed-src .dot, .frags .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
     .ed-src .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; cursor: pointer; background: none; padding: 0; color: inherit; font-weight: 500; }
     .ed-src .nm:hover:not(:disabled) { background: none; }
@@ -358,6 +360,7 @@
       </div>
       <div class="ed-sources" id="edSources"></div>
       <div id="edViewer" hidden>
+        <p id="edNow"></p>
         <div id="edPlayerBox"></div>
         <div class="wave" id="edWave" aria-label="Onda del audio: arrastra para marcar un tramo, clic para ir a ese punto"><canvas id="edCanvas"></canvas></div>
         <div class="wave-tools">
@@ -697,6 +700,7 @@
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
+      'SELECCIONADA': 'SELECTED', 'Seleccionada:': 'Selected:', 'los fragmentos que agregues salen de aquí': 'the fragments you add come from here',
       'Versión …': 'Version …', 'Versión': 'Version', 'Motor …': 'Engine …', 'Motor': 'Engine', 'Actualizar motor': 'Update engine',
       'Actualizando motor…': 'Updating engine…',
       'Buscar actualización': 'Check for updates', 'Buscando…': 'Checking…', '✓ Estás al día': '✓ Up to date',
@@ -1407,7 +1411,9 @@
         }).join('') : `<li style="cursor:default"><span></span><span></span><span class="tname" style="color:var(--muted)">${t(tr === 'audio' ? 'Todavía no hay audio. Elige «🎵 Pista de audio», marca un tramo de una canción y agrégalo.' : 'Todavía no hay fragmentos. Marca un tramo en la onda y presiona «➕ Agregar fragmento».')}</span></li>`;
       },
       render() {
-        $('#edSources').innerHTML = this.sources.map((x, i) => `<span class="ed-src${i === this.active ? ' on' : ''}"><span class="dot" style="background:${x.color}"></span><button type="button" class="nm" data-src="${i}" title="${esc(x.name)}">${esc(x.name)}</button><button type="button" class="x" data-rm="${i}" title="${t('Quitar de la edición')}" aria-label="${t('Quitar de la edición')}">✕</button></span>`).join('');
+        const cur = this.cur();
+        $('#edNow').innerHTML = cur ? `${t('Seleccionada:')} <span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cur.color}"></span> <b>${esc(cur.name)}</b> · ${t('los fragmentos que agregues salen de aquí')}` : '';
+        $('#edSources').innerHTML = this.sources.map((x, i) => `<span class="ed-src${i === this.active ? ' on' : ''}"><span class="dot" style="background:${x.color}"></span><button type="button" class="nm" data-src="${i}" title="${esc(x.name)}">${esc(x.name)}</button>${i === this.active ? `<span class="sel">${t('SELECCIONADA')}</span>` : ''}<button type="button" class="x" data-rm="${i}" title="${t('Quitar de la edición')}" aria-label="${t('Quitar de la edición')}">✕</button></span>`).join('');
         $('#edFrags').innerHTML = this.listHtml(this.frags, 'main');
         $('#edAFrags').innerHTML = this.listHtml(this.afrags, 'audio');
         $('#edTotal').textContent = !this.frags.length ? '' : this.other()
