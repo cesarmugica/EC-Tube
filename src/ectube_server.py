@@ -1780,6 +1780,7 @@ class Handler(BaseHTTPRequestHandler):
             LAST_PING = time.time()
             self.send_json({"ok": True})
         elif path == "/api/update":
+            UPDATER.check()  # si ya pasó una hora desde la última vez, vuelve a buscar (la ventana pregunta seguido)
             self.send_json(UPDATER.public())
         elif path == "/api/library":
             query = parse_qs(urlsplit(self.path).query)

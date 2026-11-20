@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## (próxima versión)
+- 🔄 EC-Tube busca actualización **cada vez que abres la ventana** (aunque ya estuviera corriendo) y, si lo dejas abierto, **cada hora**.
+
 ## 4.0.0 — Editor de audio y video
 Versión grande: el recorte se convierte en un editor completo.
 - **✂ Edición**, panel propio (aparte de Descargas).

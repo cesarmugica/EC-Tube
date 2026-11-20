@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Callable
 
 RELEASES_API = "https://api.github.com/repos/cesarmugica/{repo}/releases?per_page=40"
-CHECK_EVERY = 6 * 3600
+CHECK_EVERY = 3600  # mientras está abierto, revisar cada hora
 
 
 def _version_tuple(text: str) -> tuple[int, ...]:

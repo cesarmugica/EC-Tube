@@ -999,7 +999,8 @@
     setTimeout(() => {
       $('#updateButton').addEventListener('click', () => api('/api/update/install', {}).then(pollUpdate).catch(error => say(error.message)));
       $('#checkUpdate').addEventListener('click', () => api('/api/update/check', {}).then(() => setTimeout(pollUpdate, 800)).catch(error => say(error.message)));
-      pollUpdate();
+      // Cada vez que se abre la ventana se busca actualización (aunque EC-Tube ya estuviera corriendo), y luego cada hora.
+      api('/api/update/check', {}).catch(() => {}).finally(() => setTimeout(pollUpdate, 2500));
     }, 0);
 
     async function api(path, body) {
