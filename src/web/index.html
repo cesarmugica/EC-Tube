@@ -255,6 +255,30 @@
     .an-stage .ovl .bn { position: absolute; inset: 0; border-radius: 14px; border: 3px solid var(--c, #FE2C55); background: rgba(22,22,28,.93); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px 12px; box-sizing: border-box; overflow: hidden; line-height: 1.1; pointer-events: none; }
     .an-stage .ovl .rs { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 4px; background: #56ccf2; border: 2px solid #fff; cursor: nwse-resize; display: none; }
     .an-stage .ovl.on .rs { display: block; }
+    .s-stage { position: relative; width: 100%; max-width: 900px; margin: 0 auto; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
+    .s-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+    .s-cap { position: absolute; left: 5%; right: 5%; text-align: center; white-space: pre-line; pointer-events: none; line-height: 1.22; }
+    .s-cap span { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+    .s-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    .s-ctl input[type=range] { flex: 1 1 260px; accent-color: var(--accent); }
+    .s-msg { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: .9rem; }
+    .s-msg.rec { border-color: #eb5757; background: color-mix(in srgb, #eb5757 14%, var(--bg)); }
+    .s-blocks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; max-height: 60vh; overflow: auto; }
+    .s-blocks li { display: grid; grid-template-columns: 36px auto 1fr auto; gap: 8px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+    .s-blocks li.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+    .s-blocks li.cur { box-shadow: inset 4px 0 0 #f2c94c; }
+    .s-blocks li.nt .tms input { border-color: var(--warn); }
+    .s-blocks .num { color: var(--muted); font-weight: 700; text-align: center; }
+    .s-blocks .tms { display: grid; gap: 4px; } .s-blocks .tms input { width: 88px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 3px 6px; font-size: .82rem; font-variant-numeric: tabular-nums; }
+    .s-blocks textarea { width: 100%; min-height: 44px; resize: vertical; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); padding: 5px 8px; font: inherit; font-size: .9rem; }
+    .s-blocks .bt { display: flex; flex-wrap: wrap; gap: 3px; max-width: 170px; } .s-blocks .bt button { padding: 3px 8px; }
+    .s-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+    .s-presets button { background: #3a4047 linear-gradient(135deg, #59626b, #2c3136); padding: 8px 14px; border-radius: 10px; border: 2px solid transparent; font-size: 1.05rem; }
+    .s-presets button.on { border-color: var(--accent); }
+    .s-style { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: 12px; }
+    .s-style label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .s-style input[type=range] { width: 120px; accent-color: var(--accent); }
+    #sScript { width: 100%; min-height: 160px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); padding: 10px 12px; font: inherit; resize: vertical; }
     .scr-h { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; font-weight: 700; font-size: .95rem; cursor: help; width: fit-content; }
     .scr-h .n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .8rem; flex: none; }
     .scr-h .i { color: var(--muted); font-weight: 400; font-size: .85rem; border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; }
@@ -351,8 +375,9 @@
     <div class="update" id="bankBar" hidden><span id="bankBarText"></span><span class="btns"><button type="button" id="bankBarBtn"></button><button type="button" class="secondary" id="bankBarLater">Ahora no</button></span></div>
     <nav class="tabs" role="tablist">
       <button type="button" class="on" data-tab="download" role="tab">⬇ Descargar y recortar</button>
-      <button type="button" data-tab="player" role="tab">🎵 Reproductor</button>
+      <button type="button" data-tab="subs" role="tab">💬 Subtítulos</button>
       <button type="button" data-tab="karaoke" role="tab">🎤 Karaoke</button>
+      <button type="button" data-tab="player" role="tab">🎵 Reproductor</button>
     </nav>
     <div id="tabDownload" style="display:grid;gap:18px">
     <section class="panel">
@@ -604,6 +629,113 @@
         </div>
       </div>
     </section>
+
+    <div id="tabSubs" style="display:grid;gap:18px" hidden>
+      <section class="panel">
+        <div class="pl-head">
+          <select id="sProjects" aria-label="Subtítulos"></select>
+          <button class="secondary" id="sNew" type="button">➕ Nuevos subtítulos</button>
+          <button class="secondary" id="sDelete" type="button">🗑 Borrar</button>
+        </div>
+        <div class="row"><label class="field" style="flex:1 1 260px">Título <input id="sTitle" class="ktext" maxlength="120" placeholder="Nombre del video"></label></div>
+        <div class="list-head"><h2>1 · El video</h2></div>
+        <div class="row">
+          <div class="folder grow"><span class="field" style="white-space:nowrap">🎬 Video</span><code id="sSource">Elige un video…</code></div>
+          <button class="secondary" id="sPick" type="button">📂 Elegir de mi PC…</button>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1 1 320px">o de tus carpetas de EC-Tube:
+            <select id="sQuick" style="flex:1;min-width:0"><option value="">Elige un video…</option></select></label>
+          <button class="secondary" id="sQuickRefresh" type="button" title="Volver a leer las carpetas">🔄</button>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1 1 420px">🔗 o pega el enlace de YouTube <input id="sUrl" class="ktext" placeholder="https://www.youtube.com/watch?v=…"></label>
+          <button id="sDownload" type="button" title="Lo baja con el mismo motor de «Descargar» y lo pone aquí">⬇ Bajar video</button>
+        </div>
+        <p class="khelp" id="sDlMsg"></p>
+      </section>
+
+      <section class="panel">
+        <div class="list-head"><h2>2 · El texto</h2></div>
+        <div class="kmethods" role="radiogroup" aria-label="De dónde sale el texto" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <label class="kmethod"><input type="radio" name="sMethod" value="script" checked><span><b>📜 Mi guion</b><small>Pego mi texto y marco los tiempos con la espaciadora, como en karaoke</small></span></label>
+          <label class="kmethod"><input type="radio" name="sMethod" value="youtube"><span><b>▶ De YouTube</b><small>Traer los subtítulos que YouTube ya tiene del video (también los automáticos)</small></span></label>
+          <label class="kmethod"><input type="radio" name="sMethod" value="auto"><span><b>🤖 Automático</b><small>EC-Tube escucha el audio y escribe los subtítulos; tú corriges</small></span></label>
+        </div>
+        <div data-sm="script" style="margin-top:12px">
+          <textarea id="sScript" spellcheck="true" placeholder="Pega aquí tu guion. Un renglón = un subtítulo.&#10;Para que un subtítulo salga en dos renglones, sepáralos con « / »."></textarea>
+          <div class="row" style="margin-top:8px">
+            <button id="sUseScript" type="button">📜 Usar como subtítulos</button>
+            <button class="secondary" id="sImport" type="button">📄 Abrir un .srt o .vtt…</button>
+            <span class="khelp" style="margin:0">Después, en «3 · Tiempos», presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada subtítulo.</span>
+          </div>
+        </div>
+        <div data-sm="youtube" style="margin-top:12px" hidden>
+          <div class="row">
+            <label class="field">Idioma <select id="sLang"><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="auto">El idioma original del video</option></select></label>
+            <button id="sFetch" type="button">▶ Traer subtítulos de YouTube</button>
+          </div>
+          <p class="khelp">Usa el enlace de arriba (si bajaste el video con EC-Tube ya está puesto). Los automáticos de YouTube traen errores: revísalos en la lista.</p>
+        </div>
+        <div data-sm="auto" style="margin-top:12px" hidden>
+          <p class="s-msg">🤖 Muy pronto: EC-Tube va a escuchar el audio y escribir los subtítulos solo (tú corriges lo que no quede bien).</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="list-head"><h2>3 · Tiempos</h2></div>
+        <div class="s-stage" id="sStage"><video id="sVideo" preload="auto" playsinline></video><div class="s-cap" id="sCap"></div></div>
+        <div class="s-ctl">
+          <button type="button" id="sPP" title="Play / pausa (tecla K)">▶ Play</button>
+          <button class="secondary" type="button" id="sBack" title="Regresar 3 s (tecla ←)">⟲ 3 s</button>
+          <button class="secondary" type="button" id="sFwd" title="Adelantar 3 s (tecla →)">3 s ⟳</button>
+          <span class="know" id="sNow">0:00.00</span>
+          <input type="range" id="sSeek" min="0" max="1" step="0.01" value="0" aria-label="Posición">
+          <label class="field" title="Velocidad (para marcar con calma)">🐢 <select id="sSpeed"><option value="1">100 %</option><option value="0.85">85 %</option><option value="0.7">70 %</option><option value="0.5">50 %</option></select></label>
+          <button type="button" id="sMark" title="Marcar los tiempos con la espaciadora">⏺ Marcar</button>
+        </div>
+        <p class="s-msg" id="sMsg">Presiona «⏺ Marcar». Cuando empiece a decirse un subtítulo, aprieta la ESPACIADORA y mantenla; suéltala cuando termine. El siguiente queda listo. ⌫ deshace · Esc detiene.</p>
+        <div class="klist-head" style="margin-top:12px"><strong>📝 Subtítulos</strong><span class="khelp" id="sCount"></span>
+          <button class="secondary" type="button" id="sAddEnd">➕ Agregar al final</button></div>
+        <ol class="s-blocks" id="sBlocks"></ol>
+      </section>
+
+      <section class="panel">
+        <div class="list-head"><h2>4 · Estilo</h2></div>
+        <div class="s-presets" id="sPresets"></div>
+        <div class="s-style">
+          <label>Fuente <select id="sFont"></select></label>
+          <label>Tamaño <input type="range" id="sSize" min="3" max="12" step="0.25"></label>
+          <label>Letra <input type="color" id="sFill"></label>
+          <label>Orilla <input type="color" id="sOutline"></label>
+          <label>Grosor de orilla <input type="range" id="sOutlineW" min="0" max="8" step="0.5"></label>
+          <label>Sombra <input type="range" id="sShadow" min="0" max="5" step="0.5"></label>
+        </div>
+        <div class="s-style">
+          <label class="check"><input type="checkbox" id="sBox"> Caja detrás</label>
+          <label>Color de caja <input type="color" id="sBoxColor"></label>
+          <label>Opacidad <input type="range" id="sBoxAlpha" min="0.1" max="1" step="0.05"></label>
+          <div class="seg" role="radiogroup" aria-label="Posición">
+            <label><input type="radio" name="sPos" value="top"><span>⬆ Arriba</span></label>
+            <label><input type="radio" name="sPos" value="middle"><span>⏺ Centro</span></label>
+            <label><input type="radio" name="sPos" value="bottom"><span>⬇ Abajo</span></label>
+          </div>
+          <label>Separación de la orilla <input type="range" id="sMargin" min="0" max="30" step="0.5"></label>
+          <label class="check"><input type="checkbox" id="sBold"> Negritas</label>
+          <label class="check"><input type="checkbox" id="sUpper"> MAYÚSCULAS</label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="list-head"><h2>5 · Guardar</h2></div>
+        <div class="row">
+          <button type="button" id="sExport">💾 Guardar video con subtítulos</button>
+          <button class="secondary" type="button" id="sSrt" title="El archivo de subtítulos solo, para subirlo a YouTube aparte">📄 Guardar solo el .srt</button>
+        </div>
+        <p class="khelp">El video se guarda en tu carpeta de videos editados como «(subtítulos).mp4», con su .srt al lado (por si también quieres subir los subtítulos aparte a YouTube). Tu video original no cambia.</p>
+        <p class="kmsg" id="sStatus"></p>
+      </section>
+    </div>
 
     <div id="tabKaraoke" style="display:grid;gap:18px" hidden>
       <section class="panel">
@@ -1107,6 +1239,108 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "💬 Subtítulos": "💬 Subtitles",
+      "(nuevos subtítulos)": "(new subtitles)",
+      "(ya no está en su carpeta)": "(no longer in its folder)",
+      "1 · El video": "1 · The video",
+      "2 · El texto": "2 · The text",
+      "3 · Tiempos": "3 · Timing",
+      "4 · Estilo": "4 · Style",
+      "5 · Guardar": "5 · Save",
+      "Adelantar 3 s (tecla →)": "Forward 3 s (→ key)",
+      "Agregar uno después": "Add one after",
+      "Así se verán\ntus subtítulos": "This is how\nyour subtitles will look",
+      "Bajando «{0}»… {1} %": "Downloading “{0}”… {1} %",
+      "Buscando los subtítulos en YouTube…": "Looking for the subtitles on YouTube…",
+      "Caja detrás": "Box behind",
+      "Color de caja": "Box color",
+      "De dónde sale el texto": "Where the text comes from",
+      "Después, en «3 · Tiempos», presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada subtítulo.": "Then, in “3 · Timing”, press “⏺ Mark” and hold the space bar while each subtitle is spoken.",
+      "EC-Tube escucha el audio y escribe los subtítulos; tú corriges": "EC-Tube listens to the audio and writes the subtitles; you correct them",
+      "El archivo de subtítulos solo, para subirlo a YouTube aparte": "Just the subtitle file, to upload it to YouTube separately",
+      "El idioma original del video": "The video's original language",
+      "El video se guarda en tu carpeta de videos editados como «(subtítulos).mp4», con su .srt al lado (por si también quieres subir los subtítulos aparte a YouTube). Tu video original no cambia.": "The video is saved in your edited videos folder as “(subtitles).mp4”, with its .srt next to it (in case you also want to upload the subtitles separately to YouTube). Your original video does not change.",
+      "Elige el video en la ventana que se abrió…": "Choose the video in the window that opened…",
+      "Elige un video…": "Choose a video…",
+      "Entra": "In",
+      "Entra = ahora": "In = now",
+      "Ese archivo no trae subtítulos.": "That file has no subtitles.",
+      "Fuente": "Font",
+      "Grosor de orilla": "Outline width",
+      "Letra": "Text",
+      "Listo. Revisa con ▶ Play; corrige tiempos o texto en la lista. Para seguir marcando desde un subtítulo, dale clic y presiona «⏺ Marcar».": "Done. Check with ▶ Play; fix times or text in the list. To keep marking from a subtitle, click it and press “⏺ Mark”.",
+      "Lo baja con el mismo motor de «Descargar» y lo pone aquí": "It downloads it with the same engine as “Download” and puts it here",
+      "MAYÚSCULAS": "UPPERCASE",
+      "Marcando el {0}: «{1}». Mantén la ESPACIADORA mientras se dice. ⌫ deshace · Esc detiene.": "Marking #{0}: “{1}”. Hold the SPACE BAR while it is spoken. ⌫ undo · Esc stop.",
+      "Marcar los tiempos con la espaciadora": "Mark the times with the space bar",
+      "Negritas": "Bold",
+      "Nombre del video": "Video name",
+      "Opacidad": "Opacity",
+      "Orilla": "Outline",
+      "Oírlo": "Play it",
+      "Partir en dos": "Split in two",
+      "Pega aquí tu guion. Un renglón = un subtítulo.\nPara que un subtítulo salga en dos renglones, sepáralos con « / ».": "Paste your script here. One line = one subtitle.\nTo show a subtitle on two lines, separate them with “ / ”.",
+      "Pega arriba el enlace de YouTube del video (https://…).": "Paste the video's YouTube link above (https://…).",
+      "Pega el enlace del video (https://…).": "Paste the video link (https://…).",
+      "Pegando los subtítulos en el video… {0} %": "Burning the subtitles into the video… {0} %",
+      "Pego mi texto y marco los tiempos con la espaciadora, como en karaoke": "I paste my text and mark the times with the space bar, like in karaoke",
+      "Play / pausa (tecla K)": "Play / pause (K key)",
+      "Presiona «⏺ Marcar». Cuando empiece a decirse un subtítulo, aprieta la ESPACIADORA y mantenla; suéltala cuando termine. El siguiente queda listo. ⌫ deshace · Esc detiene.": "Press “⏺ Mark”. When a subtitle starts being spoken, press the SPACE BAR and hold it; release it when it ends. The next one is ready. ⌫ undo · Esc stop.",
+      "Primero elige el video.": "Choose the video first.",
+      "Primero pon el texto (paso 2).": "Add the text first (step 2).",
+      "Regresar 3 s (tecla ←)": "Back 3 s (← key)",
+      "Sale": "Out",
+      "Sale = ahora": "Out = now",
+      "Separación de la orilla": "Distance from the edge",
+      "Sombra": "Shadow",
+      "Tamaño": "Size",
+      "Todavía no hay subtítulos. Usa tu guion, tráelos de YouTube o agrega uno con «➕ Agregar al final».": "No subtitles yet. Use your script, bring them from YouTube or add one with “➕ Add at the end”.",
+      "Traer los subtítulos que YouTube ya tiene del video (también los automáticos)": "Bring the subtitles YouTube already has for the video (also the automatic ones)",
+      "Unir con el siguiente": "Join with the next one",
+      "Usa el enlace de arriba (si bajaste el video con EC-Tube ya está puesto). Los automáticos de YouTube traen errores: revísalos en la lista.": "It uses the link above (if you downloaded the video with EC-Tube it is already there). YouTube's automatic ones have mistakes: check them in the list.",
+      "Velocidad (para marcar con calma)": "Speed (to mark calmly)",
+      "ese archivo": "that file",
+      "y": "and",
+      "{0} subtítulos listos. Ahora presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada uno.": "{0} subtitles ready. Now press “⏺ Mark” and hold the space bar while each one is spoken.",
+      "{0} subtítulos · {1} con tiempos": "{0} subtitles · {1} with times",
+      "¿Borrar el proyecto de subtítulos «{0}»?\n\nSe borra la lista de subtítulos y su estilo. Tu video original, los videos con subtítulos que ya guardaste y sus .srt NO se borran.": "Delete the subtitle project “{0}”?\n\nThe subtitle list and its style are deleted. Your original video, the subtitled videos you already saved and their .srt files are NOT deleted.",
+      "¿Cambiar los {0} subtítulos que ya tienes por los {1} de {2}?": "Replace your {0} subtitles with the {1} from {2}?",
+      "¿Cambiar los {0} subtítulos que ya tienes por los {1} renglones de tu guion?\n\nLos tiempos que ya marcaste se pierden. Tu video no cambia.": "Replace your {0} subtitles with the {1} lines of your script?\n\nThe times you already marked are lost. Your video does not change.",
+      "⏹ Detener": "⏹ Stop",
+      "⏺ Centro": "⏺ Middle",
+      "▶ De YouTube": "▶ From YouTube",
+      "▶ Traer subtítulos de YouTube": "▶ Bring subtitles from YouTube",
+      "✅ Guardado «{0}» en tu carpeta de videos editados.": "✅ Saved “{0}” in your edited videos folder.",
+      "✅ Listo: «{0}». Ya está puesto aquí (y en tus descargas).": "✅ Done: “{0}”. It is set here (and in your downloads).",
+      "✅ {0} subtítulos cargados del archivo.": "✅ {0} subtitles loaded from the file.",
+      "✅ {0} subtítulos de YouTube. Revísalos: los automáticos traen errores. Los tiempos ya vienen puestos.": "✅ {0} subtitles from YouTube. Check them: the automatic ones have mistakes. The times are already set.",
+      "➕ Agregar al final": "➕ Add at the end",
+      "➕ Nuevos subtítulos": "➕ New subtitles",
+      "⬆ Arriba": "⬆ Top",
+      "⬇ Abajo": "⬇ Bottom",
+      "⬇ Bajar video": "⬇ Download video",
+      "🎬 Video": "🎬 Video",
+      "💾 Guardar video con subtítulos": "💾 Save video with subtitles",
+      "📂 Elegir de mi PC…": "📂 Choose from my PC…",
+      "📄 Abrir un .srt o .vtt…": "📄 Open a .srt or .vtt…",
+      "📄 Guardar solo el .srt": "📄 Save only the .srt",
+      "📜 Mi guion": "📜 My script",
+      "📜 Usar como subtítulos": "📜 Use as subtitles",
+      "📝 Subtítulos": "📝 Subtitles",
+      "🔗 o pega el enlace de YouTube": "🔗 or paste the YouTube link",
+      "🤖 Muy pronto: EC-Tube va a escuchar el audio y escribir los subtítulos solo (tú corriges lo que no quede bien).": "🤖 Coming soon: EC-Tube will listen to the audio and write the subtitles by itself (you fix whatever is not right).",
+      "Este video no tiene subtítulos de YouTube en ese idioma. Prueba con otro idioma, o escribe tu guion.": "This video has no YouTube subtitles in that language. Try another language, or write your script.",
+      "Los subtítulos de YouTube vinieron vacíos.": "The YouTube subtitles came back empty.",
+      "YouTube tardó demasiado en responder. Intenta otra vez.": "YouTube took too long to respond. Try again.",
+      "Todavía no hay subtítulos con tiempos.": "There are no subtitles with times yet.",
+      "Guarda el proyecto primero.": "Save the project first.",
+      "Elige un video (los subtítulos van encima de un video).": "Choose a video (subtitles go on top of a video).",
+      "Pega un enlace válido (https://…).": "Paste a valid link (https://…).",
+      "Pega el enlace de YouTube del video (https://…).": "Paste the video's YouTube link (https://…).",
+      "No se encontró ese proyecto de subtítulos.": "That subtitle project was not found.",
+      "El video ya no está en su carpeta.": "The video is no longer in its folder.",
+      "No se pudo bajar el video.": "Could not download the video.",
+      "No se pudo leer ese archivo.": "Could not read that file.",
       "Inicia en:": "Starts at:",
       "Duración:": "Duration:",
       "Posición X:": "Position X:",
@@ -2340,7 +2574,8 @@
     // ---------- Pestañas ----------
     function showTab(name) {
       document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
-      $('#tabDownload').hidden = name !== 'download'; $('#tabPlayer').hidden = name !== 'player'; $('#tabKaraoke').hidden = name !== 'karaoke';
+      $('#tabDownload').hidden = name !== 'download'; $('#tabPlayer').hidden = name !== 'player'; $('#tabKaraoke').hidden = name !== 'karaoke'; $('#tabSubs').hidden = name !== 'subs';
+      if (name === 'subs') Subs.init(); else Subs.leave();
       try { localStorage.setItem('ectube-tab', name); } catch (_) {}
       if (name === 'player') { Player.init(); Library.load(); }
       document.body.classList.toggle('tab-karaoke', name === 'karaoke');
@@ -2348,6 +2583,332 @@
       if (name !== 'karaoke') { Karaoke.leave(); $('#kMini').hidden = true; }
     }
     document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+
+    // ---------- Subtítulos ----------
+    const S_FONTS = ['Arial', 'Arial Black', 'Segoe UI', 'Segoe UI Black', 'Impact', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Georgia', 'Comic Sans MS', 'Bahnschrift', 'Courier New', 'Times New Roman'];
+    const S_PRESETS = [
+      ['Amarillo · orilla negra', {fill: '#FFE600', outline: '#000000', box: false}], ['Blanco · orilla negra', {fill: '#FFFFFF', outline: '#000000', box: false}],
+      ['Negro · orilla amarilla', {fill: '#111111', outline: '#FFE600', box: false}], ['Negro · orilla blanca', {fill: '#111111', outline: '#FFFFFF', box: false}],
+      ['Morado · orilla blanca', {fill: '#8A2BE2', outline: '#FFFFFF', box: false}], ['Blanco · orilla morada', {fill: '#FFFFFF', outline: '#7B2FF7', box: false}],
+      ['Rosa · orilla negra', {fill: '#FE2C55', outline: '#000000', box: false}], ['Cian · orilla negra', {fill: '#25F4EE', outline: '#000000', box: false}],
+      ['Blanco · caja negra', {fill: '#FFFFFF', outline: '#000000', box: true, box_color: '#000000', box_alpha: 0.65}],
+      ['Amarillo · caja negra', {fill: '#FFE600', outline: '#000000', box: true, box_color: '#000000', box_alpha: 0.65}],
+    ];
+    // el tamaño en el video (libass) se mide de arriba a abajo de la fuente; en la página, en «em»: esto los empata
+    const S_EM = {'Arial': 0.895, 'Arial Black': 0.709, 'Segoe UI': 0.752, 'Segoe UI Black': 0.752, 'Impact': 0.82, 'Verdana': 0.823, 'Tahoma': 0.83,
+      'Trebuchet MS': 0.861, 'Georgia': 0.88, 'Comic Sans MS': 0.72, 'Bahnschrift': 0.83, 'Courier New': 0.88, 'Times New Roman': 0.9};
+    const S_DEFAULT = {font: 'Arial Black', size: 6, fill: '#FFE600', outline: '#000000', outline_w: 3, shadow: 1, box: false, box_color: '#000000', box_alpha: 0.6, pos: 'bottom', margin: 6, bold: true, upper: false};
+    const sVideo = $('#sVideo');
+    const Subs = {
+      ready: false, p: null, sel: -1, marking: false, holding: false, raf: 0, saveTimer: null, undo: [],
+      blank() { return {id: '', title: '', source: null, url: '', lang: 'es', script: '', blocks: [], style: {...S_DEFAULT}}; },
+      async init() {
+        if (!this.ready) {
+          this.ready = true;
+          $('#sFont').innerHTML = S_FONTS.map(f => `<option style="font-family:'${f}'">${f}</option>`).join('');
+          $('#sPresets').innerHTML = S_PRESETS.map(([name, st], i) => `<button type="button" data-p="${i}" title="${t(name)}" style="${this.css({...S_DEFAULT, ...st, size: 0}, 22)}"><span style="${this.spanCss({...S_DEFAULT, ...st}, 22)}">Aa</span></button>`).join('');
+          await this.loadList();
+          const first = $('#sProjects').value;
+          if (first) await this.open(first); else { this.p = this.blank(); this.fill(); }
+        }
+        this.quickList();
+        cancelAnimationFrame(this.raf); const loop = () => { this.tick(); this.raf = requestAnimationFrame(loop); }; loop();
+      },
+      leave() { cancelAnimationFrame(this.raf); if (this.marking) this.stopMark(); if (!sVideo.paused) sVideo.pause(); },
+      async loadList(select) {
+        const list = (await api('/api/subs/projects')).projects;
+        $('#sProjects').innerHTML = list.length ? list.map(x => `<option value="${x.id}">${esc(x.title || t('(sin título)'))}</option>`).join('') : `<option value="">${t('(nuevos subtítulos)')}</option>`;
+        if (select) $('#sProjects').value = select;
+      },
+      async open(id) { try { this.p = (await api('/api/subs/project?id=' + encodeURIComponent(id))).project; } catch (error) { this.p = this.blank(); say(error.message); } this.p.style = {...S_DEFAULT, ...(this.p.style || {})}; this.p.blocks = this.p.blocks || []; this.sel = -1; this.fill(); },
+      async quickList() {
+        let html = `<option value="">${t('Elige un video…')}</option>`; this.quick = [];
+        for (const [where, label] of [['edited', '✂🎬 Editados · video'], ['downloads', '⬇🎬 Descargas · video']]) {
+          try {
+            const items = (await api(`/api/library?where=${where}&kind=video`)).items.slice(0, 300);
+            if (!items.length) continue;
+            html += `<optgroup label="${esc(t(label))}">` + items.map(item => { this.quick.push(item); return `<option value="${this.quick.length - 1}">${esc(item.file)}</option>`; }).join('') + '</optgroup>';
+          } catch (_) {}
+        }
+        $('#sQuick').innerHTML = html;
+      },
+      setSource(media, url) {
+        this.p.source = {token: media.token, name: media.name || media.file, exists: true};
+        if (!this.p.title) { this.p.title = (media.name || media.file || '').replace(/\.[^.]+$/, ''); $('#sTitle').value = this.p.title; }
+        if (url) { this.p.url = url; $('#sUrl').value = url; }
+        else api('/api/subs/source-url', {token: media.token}).then(d => { if (d.url && !$('#sUrl').value) { this.p.url = d.url; $('#sUrl').value = d.url; this.save(); } }).catch(() => {});
+        this.loadVideo(); this.save(true);
+      },
+      loadVideo() {
+        const src = this.p.source && this.p.source.exists !== false ? '/media/' + this.p.source.token : '';
+        $('#sSource').textContent = this.p.source ? this.p.source.name + (this.p.source.exists === false ? ' ' + t('(ya no está en su carpeta)') : '') : t('Elige un video…');
+        if (src && !sVideo.src.endsWith(src)) { sVideo.src = src; } else if (!src) sVideo.removeAttribute('src');
+      },
+      fill() {
+        const p = this.p; $('#sTitle').value = p.title || ''; $('#sUrl').value = p.url || ''; $('#sLang').value = p.lang || 'es'; $('#sScript').value = p.script || '';
+        this.loadVideo(); this.fillStyle(); this.render();
+      },
+      fillStyle() {
+        const st = this.p.style;
+        $('#sFont').value = st.font; $('#sSize').value = st.size; $('#sFill').value = st.fill; $('#sOutline').value = st.outline; $('#sOutlineW').value = st.outline_w;
+        $('#sShadow').value = st.shadow; $('#sBox').checked = st.box; $('#sBoxColor').value = st.box_color; $('#sBoxAlpha').value = st.box_alpha;
+        document.querySelectorAll('input[name=sPos]').forEach(r => { r.checked = r.value === st.pos; }); $('#sMargin').value = st.margin; $('#sBold').checked = st.bold; $('#sUpper').checked = st.upper;
+        document.querySelectorAll('#sPresets button').forEach((b, i) => { const ps = S_PRESETS[i][1]; b.classList.toggle('on', ps.fill === st.fill && ps.outline === st.outline && !!ps.box === !!st.box); });
+        this.lastCap = null;
+      },
+      save(now) {
+        clearTimeout(this.saveTimer);
+        const go = async () => {
+          const p = this.p;
+          try {
+            const r = (await api('/api/subs/save', {id: p.id, title: $('#sTitle').value, source_token: p.source ? p.source.token : null, url: $('#sUrl').value.trim(),
+              lang: $('#sLang').value, script: $('#sScript').value, blocks: p.blocks, style: p.style})).project;
+            if (!p.id) { p.id = r.id; await this.loadList(r.id); } else { const o = $(`#sProjects option[value="${p.id}"]`); if (o) o.textContent = r.title || t('(sin título)'); }
+          } catch (error) { $('#sStatus').textContent = t(error.message); }
+        };
+        if (now) return go(); this.saveTimer = setTimeout(go, 700);
+      },
+      // ---- texto ----
+      useScript() {
+        const lines = $('#sScript').value.split('\n').map(x => x.trim()).filter(Boolean).map(x => x.split(/\s+\/\s+/).join('\n'));
+        if (!lines.length) { $('#sScript').focus(); return; }
+        if (this.p.blocks.length && !confirm(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} renglones de tu guion?\n\nLos tiempos que ya marcaste se pierden. Tu video no cambia.', this.p.blocks.length, lines.length))) return;
+        this.p.blocks = lines.map(text => ({text, start: null, end: null})); this.sel = 0; this.save(); this.render();
+        this.say(tf('{0} subtítulos listos. Ahora presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada uno.', lines.length));
+        $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
+      },
+      setBlocks(blocks, what) {
+        if (this.p.blocks.length && !confirm(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} de {2}?', this.p.blocks.length, blocks.length, what))) return false;
+        this.p.blocks = blocks; this.sel = -1; this.save(); this.render(); return true;
+      },
+      say(text, rec = false) { $('#sMsg').textContent = text; $('#sMsg').classList.toggle('rec', rec); },
+      // ---- tiempos ----
+      current(tm) { return this.p.blocks.findIndex(b => b.start != null && b.end != null && tm >= b.start && tm < b.end); },
+      tick() {
+        const tm = sVideo.currentTime || 0, d = sVideo.duration || 0;
+        $('#sNow').textContent = fmt2(tm); if (document.activeElement !== $('#sSeek')) { $('#sSeek').max = d || 1; $('#sSeek').value = tm; }
+        $('#sPP').textContent = sVideo.paused ? t('▶ Play') : t('⏸ Pausa');
+        let i = this.current(tm), text = i >= 0 ? this.p.blocks[i].text : '';
+        if (this.marking && this.holding && this.sel >= 0) { i = this.sel; text = this.p.blocks[this.sel].text; }
+        if (!sVideo.paused) this.sample = false;
+        if (!text && this.sample) text = t('Así se verán\ntus subtítulos');
+        const key = text + '|' + $('#sStage').clientHeight + '|' + JSON.stringify(this.p.style);
+        if (key !== this.lastCap) { this.lastCap = key; this.caption(text); }
+        if (i !== this.lastCur) { this.lastCur = i; document.querySelectorAll('#sBlocks li').forEach(li => li.classList.toggle('cur', +li.dataset.i === i)); }
+      },
+      outline(px, color, shadow) {  // orilla con sombras alrededor (como la de los subtítulos del video)
+        if (!px) return shadow ? `${shadow}px ${shadow}px ${shadow}px rgba(0,0,0,.55)` : 'none';
+        const out = [];
+        for (let a = 0; a < 360; a += 22.5) out.push(`${(Math.cos(a * Math.PI / 180) * px).toFixed(2)}px ${(Math.sin(a * Math.PI / 180) * px).toFixed(2)}px 0 ${color}`);
+        if (shadow) out.push(`${(px + shadow).toFixed(1)}px ${(px + shadow).toFixed(1)}px ${shadow.toFixed(1)}px rgba(0,0,0,.55)`);
+        return out.join(',');
+      },
+      css(st) { return ''; },
+      spanCss(st, sizePx) {
+        const fontPx = sizePx * (S_EM[st.font] || 0.85), ow = st.box ? 0 : st.outline_w * sizePx / 40, sh = st.box ? 0 : st.shadow * sizePx / 40;
+        const rgba = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
+        return `font-family:'${st.font}';font-size:${fontPx}px;font-weight:${st.bold ? 800 : 400};color:${st.fill};text-shadow:${this.outline(ow, st.outline, sh)};`
+          + (st.box ? `background:${rgba(st.box_color, st.box_alpha)};padding:${(fontPx * 0.08).toFixed(1)}px ${(fontPx * 0.25).toFixed(1)}px;` : '') + (st.upper ? 'text-transform:uppercase;' : '');
+      },
+      caption(text) {
+        const cap = $('#sCap'), st = this.p.style, stage = $('#sStage');
+        const vw = sVideo.videoWidth || 16, vh = sVideo.videoHeight || 9, H = stage.clientHeight, W = stage.clientWidth;
+        const scale = Math.min(W / vw, H / vh), dispH = vh * scale, top0 = (H - dispH) / 2;   // la parte donde se ve el video
+        const ref = vw < vh ? vw : vh, fontPx = ref * scale * st.size / 100;
+        cap.innerHTML = text ? `<span style="${this.spanCss(st, fontPx)}">${esc(text)}</span>` : '';
+        cap.style.top = cap.style.bottom = 'auto'; cap.style.transform = '';
+        const m = dispH * st.margin / 100;
+        if (st.pos === 'top') cap.style.top = top0 + m + 'px';
+        else if (st.pos === 'middle') { cap.style.top = top0 + dispH / 2 + 'px'; cap.style.transform = 'translateY(-50%)'; }
+        else cap.style.bottom = top0 + m + 'px';
+      },
+      aspect() { if (sVideo.videoWidth) $('#sStage').style.aspectRatio = sVideo.videoWidth >= sVideo.videoHeight ? `${sVideo.videoWidth} / ${sVideo.videoHeight}` : '16 / 9'; this.lastCap = null; },
+      render() {
+        const bs = this.p.blocks, done = bs.filter(b => b.start != null && b.end != null).length;
+        $('#sCount').textContent = bs.length ? tf('{0} subtítulos · {1} con tiempos', bs.length, done) : '';
+        $('#sBlocks').innerHTML = bs.length ? bs.map((b, i) => `<li data-i="${i}" class="${i === this.sel ? 'on' : ''}${b.start == null || b.end == null ? ' nt' : ''}">
+            <span class="num">${i + 1}</span>
+            <span class="tms"><input data-k="start" value="${b.start == null ? '' : fmt2(b.start)}" placeholder="${t('entra')}" title="${t('Entra')}"><input data-k="end" value="${b.end == null ? '' : fmt2(b.end)}" placeholder="${t('sale')}" title="${t('Sale')}"></span>
+            <textarea data-k="text" rows="2">${esc(b.text)}</textarea>
+            <span class="bt"><button type="button" class="secondary" data-a="play" title="${t('Oírlo')}">▶</button><button type="button" class="secondary" data-a="in" title="${t('Entra = ahora')}">⤓</button><button type="button" class="secondary" data-a="out" title="${t('Sale = ahora')}">⤒</button><button type="button" class="secondary" data-a="split" title="${t('Partir en dos')}">✂</button><button type="button" class="secondary" data-a="join" title="${t('Unir con el siguiente')}">⤵</button><button type="button" class="secondary" data-a="add" title="${t('Agregar uno después')}">➕</button><button type="button" class="secondary" data-a="del" title="${t('Quitar')}">🗑</button></span></li>`).join('')
+          : `<li style="grid-template-columns:1fr"><span class="khelp" style="margin:0">${t('Todavía no hay subtítulos. Usa tu guion, tráelos de YouTube o agrega uno con «➕ Agregar al final».')}</span></li>`;
+        this.lastCur = null;
+      },
+      snapshot() { this.undo.push(JSON.stringify(this.p.blocks)); if (this.undo.length > 50) this.undo.shift(); },
+      startMark() {
+        if (!sVideo.src) { this.say(t('Primero elige el video.')); return; }
+        if (!this.p.blocks.length) { this.say(t('Primero pon el texto (paso 2).')); return; }
+        let i = this.sel >= 0 ? this.sel : this.p.blocks.findIndex(b => b.start == null || b.end == null); if (i < 0) i = 0;
+        this.sel = i; this.marking = true; this.holding = false; $('#sMark').textContent = t('⏹ Detener');
+        if (this.p.blocks[i].start != null && sVideo.currentTime < this.p.blocks[i].start - 0.5) sVideo.currentTime = Math.max(0, this.p.blocks[i].start - 2);
+        sVideo.play().catch(() => {}); this.render(); this.focusRow();
+        this.say(tf('Marcando el {0}: «{1}». Mantén la ESPACIADORA mientras se dice. ⌫ deshace · Esc detiene.', i + 1, this.p.blocks[i].text.replace(/\n/g, ' ')), true);
+        document.activeElement && document.activeElement.blur();
+      },
+      stopMark() { this.marking = false; this.holding = false; $('#sMark').textContent = t('⏺ Marcar'); sVideo.pause(); this.save(); this.render(); this.say(t('Listo. Revisa con ▶ Play; corrige tiempos o texto en la lista. Para seguir marcando desde un subtítulo, dale clic y presiona «⏺ Marcar».')); },
+      focusRow() { const li = $(`#sBlocks li[data-i="${this.sel}"]`); if (li) li.scrollIntoView({block: 'nearest'}); },
+      down() { if (this.holding || this.sel < 0) return; this.snapshot(); this.holding = true; const b = this.p.blocks[this.sel]; b.start = Math.round(sVideo.currentTime * 100) / 100; b.end = null; },
+      up() {
+        if (!this.holding) return; this.holding = false;
+        const b = this.p.blocks[this.sel]; b.end = Math.max(b.start + 0.2, Math.round(sVideo.currentTime * 100) / 100);
+        if (this.sel + 1 >= this.p.blocks.length) { this.render(); this.stopMark(); return; }
+        this.sel++; this.render(); this.focusRow();
+        this.say(tf('Marcando el {0}: «{1}». Mantén la ESPACIADORA mientras se dice. ⌫ deshace · Esc detiene.', this.sel + 1, this.p.blocks[this.sel].text.replace(/\n/g, ' ')), true);
+      },
+      back() {  // deshacer la última marca
+        if (!this.undo.length) return; this.p.blocks = JSON.parse(this.undo.pop()); this.holding = false;
+        this.sel = Math.max(0, this.sel - 1); const b = this.p.blocks[this.sel]; if (b && b.start != null) sVideo.currentTime = Math.max(0, b.start - 1.5);
+        this.render(); this.focusRow();
+      },
+      setNow(k) {
+        if (this.sel < 0) return; const b = this.p.blocks[this.sel], tm = Math.round(sVideo.currentTime * 100) / 100; this.snapshot();
+        b[k] = tm; if (k === 'start' && b.end != null && b.end <= tm) b.end = null; if (k === 'end' && b.start != null && b.start >= tm) b.start = Math.max(0, tm - 1);
+        if (k === 'end' && this.sel + 1 < this.p.blocks.length) this.sel++;
+        this.save(); this.render();
+      },
+      playBlock(i) { const b = this.p.blocks[i]; if (!b || b.start == null) return; sVideo.currentTime = b.start; this.stopAt = b.end; sVideo.play().catch(() => {}); },
+      async exportVideo() {
+        await this.save(true); const st = $('#sStatus'), btn = $('#sExport');
+        try {
+          const job = await api('/api/subs/export', {id: this.p.id}); btn.disabled = true;
+          const poll = async () => {
+            let j; try { j = await api('/api/subs/export/' + job.id); } catch (error) { st.textContent = t(error.message); btn.disabled = false; return; }
+            if (j.status === 'running') { st.textContent = tf('Pegando los subtítulos en el video… {0} %', Math.round(j.percent)); setTimeout(poll, 700); return; }
+            btn.disabled = false;
+            if (j.status !== 'done') { st.textContent = t(j.error || 'No se pudo crear el video.'); return; }
+            st.innerHTML = `✅ ${t('Guardado como')} <strong>${esc(j.output)}</strong> (${t('y')} ${esc(j.srt)}) · <button class="link" type="button" id="sReveal">${t('Ver en la carpeta')}</button>`;
+            $('#sReveal').onclick = () => api(`/api/subs/export/${job.id}/reveal`, {}).catch(() => {});
+            Files.load();
+          };
+          setTimeout(poll, 500);
+        } catch (error) { st.textContent = t(error.message); }
+      },
+    };
+    $('#sProjects').addEventListener('change', () => { if (Subs.marking) Subs.stopMark(); Subs.open($('#sProjects').value); });
+    $('#sNew').addEventListener('click', () => { if (Subs.marking) Subs.stopMark(); Subs.p = Subs.blank(); Subs.sel = -1; $('#sProjects').insertAdjacentHTML('afterbegin', `<option value="" selected>${t('(nuevos subtítulos)')}</option>`); Subs.fill(); $('#sStatus').textContent = ''; });
+    $('#sDelete').addEventListener('click', async () => {
+      if (!Subs.p.id) { Subs.p = Subs.blank(); Subs.fill(); return; }
+      if (!confirm(tf('¿Borrar el proyecto de subtítulos «{0}»?\n\nSe borra la lista de subtítulos y su estilo. Tu video original, los videos con subtítulos que ya guardaste y sus .srt NO se borran.', Subs.p.title || t('(sin título)')))) return;
+      await api('/api/subs/delete', {id: Subs.p.id}).catch(() => {}); await Subs.loadList(); const first = $('#sProjects').value;
+      if (first) await Subs.open(first); else { Subs.p = Subs.blank(); Subs.fill(); }
+    });
+    $('#sTitle').addEventListener('input', () => { Subs.p.title = $('#sTitle').value; Subs.save(); });
+    $('#sUrl').addEventListener('change', () => { Subs.p.url = $('#sUrl').value.trim(); Subs.save(); });
+    $('#sScript').addEventListener('input', () => { Subs.p.script = $('#sScript').value; Subs.save(); });
+    $('#sLang').addEventListener('change', () => Subs.save());
+    $('#sPick').addEventListener('click', async () => {
+      const b = $('#sPick'); b.disabled = true; $('#sDlMsg').textContent = t('Elige el video en la ventana que se abrió…');
+      try { const d = await api('/api/subs/pick', {}); $('#sDlMsg').textContent = ''; if (d.media) Subs.setSource(d.media, d.url); } catch (error) { $('#sDlMsg').textContent = t(error.message); } finally { b.disabled = false; }
+    });
+    $('#sQuick').addEventListener('change', () => { const item = Subs.quick[+$('#sQuick').value]; if (item) Subs.setSource({token: item.token, name: item.file}); $('#sQuick').value = ''; });
+    $('#sQuickRefresh').addEventListener('click', () => Subs.quickList());
+    $('#sDownload').addEventListener('click', async () => {
+      const url = $('#sUrl').value.trim(), msg = $('#sDlMsg'), b = $('#sDownload');
+      if (!/^https?:\/\//.test(url)) { msg.textContent = t('Pega el enlace del video (https://…).'); $('#sUrl').focus(); return; }
+      b.disabled = true;
+      try {
+        const {job} = await api('/api/subs/download', {url}); Subs.p.url = url; Subs.save();
+        const poll = async () => {
+          const j = (await api('/api/jobs')).jobs.find(x => x.id === job.id);
+          if (!j) { b.disabled = false; return; }
+          if (['queued', 'running', 'converting'].includes(j.status)) { msg.textContent = tf('Bajando «{0}»… {1} %', j.title || url, Math.round(j.percent || 0)); setTimeout(poll, 1000); return; }
+          b.disabled = false;
+          if (j.status !== 'done' || !j.media) { msg.textContent = t(j.error || 'No se pudo bajar el video.'); return; }
+          msg.textContent = tf('✅ Listo: «{0}». Ya está puesto aquí (y en tus descargas).', j.title || '');
+          Subs.setSource({token: j.media, name: j.title + '.mp4'}, url); Subs.quickList();
+        };
+        poll();
+      } catch (error) { b.disabled = false; msg.textContent = t(error.message); }
+    });
+    document.querySelectorAll('input[name=sMethod]').forEach(r => r.addEventListener('change', () => document.querySelectorAll('[data-sm]').forEach(el => { el.hidden = el.dataset.sm !== r.value; })));
+    $('#sUseScript').addEventListener('click', () => Subs.useScript());
+    $('#sImport').addEventListener('click', async () => {
+      try { const d = await api('/api/subs/import', {}); if (d.blocks) { if (!d.blocks.length) { Subs.say(t('Ese archivo no trae subtítulos.')); return; } if (Subs.setBlocks(d.blocks, t('ese archivo'))) Subs.say(tf('✅ {0} subtítulos cargados del archivo.', d.blocks.length)); } }
+      catch (error) { Subs.say(t(error.message)); }
+    });
+    $('#sFetch').addEventListener('click', async () => {
+      const url = $('#sUrl').value.trim(), b = $('#sFetch');
+      if (!/^https?:\/\//.test(url)) { Subs.say(t('Pega arriba el enlace de YouTube del video (https://…).')); $('#sUrl').focus(); return; }
+      b.disabled = true; Subs.say(t('Buscando los subtítulos en YouTube…'));
+      try {
+        const job = await api('/api/subs/fetch', {url, lang: $('#sLang').value}); Subs.p.url = url;
+        const poll = async () => {
+          const j = await api('/api/subs/fetch/' + job.id);
+          if (j.status === 'running') { setTimeout(poll, 800); return; }
+          b.disabled = false;
+          if (j.status !== 'done') { Subs.say(t(j.error)); return; }
+          if (Subs.setBlocks(j.blocks, 'YouTube')) Subs.say(tf('✅ {0} subtítulos de YouTube. Revísalos: los automáticos traen errores. Los tiempos ya vienen puestos.', j.blocks.length));
+          $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
+        };
+        setTimeout(poll, 800);
+      } catch (error) { b.disabled = false; Subs.say(t(error.message)); }
+    });
+    sVideo.addEventListener('loadedmetadata', () => Subs.aspect());
+    sVideo.addEventListener('timeupdate', () => { if (Subs.stopAt != null && sVideo.currentTime >= Subs.stopAt) { sVideo.pause(); Subs.stopAt = null; } });
+    sVideo.addEventListener('click', () => { if (!Subs.marking) $('#sPP').click(); });
+    $('#sPP').addEventListener('click', () => { Subs.stopAt = null; if (sVideo.paused) sVideo.play().catch(() => {}); else sVideo.pause(); });
+    $('#sBack').addEventListener('click', () => { sVideo.currentTime = Math.max(0, sVideo.currentTime - 3); });
+    $('#sFwd').addEventListener('click', () => { sVideo.currentTime = Math.min(sVideo.duration || 0, sVideo.currentTime + 3); });
+    $('#sSeek').addEventListener('input', () => { sVideo.currentTime = +$('#sSeek').value; });
+    $('#sSpeed').addEventListener('change', () => { sVideo.playbackRate = +$('#sSpeed').value; });
+    $('#sMark').addEventListener('click', () => { if (Subs.marking) Subs.stopMark(); else Subs.startMark(); });
+    $('#sAddEnd').addEventListener('click', () => { const last = Subs.p.blocks[Subs.p.blocks.length - 1], tm = sVideo.currentTime || 0; Subs.snapshot(); Subs.p.blocks.push({text: '', start: Math.round(tm * 100) / 100, end: Math.round((tm + 2) * 100) / 100}); Subs.sel = Subs.p.blocks.length - 1; Subs.save(); Subs.render(); Subs.focusRow(); $(`#sBlocks li[data-i="${Subs.sel}"] textarea`)?.focus(); void last; });
+    document.addEventListener('keydown', event => {
+      if ($('#tabSubs').hidden) return;
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+      if (Subs.marking) {
+        if (event.code === 'Space') { event.preventDefault(); if (!event.repeat) Subs.down(); }
+        else if (event.key === 'Escape') { event.preventDefault(); Subs.stopMark(); }
+        else if (event.key === 'Backspace') { event.preventDefault(); Subs.back(); }
+        return;
+      }
+      if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+      const k = event.key.toLowerCase();
+      if (k === 'k' || event.code === 'Space') { event.preventDefault(); $('#sPP').click(); }
+      else if (k === 'arrowleft') { event.preventDefault(); $('#sBack').click(); }
+      else if (k === 'arrowright') { event.preventDefault(); $('#sFwd').click(); }
+    });
+    document.addEventListener('keyup', event => { if (!$('#tabSubs').hidden && Subs.marking && event.code === 'Space') { event.preventDefault(); Subs.up(); } });
+    $('#sBlocks').addEventListener('click', event => {
+      const li = event.target.closest('li[data-i]'); if (!li) return;
+      const i = +li.dataset.i, bs = Subs.p.blocks, b = bs[i], a = event.target.closest('button')?.dataset.a;
+      if (!a) { if (Subs.sel !== i) { Subs.sel = i; document.querySelectorAll('#sBlocks li').forEach(x => x.classList.toggle('on', +x.dataset.i === i)); if (b.start != null && !event.target.closest('input, textarea')) sVideo.currentTime = b.start; } return; }
+      Subs.sel = i;
+      if (a === 'play') { Subs.playBlock(i); return; }
+      Subs.snapshot();
+      if (a === 'in') Subs.setNow('start');
+      else if (a === 'out') Subs.setNow('end');
+      else if (a === 'split') {
+        const words = b.text.replace(/\n/g, ' ').split(' '); if (words.length < 2) return;
+        const half = Math.ceil(words.length / 2), mid = b.start != null && b.end != null ? Math.round((b.start + (b.end - b.start) * half / words.length) * 100) / 100 : null;
+        bs.splice(i, 1, {text: words.slice(0, half).join(' '), start: b.start, end: mid}, {text: words.slice(half).join(' '), start: mid, end: b.end});
+      } else if (a === 'join' && i + 1 < bs.length) {
+        const n = bs[i + 1]; bs.splice(i, 2, {text: (b.text + ' ' + n.text).replace(/\s+/g, ' ').trim(), start: b.start ?? n.start, end: n.end ?? b.end});
+      } else if (a === 'add') { const st = b.end ?? (sVideo.currentTime || 0); bs.splice(i + 1, 0, {text: '', start: st, end: st + 2}); Subs.sel = i + 1; }
+      else if (a === 'del') { bs.splice(i, 1); Subs.sel = Math.min(i, bs.length - 1); }
+      if (a !== 'in' && a !== 'out') { Subs.save(); Subs.render(); }
+      if (a === 'add') $(`#sBlocks li[data-i="${i + 1}"] textarea`)?.focus();
+    });
+    $('#sBlocks').addEventListener('change', event => {
+      const li = event.target.closest('li[data-i]'), k = event.target.dataset.k; if (!li || !k) return;
+      const b = Subs.p.blocks[+li.dataset.i];
+      if (k === 'text') b.text = event.target.value.slice(0, 500);
+      else { const v = event.target.value.trim(); if (!v) b[k] = null; else { const n = parseTime(v); if (!isNaN(n)) b[k] = Math.max(0, n); } }
+      Subs.lastCap = null; Subs.save(); if (k !== 'text') Subs.render(); else li.classList.toggle('nt', b.start == null || b.end == null);
+    });
+    $('#sBlocks').addEventListener('input', event => { if (event.target.dataset.k === 'text') { const b = Subs.p.blocks[+event.target.closest('li').dataset.i]; b.text = event.target.value.slice(0, 500); Subs.lastCap = null; Subs.save(); } });
+    // estilo
+    $('#sPresets').addEventListener('click', event => { const b = event.target.closest('[data-p]'); if (!b) return; Object.assign(Subs.p.style, S_PRESETS[+b.dataset.p][1]); Subs.fillStyle(); Subs.save(); });
+    const sBind = (id, key, conv) => $(id).addEventListener('input', () => { Subs.p.style[key] = conv($(id)); Subs.lastCap = null; Subs.fillStyle(); Subs.save(); });
+    sBind('#sFont', 'font', el => el.value); sBind('#sSize', 'size', el => +el.value); sBind('#sFill', 'fill', el => el.value.toUpperCase()); sBind('#sOutline', 'outline', el => el.value.toUpperCase());
+    sBind('#sOutlineW', 'outline_w', el => +el.value); sBind('#sShadow', 'shadow', el => +el.value); sBind('#sBox', 'box', el => el.checked); sBind('#sBoxColor', 'box_color', el => el.value.toUpperCase());
+    sBind('#sBoxAlpha', 'box_alpha', el => +el.value); sBind('#sMargin', 'margin', el => +el.value); sBind('#sBold', 'bold', el => el.checked); sBind('#sUpper', 'upper', el => el.checked);
+    document.querySelectorAll('input[name=sPos]').forEach(r => r.addEventListener('change', () => { Subs.p.style.pos = r.value; Subs.lastCap = null; Subs.save(); }));
+    $('#sExport').addEventListener('click', () => Subs.exportVideo());
+    $('#sSrt').addEventListener('click', async () => { await Subs.save(true); try { const d = await api('/api/subs/srt', {id: Subs.p.id}); $('#sStatus').textContent = tf('✅ Guardado «{0}» en tu carpeta de videos editados.', d.output); } catch (error) { $('#sStatus').textContent = t(error.message); } });
+    // si no hay subtítulo en ese momento, enseñar un ejemplo mientras cambias el estilo
+    ['#sPresets', '.s-style'].forEach(sel => document.querySelectorAll(sel).forEach(el => el.addEventListener('pointerenter', () => { Subs.sample = true; Subs.lastCap = null; })));
 
     // ---------- Reproductor (tipo Winamp) ----------
     const hms = sec => { if (!isFinite(sec) || sec == null) return ''; sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), x = String(sec % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
@@ -3678,7 +4239,7 @@
       Files.load();
       setInterval(() => fetch('/api/ping').catch(() => {}), 20000);
       let tab = 'download'; try { tab = localStorage.getItem('ectube-tab') || 'download'; } catch (_) {}
-      showTab(['player', 'karaoke'].includes(tab) ? tab : 'download');
+      showTab(['player', 'karaoke', 'subs'].includes(tab) ? tab : 'download');
       const info = await api('/api/info').catch(() => null);
       if (info && info.engine_updating) { const wait = async () => { const i = await api('/api/info'); showInfo(i); if (i.engine_updating) setTimeout(wait, 2000); }; setTimeout(wait, 2000); }
     })();

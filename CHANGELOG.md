@@ -1,5 +1,15 @@
 # Historial de versiones
 
+## 5.0.0 — 💬 Subtítulos
+Versión grande: editor con sonidos y animaciones encima (4.x) y ahora una pestaña nueva para subtítulos.
+- Pestañas en este orden: **Descargar y recortar · 💬 Subtítulos · Karaoke · Reproductor**.
+- **💬 Subtítulos**: bloques de texto sobre el video, como en las películas.
+  - **El video**: uno de tu PC o de tus carpetas de EC-Tube, o **pegas el enlace de YouTube** y lo baja con el mismo motor.
+  - **El texto**: **📜 tu guion** (un renglón = un subtítulo; « / » lo parte en dos renglones) que marcas con la **espaciadora** como en karaoke (la mantienes mientras se dice cada subtítulo), **▶ los subtítulos que YouTube ya tiene** (también los automáticos, con sus tiempos), o **abrir un .srt / .vtt**.
+  - **Lista** para corregir texto y tiempos: oír, entra/sale = ahora, partir, unir, agregar y quitar.
+  - **Estilo**: 13 fuentes, tamaño, color de letra y de orilla, grosor, sombra, caja detrás, arriba/centro/abajo, negritas y MAYÚSCULAS, con estilos listos (amarillo con orilla negra, negro con orilla amarilla, morado, blanco, rosa, cian, con caja…). Se ve en vivo sobre el video.
+  - **Guardar**: el video con los subtítulos pegados («(subtítulos).mp4») y su **.srt** al lado; o solo el .srt para subirlo aparte a YouTube.
+
 ## 4.2.4
 - 🎬 Cada animación en la lista se acomoda en 3 renglones: ① nombre y texto, ② Inicia en, Duración, Posición X/Y, Ancho y Alto, ③ Mantener proporción, Entrada con rebote y los botones 👁 ⧉ 🗑.
 

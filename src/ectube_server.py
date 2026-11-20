@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "4.2.4"
+APP_VERSION = "5.0.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1743,6 +1743,211 @@ class KaraokeExport:
 KARAOKE_JOBS: dict[str, KaraokeExport] = {}
 
 
+# ---------------------------------------------------------------------------
+# Subtítulos: bloques de texto sobre el video (como en las películas)
+# ---------------------------------------------------------------------------
+SUBS_DIR = HOME / "subtitulos"
+
+
+def _subs_path(project_id: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{12}", project_id or ""):
+        raise ValueError("Proyecto inválido.")
+    return SUBS_DIR / f"{project_id}.json"
+
+
+def source_url(path: Path) -> str:
+    """El enlace de YouTube que yt-dlp guarda dentro del archivo al descargarlo (si lo bajó EC-Tube)."""
+    if not FFMPEG or not path.is_file():
+        return ""
+    out = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-i", str(path)], capture_output=True, text=True,
+                         encoding="utf-8", errors="replace", creationflags=_no_window_flags()).stderr
+    m = re.search(r"^\s*(?:purl|comment)\s*:\s*(https?://\S+)", out, re.M | re.I)
+    return m.group(1) if m else ""
+
+
+def subs_public(project: dict) -> dict:
+    from ectube_subs import clean_style
+
+    data = {k: project.get(k) for k in ("id", "title", "blocks", "url", "lang", "script", "updated")}
+    data["style"] = clean_style(project.get("style"))
+    path = Path(project["source"]) if project.get("source") else None
+    data["source"] = {"token": MEDIA.token_for(path), "name": path.name, "exists": path.is_file()} if path else None
+    return data
+
+
+def subs_list() -> list[dict]:
+    items = []
+    if SUBS_DIR.is_dir():
+        for path in SUBS_DIR.glob("*.json"):
+            with contextlib.suppress(OSError, json.JSONDecodeError):
+                data = json.loads(path.read_text(encoding="utf-8"))
+                items.append({"id": data.get("id"), "title": data.get("title") or "", "updated": data.get("updated", 0)})
+    return sorted(items, key=lambda item: item["updated"], reverse=True)
+
+
+def subs_load(project_id: str) -> dict:
+    return json.loads(_subs_path(project_id).read_text(encoding="utf-8"))
+
+
+def subs_save(data: dict) -> dict:
+    from ectube_subs import clean_blocks, clean_style
+
+    project_id = str(data.get("id") or "") or uuid.uuid4().hex[:12]
+    path = _subs_path(project_id)
+    old = {}
+    with contextlib.suppress(OSError, json.JSONDecodeError):
+        old = json.loads(path.read_text(encoding="utf-8"))
+    project = {"id": project_id, "title": str(data.get("title") or "").strip()[:120], "updated": int(time.time()),
+               "blocks": clean_blocks(data.get("blocks")), "style": clean_style(data.get("style")),
+               "url": str(data.get("url") or "")[:500], "lang": str(data.get("lang") or "es")[:8],
+               "script": str(data.get("script") or "")[:50000]}
+    token = data.get("source_token")
+    found = MEDIA.path(str(token)) if token else None
+    project["source"] = str(found) if found else (old.get("source") if "source_token" not in data else None)
+    SUBS_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(project, ensure_ascii=False, indent=1), encoding="utf-8")
+    return subs_public(project)
+
+
+SUB_LANGS = {"es": "es.*", "en": "en.*", "pt": "pt.*", "auto": ".*-orig"}
+
+
+class SubsFetch:
+    """Traer los subtítulos que YouTube ya tiene para el video (hechos por alguien o automáticos)."""
+
+    def __init__(self, url: str, lang: str) -> None:
+        self.id = uuid.uuid4().hex[:12]
+        self.url, self.lang = url, lang if lang in SUB_LANGS else "es"
+        self.status, self.error, self.blocks, self.kind, self.found_lang = "running", "", [], "", ""
+
+    def run(self) -> None:
+        from ectube_subs import parse_json3, parse_vtt
+
+        work = SUBS_DIR / f"yt-{self.id}"
+        try:
+            path = ytdlp_path()
+            if not path:
+                raise RuntimeError("No se encontró el motor de descargas (yt-dlp).")
+            work.mkdir(parents=True, exist_ok=True)
+            args = [path, "--ignore-config", "--no-colors", "--encoding", "utf-8", "--skip-download", "--no-playlist",
+                    "--write-subs", "--write-auto-subs", "--sub-langs", SUB_LANGS[self.lang], "--sub-format", "json3/vtt/best",
+                    "-P", str(work), "-o", "sub"]
+            if DENO:
+                args += ["--js-runtimes", f"deno:{DENO}"]
+            result = subprocess.run([*args, "--", self.url], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                    creationflags=_no_window_flags(), timeout=180)
+            files = sorted(p for p in work.iterdir() if p.suffix.lower() in (".json3", ".vtt"))
+            if not files:
+                if result.returncode != 0:
+                    raise RuntimeError(friendly_error(result.stderr))
+                raise RuntimeError("Este video no tiene subtítulos de YouTube en ese idioma. Prueba con otro idioma, "
+                                   "o escribe tu guion.")
+            # preferir los hechos por alguien (lang sin «-orig» ni traducción) sobre los automáticos
+            best = sorted(files, key=lambda p: ("orig" in p.name, len(p.name)))[0]
+            text = best.read_text(encoding="utf-8", errors="replace")
+            self.blocks = parse_json3(text) if best.suffix.lower() == ".json3" else parse_vtt(text)
+            self.found_lang = best.name.split(".")[-2] if best.name.count(".") >= 2 else ""
+            if not self.blocks:
+                raise RuntimeError("Los subtítulos de YouTube vinieron vacíos.")
+            self.status = "done"
+        except subprocess.TimeoutExpired:
+            self.status, self.error = "error", "YouTube tardó demasiado en responder. Intenta otra vez."
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+            log(f"[subtítulos {self.id}] {exc}")
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+    def public(self) -> dict:
+        return {"id": self.id, "status": self.status, "error": self.error, "blocks": self.blocks, "lang": self.found_lang}
+
+
+SUBS_FETCHES: dict[str, SubsFetch] = {}
+
+
+class SubsExport:
+    """Pegar los subtítulos en el video (MP4) y guardar también el .srt."""
+
+    def __init__(self, project: dict) -> None:
+        from ectube_subs import timed
+
+        source = Path(project.get("source") or "")
+        if not source.is_file():
+            raise RuntimeError("El video ya no está en su carpeta.")
+        if not timed(project.get("blocks") or []):
+            raise RuntimeError("Todavía no hay subtítulos con tiempos.")
+        self.id = uuid.uuid4().hex[:12]
+        self.project, self.source = project, source
+        folder = Path(CONFIG["video_edited_folder"])
+        folder.mkdir(parents=True, exist_ok=True)
+        word = "subtitles" if current_language() == "en" else "subtítulos"
+        stem = re.sub(r'[<>:"/\\|?*]+', "", project.get("title") or source.stem).strip() or source.stem
+        output = folder / f"{stem} ({word}).mp4"
+        n = 2
+        while output.exists():
+            output = folder / f"{stem} ({word} {n}).mp4"
+            n += 1
+        self.output = output
+        self.srt = output.with_suffix(".srt")
+        self.status, self.percent, self.error = "running", 0.0, ""
+        self.process: subprocess.Popen | None = None
+        self.cancelled = False
+
+    def run(self) -> None:
+        from ectube_subs import build_ass, build_srt
+
+        work = SUBS_DIR / f"render-{self.id}"
+        try:
+            if not FFMPEG:
+                raise RuntimeError("No se encontró FFmpeg.")
+            info = probe(self.source)
+            width, height = (info["width"] or 1280) // 2 * 2, (info["height"] or 720) // 2 * 2
+            work.mkdir(parents=True, exist_ok=True)
+            style = self.project.get("style") or {}
+            (work / "subs.ass").write_text(build_ass(self.project["blocks"], style, width, height), encoding="utf-8")
+            self.srt.write_text(build_srt(self.project["blocks"], bool(style.get("upper"))), encoding="utf-8")
+            duration = max(1.0, info["duration"] or _media_duration(self.source))
+            args = [FFMPEG, "-hide_banner", "-nostdin", "-y", "-i", str(self.source),
+                    "-vf", f"scale={width}:{height},setsar=1,ass=subs.ass,format=yuv420p", "-map", "0:v:0"]
+            args += ["-map", "0:a:0?", "-c:a", "aac", "-b:a", "192k"] if info["audio"] else []
+            args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-movflags", "+faststart",
+                     "-progress", "pipe:1", "-nostats", str(self.output)]
+            log(f"[subtítulos {self.id}] {self.output.name}")
+            # dentro de la carpeta de trabajo: así el filtro «ass» no lidia con rutas de Windows
+            self.process = subprocess.Popen(args, cwd=str(work), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                            encoding="utf-8", errors="replace", creationflags=_no_window_flags())
+            errors: list[str] = []
+            threading.Thread(target=lambda: errors.extend(self.process.stderr.readlines()), daemon=True).start()  # type: ignore[union-attr]
+            for line in self.process.stdout:  # type: ignore[union-attr]
+                if line.startswith(("out_time_us=", "out_time_ms=")):
+                    with contextlib.suppress(ValueError):
+                        self.percent = min(99.0, int(line.split("=", 1)[1]) / 1e6 / duration * 100)
+            code = self.process.wait()
+            if self.cancelled:
+                self.status = "cancelled"
+            elif code == 0 and self.output.exists():
+                self.status, self.percent = "done", 100.0
+            else:
+                self.status = "error"
+                self.error = friendly_error("".join(errors[-20:])) if errors else "No se pudo crear el video."
+                log(f"[subtítulos {self.id}] error: {''.join(errors[-8:])[:800]}")
+        except Exception as exc:  # noqa: BLE001
+            self.status, self.error = "error", str(exc)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+        if self.status != "done":
+            with contextlib.suppress(OSError):
+                self.output.unlink()
+
+    def public(self) -> dict:
+        return {"id": self.id, "status": self.status, "percent": round(self.percent, 1), "error": self.error,
+                "output": self.output.name, "srt": self.srt.name,
+                "media": MEDIA.token_for(self.output) if self.status == "done" else ""}
+
+
+SUBS_JOBS: dict[str, SubsExport] = {}
+
+
 # ---------- voz guía (para «ajustar a la voz») ----------
 GUIDES: dict[str, dict] = {}
 GUIDES_LOCK = threading.Lock()
@@ -2183,6 +2388,19 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/karaoke/export/"):
             job = KARAOKE_JOBS.get(path.rsplit("/", 1)[-1])
             self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
+        elif path == "/api/subs/projects":
+            self.send_json({"ok": True, "projects": subs_list()})
+        elif path == "/api/subs/project":
+            try:
+                self.send_json({"ok": True, "project": subs_public(subs_load(parse_qs(urlsplit(self.path).query).get("id", [""])[0]))})
+            except (ValueError, OSError, json.JSONDecodeError):
+                self.send_json({"ok": False, "error": "No se encontró ese proyecto de subtítulos."}, 404)
+        elif path.startswith("/api/subs/fetch/"):
+            job = SUBS_FETCHES.get(path.rsplit("/", 1)[-1])
+            self.send_json(job.public() if job else {"ok": False, "error": "No existe esa búsqueda."}, 200 if job else 404)
+        elif path.startswith("/api/subs/export/"):
+            job = SUBS_JOBS.get(path.rsplit("/", 1)[-1])
+            self.send_json(job.public() if job else {"ok": False, "error": "No existe esa exportación."}, 200 if job else 404)
         elif path == "/api/anims":
             self.send_json({"ok": True, **anims_public()})
         elif path == "/api/bank/status":
@@ -2389,6 +2607,94 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True})
             else:
                 open_in_explorer(job.output if job.output.exists() else Path(CONFIG["karaoke_folder"]), select=True)
+                self.send_json({"ok": True})
+        elif path == "/api/subs/save":
+            try:
+                self.send_json({"ok": True, "project": subs_save(data)})
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 400)
+        elif path == "/api/subs/delete":
+            with contextlib.suppress(ValueError, OSError):
+                _subs_path(str(data.get("id") or "")).unlink()
+            self.send_json({"ok": True})
+        elif path == "/api/subs/pick":
+            chosen = pick_file()
+            if not chosen:
+                self.send_json({"ok": True, "media": None})
+            elif Path(chosen).suffix.lower() not in VIDEO_EXTS:
+                self.send_json({"ok": False, "error": "Elige un video (los subtítulos van encima de un video)."}, 400)
+            else:
+                self.send_json({"ok": True, "media": media_info(Path(chosen)), "url": source_url(Path(chosen))})
+        elif path == "/api/subs/source-url":
+            found = MEDIA.path(str(data.get("token") or ""))
+            self.send_json({"ok": True, "url": source_url(found) if found else ""})
+        elif path == "/api/subs/download":
+            url = str(data.get("url") or "").strip()
+            if not re.match(r"https?://", url):
+                self.send_json({"ok": False, "error": "Pega un enlace válido (https://…)."}, 400)
+                return
+            job = DOWNLOADS.add([url], {"kind": "video", "audio_format": CONFIG["audio_format"], "audio_quality": CONFIG["audio_quality"],
+                                        "video_quality": CONFIG["video_quality"], "folder": CONFIG["video_folder"], "playlist": False})[0]
+            self.send_json({"ok": True, "job": job.public()})
+        elif path == "/api/subs/fetch":
+            url = str(data.get("url") or "").strip()
+            if not re.match(r"https?://", url):
+                self.send_json({"ok": False, "error": "Pega el enlace de YouTube del video (https://…)."}, 400)
+                return
+            job = SubsFetch(url, str(data.get("lang") or "es"))
+            SUBS_FETCHES[job.id] = job
+            threading.Thread(target=job.run, daemon=True).start()
+            self.send_json({"ok": True, **job.public()})
+        elif path == "/api/subs/import":
+            from ectube_subs import parse_srt
+
+            chosen = pick_files(str(Path.home() / "Downloads"), ("Choose a subtitle file (.srt or .vtt)", "Elige un archivo de subtítulos (.srt o .vtt)"), {".srt", ".vtt"})
+            if not chosen:
+                self.send_json({"ok": True, "blocks": None})
+            else:
+                try:
+                    blocks = parse_srt(Path(chosen[0]).read_text(encoding="utf-8-sig", errors="replace"))
+                    self.send_json({"ok": True, "blocks": blocks})
+                except OSError:
+                    self.send_json({"ok": False, "error": "No se pudo leer ese archivo."}, 400)
+        elif path == "/api/subs/srt":
+            from ectube_subs import build_srt, timed
+
+            try:
+                project = subs_load(str(data.get("id") or ""))
+            except (ValueError, OSError, json.JSONDecodeError):
+                self.send_json({"ok": False, "error": "Guarda el proyecto primero."}, 400)
+                return
+            if not timed(project.get("blocks") or []):
+                self.send_json({"ok": False, "error": "Todavía no hay subtítulos con tiempos."}, 400)
+                return
+            folder = Path(CONFIG["video_edited_folder"])
+            folder.mkdir(parents=True, exist_ok=True)
+            stem = re.sub(r'[<>:"/\\|?*]+', "", project.get("title") or Path(project.get("source") or "subtitulos").stem).strip() or "subtitulos"
+            out = folder / f"{stem}.srt"
+            out.write_text(build_srt(project["blocks"], bool((project.get("style") or {}).get("upper"))), encoding="utf-8")
+            open_in_explorer(out, select=True)
+            self.send_json({"ok": True, "output": out.name})
+        elif path == "/api/subs/export":
+            try:
+                job = SubsExport(subs_load(str(data.get("id") or "")))
+            except (ValueError, OSError, json.JSONDecodeError, RuntimeError) as exc:
+                self.send_json({"ok": False, "error": str(exc) if isinstance(exc, RuntimeError) else "Guarda el proyecto primero."}, 400)
+                return
+            SUBS_JOBS[job.id] = job
+            threading.Thread(target=job.run, daemon=True).start()
+            self.send_json({"ok": True, **job.public()})
+        elif re.fullmatch(r"/api/subs/export/[0-9a-f]{12}/(cancel|reveal)", path):
+            job = SUBS_JOBS.get(path.split("/")[4])
+            if not job:
+                self.send_json({"ok": False, "error": "No existe esa exportación."}, 404)
+            elif path.endswith("cancel"):
+                job.cancelled = True
+                if job.process:
+                    _kill_tree(job.process)
+                self.send_json({"ok": True})
+            else:
+                open_in_explorer(job.output if job.output.exists() else job.output.parent, select=job.output.exists())
                 self.send_json({"ok": True})
         elif path == "/api/pick-songs":
             chosen = pick_files(CONFIG["audio_folder"])
@@ -2720,7 +3026,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _update_blocker() -> str:
-    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values()])
+    trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values()])
     return "Espera a que terminen las descargas y recortes." if DOWNLOADS.active() or trimming else ""
 
 
@@ -2734,7 +3040,7 @@ def _idle_watch(server: ThreadingHTTPServer) -> None:
     """Cerrar el servidor si la ventana se cerró y no hay descargas pendientes."""
     while True:
         time.sleep(15)
-        trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values()])
+        trimming = any(job.status == "running" for job in [*TRIMS.values(), *KARAOKE_JOBS.values(), *EDITS.values(), *SUBS_JOBS.values()])
         if time.time() - LAST_PING > IDLE_EXIT_SECONDS and not DOWNLOADS.active() and not trimming:
             log("Sin ventana abierta ni descargas: EC-Tube se cierra.")
             threading.Thread(target=server.shutdown, daemon=True).start()
