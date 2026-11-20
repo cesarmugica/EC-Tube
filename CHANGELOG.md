@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.1.4
+- La primera pestaña ahora se llama **⬇ Descargar / Editar**.
+
 ## 5.1.3
 - 💬 Subtítulos: al presionar «🤖 Escribir los subtítulos» (o «▶ Traer subtítulos de YouTube»), el avance sale **justo arriba del botón, con barra**: «Bajando el oído… %», «Leyendo el audio…», «Escuchando y escribiendo… %». Antes solo salía abajo, en «3 · Tiempos», y parecía que no pasaba nada.
 

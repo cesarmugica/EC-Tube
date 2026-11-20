@@ -388,7 +388,7 @@
     <div class="update" id="updateBox" hidden><span id="updateText"></span><button type="button" id="updateButton">⬆ Actualizar</button></div>
     <div class="update" id="bankBar" hidden><span id="bankBarText"></span><span class="btns"><button type="button" id="bankBarBtn"></button><button type="button" class="secondary" id="bankBarLater">Ahora no</button></span></div>
     <nav class="tabs" role="tablist">
-      <button type="button" class="on" data-tab="download" role="tab">⬇ Descargar y recortar</button>
+      <button type="button" class="on" data-tab="download" role="tab">⬇ Descargar / Editar</button>
       <button type="button" data-tab="subs" role="tab">💬 Subtítulos</button>
       <button type="button" data-tab="karaoke" role="tab">🎤 Karaoke</button>
       <button type="button" data-tab="player" role="tab">🎵 Reproductor</button>
@@ -1043,7 +1043,7 @@
       'Tiempos inválidos.': 'Invalid times.', 'El recorte debe durar al menos 0.2 segundos.': 'The trim must be at least 0.2 seconds long.',
       'Hay demasiados recortes de este archivo.': 'There are too many trims of this file.', 'No se encontró FFmpeg.': 'FFmpeg was not found.',
       'No existe ese recorte.': 'That trim does not exist.', 'Solicitud rechazada.': 'Request refused.', 'Solicitud inválida.': 'Invalid request.',
-      'Recortes en': 'Trims in', '⬇ Descargar y recortar': '⬇ Download & trim', '🎵 Reproductor': '🎵 Player',
+      'Recortes en': 'Trims in', '⬇ Descargar / Editar': '⬇ Download / Edit', '🎵 Reproductor': '🎵 Player',
       '➕ Nueva lista': '➕ New list', '✏ Renombrar': '✏ Rename', '🗑 Borrar lista': '🗑 Delete list', '🧹 Vaciar lista': '🧹 Clear list',
       'Doble clic para reproducir · arrastra para cambiar el orden': 'Double-click to play · drag to reorder',
       'Agregar canciones': 'Add songs', '⬇ Descargas': '⬇ Downloads', '✂ Editados': '✂ Edited', 'Buscar…': 'Search…',
@@ -1274,7 +1274,7 @@
       "Sí": "Yes",
       "🧹 Borrar y comenzar de nuevo": "🧹 Clear and start over",
       "Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)": "Remove what is in this tab and start from scratch (your files are not deleted)",
-      "¿Borrar y comenzar de nuevo en «Descargar y recortar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.": "Clear and start over in “Download and trim”?\n\nThe typed links, the list of finished downloads and everything in ✂ Edit (chosen videos or songs, fragments, sounds and animations) are removed. Anything you did not save is lost.\n\nYour downloaded files and the edits you already saved are NOT deleted.",
+      "¿Borrar y comenzar de nuevo en «Descargar / Editar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.": "Clear and start over in “Download / Edit”?\n\nThe typed links, the list of finished downloads and everything in ✂ Edit (chosen videos or songs, fragments, sounds and animations) are removed. Anything you did not save is lost.\n\nYour downloaded files and the edits you already saved are NOT deleted.",
       "¿Borrar y comenzar de nuevo en «Subtítulos»?\n\nSe borra el proyecto «{0}»: el video elegido, el texto, los tiempos y el estilo. Lo que no guardaste se pierde.\n\nTus videos, los videos con subtítulos que ya guardaste y sus .srt NO se borran.": "Clear and start over in “Subtitles”?\n\nThe project “{0}” is deleted: the chosen video, the text, the times and the style. Anything you did not save is lost.\n\nYour videos, the subtitled videos you already saved and their .srt files are NOT deleted.",
       "¿Borrar y comenzar de nuevo en «Karaoke»?\n\nSe borra el karaoke «{0}»: la letra, los tiempos, la canción elegida y el fondo. Lo que no guardaste se pierde.\n\nTus canciones y los videos de karaoke que ya creaste NO se borran.": "Clear and start over in “Karaoke”?\n\nThe karaoke “{0}” is deleted: the lyrics, the times, the chosen song and the background. Anything you did not save is lost.\n\nYour songs and the karaoke videos you already made are NOT deleted.",
       "¿Borrar y comenzar de nuevo en el «Reproductor»?\n\nSe detiene la música y se quitan las canciones de la lista «{0}». Tus otras listas y tus archivos de música NO se borran.": "Clear and start over in the “Player”?\n\nThe music stops and the songs are removed from the list “{0}”. Your other lists and your music files are NOT deleted.",
@@ -4348,7 +4348,7 @@
 
     // ---------- 🧹 Borrar y comenzar de nuevo (cada pestaña) ----------
     const RESET = {
-      download: () => t('¿Borrar y comenzar de nuevo en «Descargar y recortar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.'),
+      download: () => t('¿Borrar y comenzar de nuevo en «Descargar / Editar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.'),
       subs: () => tf('¿Borrar y comenzar de nuevo en «Subtítulos»?\n\nSe borra el proyecto «{0}»: el video elegido, el texto, los tiempos y el estilo. Lo que no guardaste se pierde.\n\nTus videos, los videos con subtítulos que ya guardaste y sus .srt NO se borran.', Subs.p?.title || t('(sin título)')),
       karaoke: () => tf('¿Borrar y comenzar de nuevo en «Karaoke»?\n\nSe borra el karaoke «{0}»: la letra, los tiempos, la canción elegida y el fondo. Lo que no guardaste se pierde.\n\nTus canciones y los videos de karaoke que ya creaste NO se borran.', Karaoke.proj?.title || t('(sin título)')),
       player: () => tf('¿Borrar y comenzar de nuevo en el «Reproductor»?\n\nSe detiene la música y se quitan las canciones de la lista «{0}». Tus otras listas y tus archivos de música NO se borran.', Player.list()?.name || ''),
