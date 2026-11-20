@@ -1,5 +1,11 @@
 # Historial de versiones
 
+## 4.2.3
+- ✂ Edición: cada pantalla tiene su **título** y una explicación al pasar el mouse (ⓘ ¿qué es?):
+  ① **Fuente**: el archivo original, de donde sacas los tramos.
+  ② **Lienzo** (solo video): una foto del video final en el momento de «Viendo», para acomodar las animaciones.
+  ③ **Vista previa de la edición final**: el resultado ya armado (todavía sin guardar).
+
 ## 4.2.2
 - ✂ Edición de video: al mover «Viendo», dar clic en la línea de tiempo de animaciones o en 👁, la **vista previa de abajo también salta a ese momento**.
 - Si cambias algo después de hacer la vista previa, avisa que hay que volver a hacerla para ver los cambios.

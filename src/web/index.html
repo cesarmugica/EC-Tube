@@ -255,6 +255,9 @@
     .an-stage .ovl .bn { position: absolute; inset: 0; border-radius: 14px; border: 3px solid var(--c, #FE2C55); background: rgba(22,22,28,.93); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px 12px; box-sizing: border-box; overflow: hidden; line-height: 1.1; pointer-events: none; }
     .an-stage .ovl .rs { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 4px; background: #56ccf2; border: 2px solid #fff; cursor: nwse-resize; display: none; }
     .an-stage .ovl.on .rs { display: block; }
+    .scr-h { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; font-weight: 700; font-size: .95rem; cursor: help; width: fit-content; }
+    .scr-h .n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .8rem; flex: none; }
+    .scr-h .i { color: var(--muted); font-weight: 400; font-size: .85rem; border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; }
     .an-time { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: .88rem; } .an-time input { flex: 1; accent-color: var(--accent); }
     .fxline .chip.an { background: #56ccf2; } .fxline .chip .grip { position: absolute; right: 0; top: 0; bottom: 0; width: 7px; cursor: ew-resize; background: rgba(0,0,0,.25); }
     .fxrows li.on.an { border-color: #56ccf2; }
@@ -421,7 +424,8 @@
       <div class="ed-sources" id="edSources"></div>
       <div id="edViewer" hidden>
         <p id="edNow"></p>
-        <div id="edPlayerBox"></div>
+        <div class="scr-h" title="Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia."><span class="n">1</span><span>Fuente: el archivo original</span><span class="i">ⓘ ¿qué es?</span></div>
+        <div id="edPlayerBox" title="Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia."></div>
         <div class="wave" id="edWave" aria-label="Onda del audio: arrastra para marcar un tramo, clic para ir a ese punto"><canvas id="edCanvas"></canvas></div>
         <div class="wave-tools">
           <span class="grow" id="edWaveInfo">Arrastra sobre la onda para marcar un tramo · clic para ir a ese punto. Lo plano es silencio.</span>
@@ -462,7 +466,8 @@
           <span style="flex:1"></span>
           <button class="secondary" type="button" id="anOpen">➕ Agregar animación</button>
         </div>
-        <div class="an-stage" id="anStage"><video class="base" id="anVideo" muted preload="auto"></video></div>
+        <div class="scr-h" title="No se reproduce: es como una foto del video final en el momento que eliges con «Viendo». Aquí acomodas las animaciones: arrástralas para moverlas y jala la esquina azul para cambiar su tamaño."><span class="n">2</span><span>Lienzo: aquí acomodas las animaciones</span><span class="i">ⓘ ¿qué es?</span></div>
+        <div class="an-stage" id="anStage" title="No se reproduce: es como una foto del video final en el momento que eliges con «Viendo». Aquí acomodas las animaciones: arrástralas para moverlas y jala la esquina azul para cambiar su tamaño."><video class="base" id="anVideo" muted preload="auto"></video></div>
         <div class="an-time"><span>Viendo</span><input type="range" id="anScrub" min="0" max="1" step="0.01" value="0" aria-label="Momento del video que se ve en el lienzo"><span id="anTimeLbl">0:00.00</span></div>
         <p class="ed-help">Arrastra la animación en el lienzo para moverla y jala la esquina azul para cambiar su tamaño. En la línea de tiempo la mueves para elegir cuándo sale y estiras su borde derecho para cambiar cuánto dura.</p>
         <div class="fxline" id="anLine"></div>
@@ -1097,6 +1102,13 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia.": "Here you see and hear the original file you have selected. Mark a section on the waveform below and add it with “➕ Add fragment”. Your file does not change.",
+      "No se reproduce: es como una foto del video final en el momento que eliges con «Viendo». Aquí acomodas las animaciones: arrástralas para moverlas y jala la esquina azul para cambiar su tamaño.": "It does not play: it is like a snapshot of the final video at the moment you choose with “Showing”. Here you arrange the animations: drag them to move them and pull the blue corner to resize them.",
+      "Es la edición final ya armada, con tus fragmentos, sonidos y animaciones. Todavía no se guarda: presiona «💾 Guardar edición» cuando te guste. Si cambias algo, vuelve a hacer la vista previa.": "This is the final edit already put together, with your fragments, sounds and animations. It is not saved yet: press “💾 Save edit” when you like it. If you change something, make the preview again.",
+      "Fuente: el archivo original": "Source: the original file",
+      "Lienzo: aquí acomodas las animaciones": "Canvas: arrange the animations here",
+      "Vista previa de la edición final": "Preview of the final edit",
+      "ⓘ ¿qué es?": "ⓘ what is this?",
       "🎬 Animaciones encima": "🎬 Animations on top",
       "Personajes con tu texto en el letrero, efectos, cintillos o tus propias animaciones, encima del video.": "Characters with your text on the sign, effects, banners or your own animations, on top of the video.",
       "➕ Agregar animación": "➕ Add animation",
@@ -1679,7 +1691,8 @@
             if (st.status !== 'done') { this.say(t(st.error || (st.status === 'cancelled' ? 'Cancelado.' : 'No se pudo guardar la edición.'))); return; }
             if (preview) {
               const tag = this.kind === 'video' ? 'video' : 'audio';
-              $('#edPreviewBox').innerHTML = `<${tag} controls autoplay src="/media/${st.media.token}"></${tag}>`;
+              const d3 = t('Es la edición final ya armada, con tus fragmentos, sonidos y animaciones. Todavía no se guarda: presiona «💾 Guardar edición» cuando te guste. Si cambias algo, vuelve a hacer la vista previa.');
+              $('#edPreviewBox').innerHTML = `<div class="scr-h" title="${d3}"><span class="n">${this.kind === 'video' ? 3 : 2}</span><span>${t('Vista previa de la edición final')}</span><span class="i">${t('ⓘ ¿qué es?')}</span></div><${tag} controls autoplay src="/media/${st.media.token}" title="${d3}"></${tag}>`;
               Fx.watchPreview();
               this.say(t('Vista previa lista. No se guarda: cuando te guste, presiona «💾 Guardar edición».'), true);
             } else {

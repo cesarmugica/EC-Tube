@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "4.2.2"
+APP_VERSION = "4.2.3"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
