@@ -1,5 +1,11 @@
 # Historial de versiones
 
+## 5.1.1
+- 🧹 **Borrar y comenzar de nuevo** arriba de cada pestaña. Avisa antes qué se quita y que tus archivos no se borran:
+  - **Descargar y recortar**: los enlaces escritos, las descargas terminadas de la lista y todo lo de ✂ Edición.
+  - **Subtítulos** y **Karaoke**: el proyecto actual (video o canción elegidos, texto, tiempos y estilo).
+  - **Reproductor**: detiene la música y vacía la lista actual (las demás listas no se tocan).
+
 ## 5.1.0 — 🤖 Subtítulos automáticos
 - 💬 Subtítulos → **🤖 Automático**: EC-Tube **escucha el audio del video en tu PC y escribe los subtítulos** con sus tiempos, en bloques como en las películas. Tú corriges lo que no quede bien.
   - Idioma: español, inglés, portugués o que lo detecte solo. Calidad: ⚡ Rápida o 🎯 Mejor (más lenta).

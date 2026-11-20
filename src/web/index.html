@@ -279,6 +279,8 @@
     .s-style label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .s-style input[type=range] { width: 120px; accent-color: var(--accent); }
     #sScript { width: 100%; min-height: 160px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); padding: 10px 12px; font: inherit; resize: vertical; }
+    .reset-bar { display: flex; justify-content: flex-end; margin-bottom: -8px; }
+    .reset-bar button { font-size: .88rem; padding: 7px 14px; }
     .scr-h { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; font-weight: 700; font-size: .95rem; cursor: help; width: fit-content; }
     .scr-h .n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .8rem; flex: none; }
     .scr-h .i { color: var(--muted); font-weight: 400; font-size: .85rem; border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; }
@@ -380,6 +382,7 @@
       <button type="button" data-tab="player" role="tab">🎵 Reproductor</button>
     </nav>
     <div id="tabDownload" style="display:grid;gap:18px">
+    <div class="reset-bar"><button class="secondary" type="button" data-reset="download" title="Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)">🧹 Borrar y comenzar de nuevo</button></div>
     <section class="panel">
       <label class="title" for="urls">Pega aquí uno o varios enlaces</label>
       <textarea id="urls" placeholder="https://www.youtube.com/watch?v=…&#10;(uno por renglón)" spellcheck="false" autocomplete="off"></textarea>
@@ -540,6 +543,7 @@
     </div>
 
     <div id="tabPlayer" style="display:grid;gap:18px" hidden>
+    <div class="reset-bar"><button class="secondary" type="button" data-reset="player" title="Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)">🧹 Borrar y comenzar de nuevo</button></div>
       <section class="panel">
         <div class="pl-head">
           <select id="plSelect" aria-label="Lista"></select>
@@ -631,6 +635,7 @@
     </section>
 
     <div id="tabSubs" style="display:grid;gap:18px" hidden>
+    <div class="reset-bar"><button class="secondary" type="button" data-reset="subs" title="Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)">🧹 Borrar y comenzar de nuevo</button></div>
       <section class="panel">
         <div class="pl-head">
           <select id="sProjects" aria-label="Subtítulos"></select>
@@ -744,6 +749,7 @@
     </div>
 
     <div id="tabKaraoke" style="display:grid;gap:18px" hidden>
+    <div class="reset-bar"><button class="secondary" type="button" data-reset="karaoke" title="Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)">🧹 Borrar y comenzar de nuevo</button></div>
       <section class="panel">
         <div class="pl-head">
           <select id="kProjects" aria-label="Karaoke"></select>
@@ -1245,6 +1251,12 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "🧹 Borrar y comenzar de nuevo": "🧹 Clear and start over",
+      "Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)": "Remove what is in this tab and start from scratch (your files are not deleted)",
+      "¿Borrar y comenzar de nuevo en «Descargar y recortar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.": "Clear and start over in “Download and trim”?\n\nThe typed links, the list of finished downloads and everything in ✂ Edit (chosen videos or songs, fragments, sounds and animations) are removed. Anything you did not save is lost.\n\nYour downloaded files and the edits you already saved are NOT deleted.",
+      "¿Borrar y comenzar de nuevo en «Subtítulos»?\n\nSe borra el proyecto «{0}»: el video elegido, el texto, los tiempos y el estilo. Lo que no guardaste se pierde.\n\nTus videos, los videos con subtítulos que ya guardaste y sus .srt NO se borran.": "Clear and start over in “Subtitles”?\n\nThe project “{0}” is deleted: the chosen video, the text, the times and the style. Anything you did not save is lost.\n\nYour videos, the subtitled videos you already saved and their .srt files are NOT deleted.",
+      "¿Borrar y comenzar de nuevo en «Karaoke»?\n\nSe borra el karaoke «{0}»: la letra, los tiempos, la canción elegida y el fondo. Lo que no guardaste se pierde.\n\nTus canciones y los videos de karaoke que ya creaste NO se borran.": "Clear and start over in “Karaoke”?\n\nThe karaoke “{0}” is deleted: the lyrics, the times, the chosen song and the background. Anything you did not save is lost.\n\nYour songs and the karaoke videos you already made are NOT deleted.",
+      "¿Borrar y comenzar de nuevo en el «Reproductor»?\n\nSe detiene la música y se quitan las canciones de la lista «{0}». Tus otras listas y tus archivos de música NO se borran.": "Clear and start over in the “Player”?\n\nThe music stops and the songs are removed from the list “{0}”. Your other lists and your music files are NOT deleted.",
       "Que lo detecte solo": "Detect it automatically",
       "Calidad": "Quality",
       "⚡ Rápida": "⚡ Fast",
@@ -4286,6 +4298,40 @@
       } catch (error) { $('#kExportMsg').textContent = error.message; }
     });
     $('#kCancelExport').addEventListener('click', () => { if (Karaoke.job) api(`/api/karaoke/export/${Karaoke.job}/cancel`, {}).catch(() => {}); });
+
+
+    // ---------- 🧹 Borrar y comenzar de nuevo (cada pestaña) ----------
+    const RESET = {
+      download: () => t('¿Borrar y comenzar de nuevo en «Descargar y recortar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.'),
+      subs: () => tf('¿Borrar y comenzar de nuevo en «Subtítulos»?\n\nSe borra el proyecto «{0}»: el video elegido, el texto, los tiempos y el estilo. Lo que no guardaste se pierde.\n\nTus videos, los videos con subtítulos que ya guardaste y sus .srt NO se borran.', Subs.p?.title || t('(sin título)')),
+      karaoke: () => tf('¿Borrar y comenzar de nuevo en «Karaoke»?\n\nSe borra el karaoke «{0}»: la letra, los tiempos, la canción elegida y el fondo. Lo que no guardaste se pierde.\n\nTus canciones y los videos de karaoke que ya creaste NO se borran.', Karaoke.proj?.title || t('(sin título)')),
+      player: () => tf('¿Borrar y comenzar de nuevo en el «Reproductor»?\n\nSe detiene la música y se quitan las canciones de la lista «{0}». Tus otras listas y tus archivos de música NO se borran.', Player.list()?.name || ''),
+    };
+    document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', async () => {
+      const k = b.dataset.reset;
+      if (!confirm(RESET[k]())) return;
+      if (k === 'download') {
+        $('#urls').value = ''; if (!$('#editor').hidden) closeEditor();
+        await api('/api/jobs/clear', {}).catch(() => {}); refreshJobs();
+        Fx.stop(); Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1;
+        Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.say(''); Edit.render(); say('');
+      } else if (k === 'subs') {
+        if (Subs.marking) Subs.stopMark(); sVideo.pause();
+        if (Subs.p && Subs.p.id) await api('/api/subs/delete', {id: Subs.p.id}).catch(() => {});
+        await Subs.loadList(); Subs.p = Subs.blank(); Subs.sel = -1; Subs.undo = [];
+        $('#sProjects').insertAdjacentHTML('afterbegin', `<option value="" selected>${t('(nuevos subtítulos)')}</option>`);
+        Subs.fill(); $('#sStatus').textContent = ''; $('#sDlMsg').textContent = ''; Subs.say(t('Presiona «⏺ Marcar». Cuando empiece a decirse un subtítulo, aprieta la ESPACIADORA y mantenla; suéltala cuando termine. El siguiente queda listo. ⌫ deshace · Esc detiene.'));
+      } else if (k === 'karaoke') {
+        if (Karaoke.marking) Karaoke.stopMark(); kMedia.pause();
+        if (Karaoke.proj && Karaoke.proj.id) await api('/api/karaoke/delete', {id: Karaoke.proj.id}).catch(() => {});
+        Karaoke.ready = false; await Karaoke.init(); $('#kNew').click();
+      } else if (k === 'player') {
+        Player.stop(); Player.playing = null; audio.removeAttribute('src');
+        const list = Player.list(); if (list) list.items = [];
+        Player.save(); Player.render(); Player.renderBar();
+      }
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }));
 
     (async function init() {
       try { const info = await api('/api/info'); settings = info.settings; applySettings(); showInfo(info); }
