@@ -279,6 +279,16 @@
     .s-style label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .s-style input[type=range] { width: 120px; accent-color: var(--accent); }
     #sScript { width: 100%; min-height: 160px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); padding: 10px 12px; font: inherit; resize: vertical; }
+    .ask { z-index: 90; }
+    .ask .modal-panel { width: min(520px, 100%); padding: 22px 22px 18px; display: grid; gap: 12px; animation: askIn .16s ease-out; }
+    @keyframes askIn { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+    .ask h3 { margin: 0; font-size: 1.12rem; line-height: 1.35; display: flex; gap: 10px; align-items: flex-start; }
+    .ask h3 .ic { font-size: 1.5rem; line-height: 1; }
+    .ask p { margin: 0; color: var(--muted); line-height: 1.45; white-space: pre-line; }
+    .ask p.safe { color: var(--text); background: color-mix(in srgb, var(--ok) 14%, var(--bg)); border: 1px solid color-mix(in srgb, var(--ok) 45%, var(--border)); border-radius: 10px; padding: 9px 12px; }
+    .ask p.safe::before { content: '✅ '; }
+    .ask .btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+    .ask .btns .danger { background: #d64545; } .ask .btns .danger:hover:not(:disabled) { background: #e45a5a; }
     .reset-bar { display: flex; justify-content: flex-end; margin-bottom: -8px; }
     .reset-bar button { font-size: .88rem; padding: 7px 14px; }
     .scr-h { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; font-weight: 700; font-size: .95rem; cursor: help; width: fit-content; }
@@ -573,6 +583,11 @@
         <ul class="lib" id="lib"></ul>
       </section>
     </div>
+
+    <section id="askBox" class="modal ask" hidden role="alertdialog" aria-modal="true" aria-labelledby="askTitle">
+      <div class="modal-panel"><h3 id="askTitle"></h3><div id="askBody" style="display:grid;gap:10px"></div>
+        <div class="btns"><button class="secondary" type="button" id="askNo">Cancelar</button><button type="button" id="askYes">Sí, continuar</button></div></div>
+    </section>
 
     <section id="anPicker" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="anTitle">
       <div class="modal-panel">
@@ -1251,6 +1266,8 @@
       "Ese sonido no es de «Mis sonidos».": "That sound is not in “My sounds”.",
       "Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.": "You made changes after the preview: press “{0}” again to see them.",
       "▶ Ver edición final": "▶ Watch final edit",
+      "Sí, continuar": "Yes, continue",
+      "Sí": "Yes",
       "🧹 Borrar y comenzar de nuevo": "🧹 Clear and start over",
       "Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)": "Remove what is in this tab and start from scratch (your files are not deleted)",
       "¿Borrar y comenzar de nuevo en «Descargar y recortar»?\n\nSe quitan los enlaces escritos, la lista de descargas terminadas y todo lo que hay en ✂ Edición (videos o canciones elegidos, fragmentos, sonidos y animaciones). Lo que no guardaste se pierde.\n\nTus archivos descargados y las ediciones que ya guardaste NO se borran.": "Clear and start over in “Download and trim”?\n\nThe typed links, the list of finished downloads and everything in ✂ Edit (chosen videos or songs, fragments, sounds and animations) are removed. Anything you did not save is lost.\n\nYour downloaded files and the edits you already saved are NOT deleted.",
@@ -1482,6 +1499,24 @@
       try { await fetch('/api/settings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({language: $('#langSelect').value})}); } catch (_) {}
       location.reload();
     });
+    // Preguntar en una ventanita con estilo (en vez del confirm del navegador). Regresa true / false.
+    // El primer renglón es la pregunta; los párrafos que dicen que algo NO se borra salen en verde.
+    function ask(message, {ok, danger} = {}) {
+      return new Promise(resolve => {
+        const box = $('#askBox'), [title, ...rest] = String(message).split('\n\n');
+        const destructive = danger ?? /borra|quita|vac[ií]a|pierde|cambia/i.test(message);
+        $('#askTitle').innerHTML = `<span class="ic">${destructive ? '⚠️' : '❓'}</span><span>${esc(title)}</span>`;
+        $('#askBody').innerHTML = rest.map(x => `<p class="${/\bNO\b|no se (borra|toca)|not deleted|NOT/.test(x) ? 'safe' : ''}">${esc(x)}</p>`).join('');
+        const yes = $('#askYes'), no = $('#askNo');
+        yes.textContent = ok || t(destructive ? 'Sí, continuar' : 'Sí'); yes.classList.toggle('danger', destructive); no.textContent = t('Cancelar');
+        const last = document.activeElement;
+        const done = value => { box.hidden = true; document.removeEventListener('keydown', key, true); box.onclick = yes.onclick = no.onclick = null; if (last && last.focus) last.focus(); resolve(value); };
+        const key = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); } };
+        yes.onclick = () => done(true); no.onclick = () => done(false); box.onclick = e => { if (e.target === box) done(false); };
+        document.addEventListener('keydown', key, true);
+        box.hidden = false; no.focus();
+      });
+    }
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
     let settings = {}, saving = null;
 
@@ -1833,10 +1868,10 @@
         this.select(i); this.save(); this.say('');
         $('#edPanel').scrollIntoView({behavior: 'smooth', block: 'start'});
       },
-      remove(i) {
+      async remove(i) {
         const s0 = this.sources[i], n = this.frags.filter(f => f.token === s0.token).length;
         const na = this.afrags.filter(f => f.token === s0.token).length;
-        if ((n + na) && !confirm(tf('¿Quitar «{0}» de la edición?\n\nTambién se quitan sus {1} fragmentos de la lista. El archivo NO se borra de tu computadora.', s0.name, n + na))) return;
+        if ((n + na) && !await ask(tf('¿Quitar «{0}» de la edición?\n\nTambién se quitan sus {1} fragmentos de la lista. El archivo NO se borra de tu computadora.', s0.name, n + na))) return;
         this.frags = this.frags.filter(f => f.token !== s0.token); this.afrags = this.afrags.filter(f => f.token !== s0.token); this.sources.splice(i, 1);
         this.editing = -1;
         if (!this.sources.length) { this.active = -1; this.unload(); } else this.select(Math.min(i, this.sources.length - 1));
@@ -2055,7 +2090,7 @@
       async delMine(id) {
         const x = this.find(id); if (!x) return;
         const used = Edit.fx.filter(f => f.id === id).length;
-        if (!confirm(tf('¿Quitar «{0}» de ⭐ Mis sonidos?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.', this.name(x))
+        if (!await ask(tf('¿Quitar «{0}» de ⭐ Mis sonidos?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.', this.name(x))
           + (used ? '\n\n' + tf('También se quita de esta edición ({0} vez/veces).', used) : ''))) return;
         try { const d = await api('/api/effects/remove', {id}); this.lib = {bank: d.bank, mine: d.mine}; } catch (error) { $('#fxNote').textContent = t(error.message); return; }
         if (used) { Edit.fx = Edit.fx.filter(f => f.id !== id); Edit.fxOn = -1; Edit.save(); this.render(); }
@@ -2238,7 +2273,7 @@
       async delMine(id) {
         const x = this.find(id); if (!x) return;
         const used = Edit.ov.filter(o => o.id === id).length;
-        if (!confirm(tf('¿Quitar «{0}» de ⭐ Mis animaciones?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.', x.name)
+        if (!await ask(tf('¿Quitar «{0}» de ⭐ Mis animaciones?\n\nSe borra la copia que EC-Tube guardó. Tu archivo original NO se borra y las ediciones que ya guardaste no cambian.', x.name)
           + (used ? '\n\n' + tf('También se quita de esta edición ({0} vez/veces).', used) : ''))) return;
         try { const d = await api('/api/anims/remove', {id}); this.lib = {items: d.items, bank: d.bank}; } catch (error) { Edit.say(t(error.message)); return; }
         if (used) { Edit.ov = Edit.ov.filter(o => o.id !== id); Edit.ovOn = -1; Edit.save(); this.render(); }
@@ -2498,18 +2533,18 @@
       const b = event.target.closest('button'); if (!b) return;
       if (b.dataset.rm !== undefined) Edit.remove(+b.dataset.rm); else if (b.dataset.src !== undefined) Edit.select(+b.dataset.src);
     });
-    document.querySelectorAll('input[name=edKind]').forEach(r => r.addEventListener('change', () => {
+    document.querySelectorAll('input[name=edKind]').forEach(r => r.addEventListener('change', async () => {
       const to = r.value;
       if (to === 'video' && Edit.frags.some(f => Edit.src(f.token)?.kind === 'audio')) {
         Edit.setKind('audio'); Edit.say(t('Hay canciones en la lista de fragmentos: un video solo se arma con fragmentos de video. Quítalas o vacía la edición.')); return;
       }
-      if (to === 'audio' && Edit.afrags.length && !confirm(t('¿Pasar a edición de audio?\n\nSe quita la pista de audio del video. Los fragmentos de la lista principal se quedan (se usa su audio).'))) { Edit.setKind('video'); return; }
+      if (to === 'audio' && Edit.afrags.length && !await ask(t('¿Pasar a edición de audio?\n\nSe quita la pista de audio del video. Los fragmentos de la lista principal se quedan (se usa su audio).'))) { Edit.setKind('video'); return; }
       if (to === 'audio') Edit.afrags = [];
       Edit.editing = -1; Edit.setKind(to); Edit.save(); Edit.render();
     }));
-    $('#edVAudio').addEventListener('change', () => {
+    $('#edVAudio').addEventListener('change', async () => {
       const v = $('#edVAudio').value;
-      if (v !== 'other' && Edit.afrags.length && !confirm(t('¿Quitar la pista de audio?\n\nSe borran sus fragmentos de la lista (tus archivos no se tocan).'))) { $('#edVAudio').value = Edit.vaudio; return; }
+      if (v !== 'other' && Edit.afrags.length && !await ask(t('¿Quitar la pista de audio?\n\nSe borran sus fragmentos de la lista (tus archivos no se tocan).'))) { $('#edVAudio').value = Edit.vaudio; return; }
       if (v !== 'other') Edit.afrags = [];
       Edit.editing = -1; Edit.setVAudio(v); Edit.save(); Edit.render();
     });
@@ -2596,9 +2631,9 @@
     $('#edMode').addEventListener('change', () => { Edit.save(); $('#edSave').textContent = t($('#edMode').value === 'music' ? '🎵 Quitar la voz y guardar' : $('#edMode').value === 'voice' ? '🎤 Quitar la música y guardar' : '💾 Guardar edición'); });
     $('#edPreview').addEventListener('click', () => Edit.run(true));
     $('#edSave').addEventListener('click', () => Edit.run(false));
-    $('#edClear').addEventListener('click', () => {
+    $('#edClear').addEventListener('click', async () => {
       if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length && !Edit.ov.length) return;
-      if (!confirm(t('¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos, los sonidos y las animaciones encima de este editor. Tus archivos, «Mis sonidos», «Mis animaciones» y las ediciones que ya guardaste NO se borran.'))) return;
+      if (!await ask(t('¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos, los sonidos y las animaciones encima de este editor. Tus archivos, «Mis sonidos», «Mis animaciones» y las ediciones que ya guardaste NO se borran.'))) return;
       Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
     });
     Edit.restore();
@@ -2707,16 +2742,16 @@
         if (now) return go(); this.saveTimer = setTimeout(go, 700);
       },
       // ---- texto ----
-      useScript() {
+      async useScript() {
         const lines = $('#sScript').value.split('\n').map(x => x.trim()).filter(Boolean).map(x => x.split(/\s+\/\s+/).join('\n'));
         if (!lines.length) { $('#sScript').focus(); return; }
-        if (this.p.blocks.length && !confirm(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} renglones de tu guion?\n\nLos tiempos que ya marcaste se pierden. Tu video no cambia.', this.p.blocks.length, lines.length))) return;
+        if (this.p.blocks.length && !await ask(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} renglones de tu guion?\n\nLos tiempos que ya marcaste se pierden. Tu video no cambia.', this.p.blocks.length, lines.length))) return;
         this.p.blocks = lines.map(text => ({text, start: null, end: null})); this.sel = 0; this.save(); this.render();
         this.say(tf('{0} subtítulos listos. Ahora presiona «⏺ Marcar» y mantén la espaciadora mientras se dice cada uno.', lines.length));
         $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
       },
-      setBlocks(blocks, what) {
-        if (this.p.blocks.length && !confirm(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} de {2}?', this.p.blocks.length, blocks.length, what))) return false;
+      async setBlocks(blocks, what) {
+        if (this.p.blocks.length && !await ask(tf('¿Cambiar los {0} subtítulos que ya tienes por los {1} de {2}?', this.p.blocks.length, blocks.length, what))) return false;
         this.p.blocks = blocks; this.sel = -1; this.save(); this.render(); return true;
       },
       say(text, rec = false) { $('#sMsg').textContent = text; $('#sMsg').classList.toggle('rec', rec); },
@@ -2826,7 +2861,7 @@
     $('#sNew').addEventListener('click', () => { if (Subs.marking) Subs.stopMark(); Subs.p = Subs.blank(); Subs.sel = -1; $('#sProjects').insertAdjacentHTML('afterbegin', `<option value="" selected>${t('(nuevos subtítulos)')}</option>`); Subs.fill(); $('#sStatus').textContent = ''; });
     $('#sDelete').addEventListener('click', async () => {
       if (!Subs.p.id) { Subs.p = Subs.blank(); Subs.fill(); return; }
-      if (!confirm(tf('¿Borrar el proyecto de subtítulos «{0}»?\n\nSe borra la lista de subtítulos y su estilo. Tu video original, los videos con subtítulos que ya guardaste y sus .srt NO se borran.', Subs.p.title || t('(sin título)')))) return;
+      if (!await ask(tf('¿Borrar el proyecto de subtítulos «{0}»?\n\nSe borra la lista de subtítulos y su estilo. Tu video original, los videos con subtítulos que ya guardaste y sus .srt NO se borran.', Subs.p.title || t('(sin título)')))) return;
       await api('/api/subs/delete', {id: Subs.p.id}).catch(() => {}); await Subs.loadList(); const first = $('#sProjects').value;
       if (first) await Subs.open(first); else { Subs.p = Subs.blank(); Subs.fill(); }
     });
@@ -2861,7 +2896,7 @@
     document.querySelectorAll('input[name=sMethod]').forEach(r => r.addEventListener('change', () => document.querySelectorAll('[data-sm]').forEach(el => { el.hidden = el.dataset.sm !== r.value; })));
     $('#sUseScript').addEventListener('click', () => Subs.useScript());
     $('#sImport').addEventListener('click', async () => {
-      try { const d = await api('/api/subs/import', {}); if (d.blocks) { if (!d.blocks.length) { Subs.say(t('Ese archivo no trae subtítulos.')); return; } if (Subs.setBlocks(d.blocks, t('ese archivo'))) Subs.say(tf('✅ {0} subtítulos cargados del archivo.', d.blocks.length)); } }
+      try { const d = await api('/api/subs/import', {}); if (d.blocks) { if (!d.blocks.length) { Subs.say(t('Ese archivo no trae subtítulos.')); return; } if (await Subs.setBlocks(d.blocks, t('ese archivo'))) Subs.say(tf('✅ {0} subtítulos cargados del archivo.', d.blocks.length)); } }
       catch (error) { Subs.say(t(error.message)); }
     });
     const sAsrInfo = async () => {
@@ -2889,7 +2924,7 @@
           b.disabled = false; cancel.hidden = true; sAsrInfo();
           if (j.status === 'cancelled') { Subs.say(t('Cancelado.')); return; }
           if (j.status !== 'done') { Subs.say(t(j.error || 'No se pudo.')); return; }
-          if (Subs.setBlocks(j.blocks, t('lo que escuchó EC-Tube'))) Subs.say(tf('✅ {0} subtítulos escritos. Revísalos con ▶ Play y corrige texto o tiempos en la lista.', j.blocks.length));
+          if (await Subs.setBlocks(j.blocks, t('lo que escuchó EC-Tube'))) Subs.say(tf('✅ {0} subtítulos escritos. Revísalos con ▶ Play y corrige texto o tiempos en la lista.', j.blocks.length));
           $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
         };
         setTimeout(poll, 700);
@@ -2906,7 +2941,7 @@
           if (j.status === 'running') { setTimeout(poll, 800); return; }
           b.disabled = false;
           if (j.status !== 'done') { Subs.say(t(j.error)); return; }
-          if (Subs.setBlocks(j.blocks, 'YouTube')) Subs.say(tf('✅ {0} subtítulos de YouTube. Revísalos: los automáticos traen errores. Los tiempos ya vienen puestos.', j.blocks.length));
+          if (await Subs.setBlocks(j.blocks, 'YouTube')) Subs.say(tf('✅ {0} subtítulos de YouTube. Revísalos: los automáticos traen errores. Los tiempos ya vienen puestos.', j.blocks.length));
           $('#sStage').scrollIntoView({behavior: 'smooth', block: 'center'});
         };
         setTimeout(poll, 800);
@@ -3110,13 +3145,13 @@
       const list = Player.list(); const name = (prompt(t('Nuevo nombre de la lista:'), list.name) || '').trim(); if (!name) return;
       list.name = name; Player.render(); Player.renderBar(); Player.save();
     });
-    $('#plDelete').addEventListener('click', () => {
-      const list = Player.list(); if (Player.lists.length < 2 || !confirm(tf('¿Borrar la lista «{0}»? Las canciones no se borran de tu PC.', list.name))) return;
+    $('#plDelete').addEventListener('click', async () => {
+      const list = Player.list(); if (Player.lists.length < 2 || !await ask(tf('¿Borrar la lista «{0}»? Las canciones no se borran de tu PC.', list.name))) return;
       if (Player.playing && Player.playing.listId === list.id) { audio.pause(); Player.playing = null; }
       Player.lists = Player.lists.filter(l => l !== list); Player.current = Player.lists[0].id; Player.render(); Player.renderBar(); Player.save();
     });
-    $('#plClear').addEventListener('click', () => {
-      const list = Player.list(); if (!list.items.length || !confirm(tf('¿Quitar todas las canciones de «{0}»? (No se borran de tu PC.)', list.name))) return;
+    $('#plClear').addEventListener('click', async () => {
+      const list = Player.list(); if (!list.items.length || !await ask(tf('¿Quitar todas las canciones de «{0}»? (No se borran de tu PC.)', list.name))) return;
       list.items = []; Player.render(); Player.save();
     });
     $('#tracks').addEventListener('click', event => {
@@ -3810,7 +3845,7 @@
       $('#kProjects').insertAdjacentHTML('afterbegin', `<option value="" selected>${t('(nuevo karaoke)')}</option>`); $('#kTitle').focus();
     });
     $('#kDelete').addEventListener('click', async () => {
-      const p = Karaoke.proj; if (!p.id || !confirm(tf('¿Borrar el karaoke «{0}»? (Los videos que ya creaste no se borran.)', p.title || t('(sin título)')))) return;
+      const p = Karaoke.proj; if (!p.id || !await ask(tf('¿Borrar el karaoke «{0}»? (Los videos que ya creaste no se borran.)', p.title || t('(sin título)')))) return;
       await api('/api/karaoke/delete', {id: p.id}).catch(() => {}); kMedia.pause(); Karaoke.ready = false; await Karaoke.init();
     });
     $('#kTitle').addEventListener('input', () => { Karaoke.proj.title = $('#kTitle').value; Karaoke.save(); kDisclaimer(); });
@@ -4140,7 +4175,7 @@
       const p = Karaoke.proj;
       if (!p.guide || !p.source) return;
       if (!p.lines.length) { Karaoke.msg(t('Primero escribe la letra.')); return; }
-      if (p.lines.some(l => l.some(u => u.start != null)) && !confirm(t('Esto cambia los tiempos de TODA la canción (lo puedes deshacer con ↶). ¿Seguir?'))) return;
+      if (p.lines.some(l => l.some(u => u.start != null)) && !await ask(t('Esto cambia los tiempos de TODA la canción (lo puedes deshacer con ↶). ¿Seguir?'))) return;
       Karaoke.msg(t('🤖 Escuchando la voz y acomodando la letra…'), true);
       try {
         const data = await api('/api/karaoke/autosync', {source_token: p.source.token, guide_token: p.guide.token, lines: p.lines.map(l => l.map(u => u.text))});
@@ -4309,7 +4344,7 @@
     };
     document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', async () => {
       const k = b.dataset.reset;
-      if (!confirm(RESET[k]())) return;
+      if (!await ask(RESET[k]())) return;
       if (k === 'download') {
         $('#urls').value = ''; if (!$('#editor').hidden) closeEditor();
         await api('/api/jobs/clear', {}).catch(() => {}); refreshJobs();

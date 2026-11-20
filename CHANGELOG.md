@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.1.2
+- Las preguntas de confirmación («¿Borrar…?», «¿Quitar…?», «¿Vaciar…?») ahora salen en una **ventanita con el estilo de EC-Tube** en vez del aviso del navegador: la pregunta arriba, lo que se pierde, y en verde lo que **NO** se borra. Botones Cancelar / Sí, continuar (Esc cancela, Enter acepta).
+
 ## 5.1.1
 - 🧹 **Borrar y comenzar de nuevo** arriba de cada pestaña. Avisa antes qué se quita y que tus archivos no se borran:
   - **Descargar y recortar**: los enlaces escritos, las descargas terminadas de la lista y todo lo de ✂ Edición.
