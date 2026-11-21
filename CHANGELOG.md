@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.2.2
+- Abajo de la ventana: «¿Te ha servido EC-Tube? Invítanos un café (PayPal): @blukastle».
+
 ## 5.2.1
 - El aviso «✅ Banco de animaciones listo» ahora se quita solo a los 10 segundos y tiene un ✕ para cerrarlo. Antes se quedaba arriba todo el tiempo.
 

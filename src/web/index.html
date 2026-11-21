@@ -96,6 +96,9 @@
     .modal-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; align-items: center; }
     .modal-actions .grow { flex: 1 1 auto; color: var(--muted); font-size: .88rem; }
     footer { color: var(--muted); font-size: .76rem; text-align: center; padding-bottom: 24px; }
+    footer .credit { color: var(--text); font-size: .9rem; margin-top: 8px; }
+    footer .credit a { color: var(--accent-strong); font-weight: 700; text-decoration: none; }
+    footer .credit a:hover { text-decoration: underline; }
     /* ---------- Pestañas ---------- */
     .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
     .tabs button { background: none; color: var(--muted); border-radius: 10px 10px 0 0; padding: 10px 16px; border-bottom: 3px solid transparent; }
@@ -972,7 +975,8 @@
       <audio id="pbAudio" preload="auto"></audio>
     </div>
 
-    <footer>EC-Tube usa <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener" style="color:inherit">yt-dlp</a>, Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.</footer>
+    <footer>EC-Tube usa <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener" style="color:inherit">yt-dlp</a>, Deno y FFmpeg. Descarga solo contenido tuyo, libre o con permiso.
+      <div class="credit">☕❤️ <span>¿Te ha servido EC-Tube? Invítanos un café (PayPal):</span> <a href="https://www.paypal.com/paypalme/blukastle" target="_blank" rel="noopener">@blukastle</a> ☕❤️</div></footer>
   </main>
 
   <script>
@@ -1486,6 +1490,7 @@
       "Esa animación no es de «Mis animaciones».": "That animation is not in “My animations”.",
       "No se pudo descargar el banco (¿sin internet?).": "Could not download the bank (no internet?).",
       "Todavía no hay banco publicado.": "No bank has been published yet.",
+      "¿Te ha servido EC-Tube? Invítanos un café (PayPal):": "Has EC-Tube helped you? Buy us a coffee (PayPal):",
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
