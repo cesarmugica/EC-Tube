@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 5.7.2
+- **Lo que ves en la onda es lo que oyes**: el ▶ del reproductor de la edición final toca lo marcado **con la entrada / salida suave** (en video, también se oscurece). Igual «✔ Aplicar efecto» y «🎧 Escuchar edición final», ya sin esperar a que se arme otra versión.
+- «▶ Escuchar fragmento» toca lo marcado sin efectos y «▶ Escuchar todo» la unión completa.
+
 ## 5.7.1
 - Regresa **«🔄 Armar y escuchar la unión de los fragmentos»** en la edición final.
 - La **onda de la edición final muestra la entrada / salida suave**: la onda sube y baja con el fade y una línea amarilla marca dónde empieza y termina, con sus segundos. Cambia en cuanto mueves los segundos o las casillas.
