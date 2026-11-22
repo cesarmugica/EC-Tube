@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.5.2"
+APP_VERSION = "5.6.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1225,6 +1225,13 @@ def waveform(path: Path, buckets: int = 1600) -> dict:
     return data
 
 
+def _num(value) -> float:
+    try:
+        return max(0.0, float(value or 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _cut_list(frags: list, modes: list, a: float, b: float,
               positions: list[float] | None = None) -> tuple[list, list, list[float]]:
     """Quedarse solo con lo que cae entre a y b (segundos de la edición final), ajustando los fragmentos de las orillas.
@@ -1251,7 +1258,7 @@ class EditJob:
                  audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None,
                  overlays: list[dict] | None = None, frag_modes: list[str] | None = None,
                  audio_modes: list[str] | None = None, positions: list[float] | None = None,
-                 max_total: float | None = None) -> None:
+                 max_total: float | None = None, fade_in: float = 0.0, fade_out: float = 0.0) -> None:
         self.id = uuid.uuid4().hex[:12]
         # Capas: dónde empieza cada fragmento en la edición final. Si se enciman, uno se desvanece mientras entra el otro;
         # si hay espacio entre ellos, queda silencio (y negro en video). None = pegados uno tras otro (lo de siempre).
@@ -1294,6 +1301,9 @@ class EditJob:
                     acc += en - st
             self.total = tail
         self.effects = [e for e in self.effects if e["at"] < self.total]
+        # entrada y salida suave de toda la edición (desde / hasta silencio, y en video desde / hasta negro)
+        self.fade_in = max(0.0, min(float(fade_in or 0), 30.0, self.total / 2))
+        self.fade_out = max(0.0, min(float(fade_out or 0), 30.0, self.total / 2))
         self.overlays = [o for o in (self.overlays or []) if o["at"] < self.total]
         first = fragments[0][0]
         if kind == "video":
@@ -1322,6 +1332,18 @@ class EditJob:
         if self.smooth and dur > 0.1:  # quitar el «clic» de las uniones
             fade = f",afade=t=in:d=0.015,afade=t=out:st={max(0.0, dur - 0.015):.3f}:d=0.015"
         return f"{label}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS{fade}[{out}]"
+
+    def _fades(self, chains: list[str], label: str, kind: str) -> str:
+        """Entrada / salida suave de toda la edición. Regresa la etiqueta nueva (o la misma si no hay)."""
+        parts = []
+        if self.fade_in > 0:
+            parts.append(f"{'afade' if kind == 'a' else 'fade'}=t=in:st=0:d={self.fade_in:.3f}")
+        if self.fade_out > 0:
+            parts.append(f"{'afade' if kind == 'a' else 'fade'}=t=out:st={max(0.0, self.total - self.fade_out):.3f}:d={self.fade_out:.3f}")
+        if not parts:
+            return label
+        chains.append(f"{label}{','.join(parts)}[fade{kind}]")
+        return f"[fade{kind}]"
 
     def _fx_chains(self, base: str, add_input, chains: list[str], out: str) -> None:
         """Mezclar los efectos encima de `base` (dura lo mismo que la edición)."""
@@ -1430,6 +1452,7 @@ class EditJob:
             if with_fx and self.effects:
                 self._fx_chains(track, add_input, chains, "mix")
                 track = "[mix]"
+            track = self._fades(chains, track, "a")
             args += ["-filter_complex", ";".join(chains), "-map", track, "-vn"]
             if self.preview:
                 args += ["-c:a", "libmp3lame", "-b:a", "128k"]
@@ -1501,6 +1524,9 @@ class EditJob:
         if fx:
             self._fx_chains("[a]", add_input, chains, "mix")
             alabel = "[mix]"
+        vout = self._fades(chains, vout, "v")
+        if has_audio:
+            alabel = self._fades(chains, alabel, "a")
         maps = ["-map", vout] + (["-map", alabel] if has_audio else [])
         args += ["-filter_complex", ";".join(chains), *maps]
         if self.preview:
@@ -3266,7 +3292,8 @@ class Handler(BaseHTTPRequestHandler):
                 EDITS.pop(old.id, None)
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
-                          audio_mode, audio_fragments, effects, overlays, modes, amodes, positions, max_total)
+                          audio_mode, audio_fragments, effects, overlays, modes, amodes, positions, max_total,
+                          *((0.0, 0.0) if preview else (_num(data.get("fade_in")), _num(data.get("fade_out")))))
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return

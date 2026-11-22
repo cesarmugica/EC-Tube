@@ -583,6 +583,13 @@
           <button class="secondary" type="button" id="edCutPlay">▶ Escuchar como se va a guardar</button>
           <button class="link" type="button" id="edCutReset">Sin recorte</button>
         </div>
+        <div class="ed-times">
+          <label class="check"><input type="checkbox" id="edFadeIn"> 🌅 Entrada suave (fade in)</label>
+          <label class="field"><input id="edFadeInS" type="number" min="0.5" max="30" step="0.5" value="2" style="width:70px" aria-label="Segundos de la entrada suave"> s</label>
+          <label class="check"><input type="checkbox" id="edFadeOut"> 🌇 Salida suave (fade out)</label>
+          <label class="field"><input id="edFadeOutS" type="number" min="0.5" max="30" step="0.5" value="3" style="width:70px" aria-label="Segundos de la salida suave"> s</label>
+        </div>
+        <p class="ed-help">Entrada suave: al empezar, el sonido sube poco a poco desde silencio. Salida suave: al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro. Se aplica a lo que se guarda (después del recorte) y lo oyes con «▶ Escuchar como se va a guardar».</p>
         <div class="ed-foot">
           <span class="grow"></span>
           <button class="secondary" type="button" id="edClear">🧹 Vaciar edición</button>
@@ -1039,6 +1046,11 @@
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
+      '🌅 Entrada suave (fade in)': '🌅 Fade in',
+      '🌇 Salida suave (fade out)': '🌇 Fade out',
+      'Segundos de la entrada suave': 'Fade-in seconds',
+      'Segundos de la salida suave': 'Fade-out seconds',
+      'Entrada suave: al empezar, el sonido sube poco a poco desde silencio. Salida suave: al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro. Se aplica a lo que se guarda (después del recorte) y lo oyes con «▶ Escuchar como se va a guardar».': 'Fade in: at the start, the sound rises little by little from silence. Fade out: at the end, it goes down to silence. In video the picture also comes from black and goes to black. It applies to what is saved (after the trim) and you hear it with “▶ Play it as it will be saved”.',
       'Arma este fragmento con sus sonidos (encima, al inicio y al final) y con su voz/música, tal como va a quedar': 'Builds this clip with its sounds (on top, at the start and at the end) and its vocals/music setting, just as it will end up',
       '🎧 Escuchar la mezcla (fragmento + sonidos)': '🎧 Play the mix (clip + sounds)',
       'Armando la mezcla de este fragmento…': 'Building this clip’s mix…',
@@ -2110,7 +2122,7 @@
         try { localStorage.setItem('ectube-edit', JSON.stringify({v: 2, kind: this.kind, smooth: $('#edSmooth').checked, vaudio: this.vaudio,
           sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
           fx: this.fx.map(({id, name, seconds, url, frag, place, at, start, end, repeat, volume}) => ({id, name, seconds, url, frag, place: place || 'over', at, start, end, repeat, volume})),
-          ov: this.ov, cut: this.cut})); } catch (_) {}
+          ov: this.ov, cut: this.cut, fade: this.fadeVals(true)})); } catch (_) {}
       },
       async restore() {
         let data; try { data = JSON.parse(localStorage.getItem('ectube-edit') || 'null'); } catch (_) {}
@@ -2128,6 +2140,7 @@
         const unpack = list => (list || []).filter(f => tokens[f.i]).map(f => ({token: tokens[f.i], start: f.start, end: f.end, uid: f.uid || this.uid(), mode: f.mode || old, gap: +f.gap || 0}));
         this.frags = unpack(data.frags); this.afrags = unpack(data.afrags); this.setVAudio(data.vaudio || 'own');
         if (Array.isArray(data.cut) && data.cut.length === 2) this.cut = data.cut;
+        if (data.fade) { $('#edFadeIn').checked = !!data.fade.inOn; $('#edFadeOut').checked = !!data.fade.outOn; if (data.fade.inS) $('#edFadeInS').value = data.fade.inS; if (data.fade.outS) $('#edFadeOutS').value = data.fade.outS; }
         // sonidos de antes (con tiempo de toda la edición): pasarlos al fragmento donde caen
         this.fx.forEach(f => {
           if (f.frag && this.frags.some(x => x.uid === f.frag)) return;
@@ -2230,6 +2243,12 @@
         }));
       },
       prev() { return $('#edPreviewBox audio, #edPreviewBox video'); },
+      // entrada / salida suave de toda la edición (segundos; 0 = sin)
+      fadeVals(raw) {
+        const n = q => Math.max(0.5, Math.min(30, +$(q).value || 0));
+        if (raw) return {inOn: $('#edFadeIn').checked, outOn: $('#edFadeOut').checked, inS: n('#edFadeInS'), outS: n('#edFadeOutS')};
+        return {fi: $('#edFadeIn').checked ? n('#edFadeInS') : 0, fo: $('#edFadeOut').checked ? n('#edFadeOutS') : 0};
+      },
       uid() { return Math.random().toString(36).slice(2, 10); },
       fragOf(uid) { return this.frags.find(f => f.uid === uid) || this.afrags.find(f => f.uid === uid); },
       trackOf(uid) { return this.frags.some(f => f.uid === uid) ? 'main' : 'audio'; },
@@ -2504,6 +2523,7 @@
           const job = await api('/api/edit', {kind: this.kind, preview, mode: 'original', smooth: $('#edSmooth').checked, fragments: pack(this.frags, 'main'),
             audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags, 'audio') : [],
             cut: !preview && this.cut ? this.cut : null,
+            fade_in: this.fadeVals().fi, fade_out: this.fadeVals().fo,
             effects: (() => {
               const out = [], r = v => Math.round(v * 1000) / 1000, one = (f, at, extend) => out.push({id: f.id, at: r(at), start: f.start, end: f.end, repeat: f.repeat, volume: f.volume, extend});
               let acc = 0; this.fxPlaced('start').forEach(f => { one(f, acc, false); acc += (f.end - f.start) * f.repeat; });
@@ -3126,7 +3146,19 @@
     $('#edCutPlay').addEventListener('click', () => {
       const p = Edit.prev(); if (!p) { needPreview(); return; }
       const [a, b] = Edit.cut || [0, Edit.total()]; Edit.pauseAll(p); p.currentTime = a; Edit.cutEnd = b; p.play().catch(() => {});
+      // la entrada / salida suave se simula aquí (la vista previa no la trae porque es sin recorte)
+      const {fi, fo} = Edit.fadeVals(), video = p.tagName === 'VIDEO';
+      const ramp = () => {
+        if (Edit.cutEnd === null || p.paused) { p.volume = 1; if (video) p.style.opacity = ''; return; }
+        const now = p.currentTime; let g = 1;
+        if (fi > 0) g = Math.min(g, Math.max(0, (now - a) / fi));
+        if (fo > 0) g = Math.min(g, Math.max(0, (b - now) / fo));
+        p.volume = Math.max(0, Math.min(1, g)); if (video) p.style.opacity = g;
+        requestAnimationFrame(ramp);
+      };
+      requestAnimationFrame(ramp);
     });
+    ['#edFadeIn', '#edFadeOut', '#edFadeInS', '#edFadeOutS'].forEach(q => $(q).addEventListener('change', () => Edit.save(false)));
     $('#edCutReset').addEventListener('click', () => { Edit.cut = null; Edit.renderFinal(); Edit.save(false); });
     // Capas: arrastrar un fragmento en el tiempo (encimarlo o separarlo). Doble clic: pegarlo otra vez al anterior.
     (() => {

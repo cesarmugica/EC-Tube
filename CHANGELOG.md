@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 5.6.0 — 🌅 Entrada y salida suave
+- En «Edición final»: **🌅 Entrada suave (fade in)** y **🌇 Salida suave (fade out)**, cada una con sus segundos (0.5 a 30). Al empezar, el sonido sube desde silencio; al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro.
+- Se aplica a lo que se guarda (después del recorte) y se oye con «▶ Escuchar como se va a guardar».
+
 ## 5.5.2
 - Otro botón **«🧹 Borrar y comenzar de nuevo»** abajo, entre ✂ Edición y 📁 Tus archivos, para empezar una edición nueva al terminar otra. Todos los «Borrar y comenzar de nuevo» ahora te regresan al inicio de la página.
 
