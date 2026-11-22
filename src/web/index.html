@@ -592,6 +592,7 @@
       </div>
     </section>
 
+    <div class="reset-bar" style="margin:0"><button class="secondary" type="button" data-reset="download" title="Quitar lo que hay en esta pestaña y empezar desde cero (tus archivos no se borran)">🧹 Borrar y comenzar de nuevo</button></div>
     <section class="panel">
       <div class="list-head"><h2>📁 Tus archivos</h2><button class="secondary" id="filesRefresh" type="button">🔄 Volver a leer la carpeta</button></div>
       <div class="lib-head" style="margin-top:12px">
@@ -4979,11 +4980,13 @@
     document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', async () => {
       const k = b.dataset.reset;
       if (!await ask(RESET[k]())) return;
+      window.scrollTo({top: 0, behavior: 'smooth'});  // de regreso al inicio de la página
       if (k === 'download') {
         $('#urls').value = ''; if (!$('#editor').hidden) closeEditor();
         await api('/api/jobs/clear', {}).catch(() => {}); refreshJobs();
         Fx.stop(); Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1; Edit.cut = null; Edit.fpeaks = null; Edit.focus = null;
         Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.say(''); Edit.render(); say('');
+        document.querySelectorAll('.eb-mix').forEach(x => { x.innerHTML = ''; });
       } else if (k === 'subs') {
         if (Subs.marking) Subs.stopMark(); sVideo.pause();
         if (Subs.p && Subs.p.id) await api('/api/subs/delete', {id: Subs.p.id}).catch(() => {});

@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.5.2
+- Otro botón **«🧹 Borrar y comenzar de nuevo»** abajo, entre ✂ Edición y 📁 Tus archivos, para empezar una edición nueva al terminar otra. Todos los «Borrar y comenzar de nuevo» ahora te regresan al inicio de la página.
+
 ## 5.5.1
 - Cada bloque tiene **«🎧 Escuchar la mezcla (fragmento + sonidos)»**: arma ese fragmento con sus sonidos (encima, al inicio y al final) y con su voz/música, y lo reproduce ahí mismo, tal como va a quedar. No borra la vista previa de la edición final.
 
