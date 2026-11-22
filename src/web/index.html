@@ -333,6 +333,24 @@
     .tracks.frags li.editing { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
     .frags .ft { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .82rem; }
     .frags input { width: 78px; padding: 3px 6px; font-size: .82rem; }
+    .wnav { position: relative; height: 12px; margin-top: 4px; border-radius: 6px; background: var(--border); cursor: pointer; touch-action: none; user-select: none; }
+    .wnav .wthumb { position: absolute; top: 0; bottom: 0; min-width: 10px; border-radius: 6px; background: var(--accent); opacity: .9; cursor: grab; }
+    .wnav .wthumb:active { cursor: grabbing; }
+    .eblk { margin-top: 14px; padding: 12px 14px 14px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--bg) 60%, transparent); }
+    .eblk.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .eblk .eb-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    .eblk .eb-h .num { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem; }
+    .eblk .eb-h .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .eblk .eb-h b { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eblk .eb-h .dur { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .eblk .eb-h .grow { flex: 1 1 auto; }
+    .eblk .eb-media video { display: block; margin-top: 10px; max-width: 100%; max-height: 220px; background: #000; border-radius: 10px; }
+    .eblk .eb-play { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .eblk .eb-play input[type=range] { flex: 1 1 auto; }
+    .eblk .eb-play .tl { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .eblk .wave canvas { height: 96px; }
+    .eblk .fx-head { margin: 14px 0 6px; } .eblk .fx-head h4 { margin: 0; font-size: .92rem; }
+    .eblk.final { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
     .ed-foot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 12px; }
     .ed-foot .grow { flex: 1 1 auto; }
     #edStatus { min-height: 1.2em; margin: 10px 0 0; color: var(--warn); font-size: .9rem; } #edStatus.ok { color: var(--ok); }
@@ -475,6 +493,7 @@
         <div class="scr-h" title="Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia."><span class="n">1</span><span>Fuente: el archivo original</span><span class="i">ⓘ ¿qué es?</span></div>
         <div id="edPlayerBox" title="Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia."></div>
         <div class="wave" id="edWave" aria-label="Onda del audio: arrastra para marcar un tramo, clic para ir a ese punto"><canvas id="edCanvas"></canvas></div>
+        <div class="wnav" id="edNav" title="Barra para moverte: arrástrala para ir a otra parte de la onda cuando tienes zoom"><div class="wthumb"></div></div>
         <div class="wave-tools">
           <span class="grow" id="edWaveInfo">Arrastra sobre la onda para marcar un tramo · clic para ir a ese punto. Lo plano es silencio.</span>
           <button class="secondary" type="button" id="edZoomOut" title="Alejar">🔍−</button>
@@ -499,14 +518,15 @@
         <ol class="tracks frags" id="edAFrags"></ol>
         <p class="ed-help">Si la pista de audio dura más que el video, se corta al final; si dura menos, lo que falta queda en silencio.</p>
       </div>
-      <div class="fx-head">
-        <h3 class="ed-h3">🔊 Sonidos encima</h3>
-        <small>Aplausos, «boing», risas… suenan encima del audio o del video, sin cortarlo.</small>
-        <span class="grow" style="flex:1"></span>
-        <button class="secondary" type="button" id="fxOpen">➕ Agregar sonido</button>
+      <div id="edBlocksHead" hidden>
+        <h3 class="ed-h3" id="edBlocksTitle">✂ Ajuste fino de cada fragmento</h3>
+        <p class="ed-help">Cada fragmento tiene su propio bloque: escúchalo, ajusta su inicio y final en la onda (sin crear otro), elige si va tal cual, solo música o solo voz, y ponle sonidos encima. Para moverte con zoom: rueda del mouse = zoom · Shift + rueda, o la barra de abajo de la onda = moverte · clic con la rueda (o Alt) y arrastrar = moverte.</p>
       </div>
-      <div class="fxline" id="fxLine"></div>
-      <ol class="fxrows" id="fxRows"></ol>
+      <div id="edBlocks"></div>
+      <div id="edABlocksBox" hidden>
+        <h3 class="ed-h3">🎵 Pista de audio: ajuste fino de cada fragmento</h3>
+        <div id="edABlocks"></div>
+      </div>
       <div id="anBox" hidden>
         <div class="fx-head">
           <h3 class="ed-h3">🎬 Animaciones encima</h3>
@@ -521,23 +541,38 @@
         <div class="fxline" id="anLine"></div>
         <ol class="fxrows" id="anRows"></ol>
       </div>
-      <div class="ed-foot">
-        <span class="grow field" id="edTotal"></span>
-        <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
-        <select id="edMode" aria-label="Qué guardar">
-          <option value="original">✂ Tal cual (voz y música)</option>
-          <option value="music">🎵 Solo música (quitar la voz)</option>
-          <option value="voice">🎤 Solo voz (quitar la música)</option>
-        </select>
+      <div class="eblk final" id="edFinal">
+        <div class="eb-h"><span class="num">★</span><b>Edición final</b><span class="grow"></span><span class="field" id="edTotal"></span></div>
+        <div class="ed-foot" style="margin-top:8px">
+          <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
+          <span class="grow"></span>
+          <button class="secondary" type="button" id="edPreview">▶ Escuchar edición final</button>
+        </div>
+        <div id="edPreviewBox"></div>
+        <div class="wave" id="edFWave" aria-label="Onda de la edición final: arrastra los bordes para recortar el inicio o el final"><canvas></canvas></div>
+        <div class="wnav" id="edFNav" title="Barra para moverte: arrástrala para ir a otra parte de la onda cuando tienes zoom"><div class="wthumb"></div></div>
+        <div class="wave-tools">
+          <span class="grow" id="edFInfo">Presiona el botón de arriba para armar la vista previa y ver aquí su onda. Arrastra los bordes blancos para recortar el inicio o el final de todo.</span>
+          <button class="secondary" type="button" id="edFZoomOut" title="Alejar">🔍−</button>
+          <button class="secondary" type="button" id="edFZoomIn" title="Acercar">🔍+</button>
+          <button class="secondary" type="button" id="edFZoomAll">Ver todo</button>
+        </div>
+        <div class="ed-times">
+          <label class="field">Empieza en <input id="edCutA" inputmode="decimal" aria-label="Dónde empieza la edición final (minutos:segundos)"></label>
+          <button class="secondary" type="button" id="edCutMarkA" title="Usa el punto donde va la vista previa">⇤ Inicio aquí</button>
+          <label class="field">Termina en <input id="edCutB" inputmode="decimal" aria-label="Dónde termina la edición final (minutos:segundos)"></label>
+          <button class="secondary" type="button" id="edCutMarkB" title="Usa el punto donde va la vista previa">Final aquí ⇥</button>
+          <span class="field" id="edCutLen"></span>
+          <button class="secondary" type="button" id="edCutPlay">▶ Escuchar tramo</button>
+          <button class="link" type="button" id="edCutReset">Sin recorte</button>
+        </div>
+        <div class="ed-foot">
+          <span class="grow"></span>
+          <button class="secondary" type="button" id="edClear">🧹 Vaciar edición</button>
+          <button type="button" id="edSave">💾 Guardar edición</button>
+        </div>
+        <p id="edStatus" role="status" aria-live="polite"></p>
       </div>
-      <div class="ed-foot">
-        <span class="grow"></span>
-        <button class="secondary" type="button" id="edClear">🧹 Vaciar edición</button>
-        <button class="secondary" type="button" id="edPreview">▶ Escuchar edición final</button>
-        <button type="button" id="edSave">💾 Guardar edición</button>
-      </div>
-      <p id="edStatus" role="status" aria-live="polite"></p>
-      <div id="edPreviewBox"></div>
     </section>
 
     <section class="panel">
@@ -986,6 +1021,45 @@
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
+      // bloques por fragmento y edición final
+      'Aplausos, «boing», risas… suenan encima, sin cortarlo.': 'Applause, “boing”, laughs… they play on top, without cutting it.',
+      'Arrastra los bordes blancos para ajustar · clic para ir a ese punto · rueda = zoom · Shift + rueda o la barra = moverte.': 'Drag the white edges to adjust · click to jump there · wheel = zoom · Shift + wheel or the bar = move around.',
+      'Arrastra los bordes blancos para recortar el inicio o el final de todo · clic para ir a ese punto · rueda = zoom · Shift + rueda o la barra = moverte.': 'Drag the white edges to trim the start or the end of everything · click to jump there · wheel = zoom · Shift + wheel or the bar = move around.',
+      'Barra para moverte: arrástrala para ir a otra parte de la onda cuando tienes zoom': 'Scroll bar: drag it to go to another part of the waveform while zoomed in',
+      'El final debe quedar después del inicio: mueve el reproductor más adelante.': 'The end must be after the start: move the player further ahead.',
+      'El fragmento {0} va tal cual (voz y música).': 'Clip {0} stays as is (vocals and music).',
+      'El inicio debe quedar antes del final: mueve el reproductor más atrás.': 'The start must be before the end: move the player back.',
+      'Fragmento {0} agregado. Abajo tiene su propio bloque para ajustarlo.': 'Clip {0} added. It has its own block below to fine-tune it.',
+      'Ir a su bloque para ajustarlo': 'Go to its block to fine-tune it',
+      'Onda del fragmento: arrastra sus bordes blancos para ajustar el inicio o el final': 'Clip waveform: drag its white edges to adjust the start or the end',
+      'Posición dentro del fragmento': 'Position inside the clip',
+      'Primero presiona «{0}» para tener la vista previa.': 'First press “{0}” to get the preview.',
+      'Reproducir este fragmento': 'Play this clip',
+      'Se guarda completa: {0}': 'Saved in full: {0}',
+      'Se guarda: {0} (de {1})': 'Will save: {0} (of {1})',
+      'Separando la voz y la música de los fragmentos… {0} %': 'Separating vocals and music of the clips… {0} %',
+      'Sin sonidos encima. Presiona «➕ Agregar sonido».': 'No sounds on top. Press “➕ Add sound”.',
+      'Sonido «{0}» puesto en el fragmento {1}, en {2}. Arrástralo en su línea de tiempo para moverlo.': 'Sound “{0}” placed in clip {1}, at {2}. Drag it on its timeline to move it.',
+      'Ver fragmento': 'Show clip',
+      'Voz y música de este fragmento': 'Vocals and music of this clip',
+      '¿Quitar el fragmento {0}?\n\nTambién se quitan sus {1} sonido(s) encima. Tu archivo NO se borra.': 'Remove clip {0}?\n\nIts {1} sound(s) on top are removed too. Your file is NOT deleted.',
+      '⚠ Empieza después del final de este fragmento. Muévelo más atrás.': '⚠ It starts after the end of this clip. Move it back.',
+      '🔊 Sonidos encima de este fragmento': '🔊 Sounds on top of this clip',
+      'Al fragmento {0} se le quita la voz (solo música). La primera vez tarda un poco más, también en la vista previa.': 'Clip {0} gets its vocals removed (music only). The first time takes a bit longer, also in the preview.',
+      'Al fragmento {0} se le quita la música (solo voz). La primera vez tarda un poco más, también en la vista previa.': 'Clip {0} gets its music removed (vocals only). The first time takes a bit longer, also in the preview.',
+      'Sigue sonando sobre el fragmento siguiente.': 'It keeps playing over the next clip.',
+      'Edición final': 'Final edit',
+      '✂ Ajuste fino de cada fragmento': '✂ Fine-tune each clip',
+      '🎵 Pista de audio: ajuste fino de cada fragmento': '🎵 Audio track: fine-tune each clip',
+      'Cada fragmento tiene su propio bloque: escúchalo, ajusta su inicio y final en la onda (sin crear otro), elige si va tal cual, solo música o solo voz, y ponle sonidos encima. Para moverte con zoom: rueda del mouse = zoom · Shift + rueda, o la barra de abajo de la onda = moverte · clic con la rueda (o Alt) y arrastrar = moverte.': 'Each clip has its own block: listen to it, adjust its start and end on the waveform (without making a new one), choose as is, music only or vocals only, and add sounds on top. To move around while zoomed: mouse wheel = zoom · Shift + wheel, or the bar under the waveform = move · wheel-click (or Alt) and drag = move.',
+      'Empieza en': 'Starts at',
+      'Termina en': 'Ends at',
+      'Sin recorte': 'No trim',
+      'Usa el punto donde va la vista previa': 'Uses the point where the preview is',
+      'Dónde empieza la edición final (minutos:segundos)': 'Where the final edit starts (minutes:seconds)',
+      'Dónde termina la edición final (minutos:segundos)': 'Where the final edit ends (minutes:seconds)',
+      'Onda de la edición final: arrastra los bordes para recortar el inicio o el final': 'Final edit waveform: drag the edges to trim the start or the end',
+      'Presiona el botón de arriba para armar la vista previa y ver aquí su onda. Arrastra los bordes blancos para recortar el inicio o el final de todo.': 'Press the button above to build the preview and see its waveform here. Drag the white edges to trim the start or the end of everything.',
       'SELECCIONADA': 'SELECTED', 'Seleccionada:': 'Selected:', 'los fragmentos que agregues salen de aquí': 'the fragments you add come from here',
       'Versión …': 'Version …', 'Versión': 'Version', 'Motor …': 'Engine …', 'Motor': 'Engine', 'Actualizar motor': 'Update engine',
       'Actualizando motor…': 'Updating engine…',
@@ -1833,21 +1907,148 @@
     // ---------- Edición: onda, fragmentos de una o varias fuentes y edición final ----------
     const fmt2 = t => { t = Math.max(0, t || 0); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t - h * 3600 - m * 60;
       const ss = (s < 10 ? '0' : '') + s.toFixed(2); return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
+    // ---------- Onda reutilizable: zoom (rueda, en el punto del mouse), moverse (Shift+rueda, barra, clic de rueda o Alt + arrastrar),
+    //            marcar o ajustar un tramo (arrastrar sus bordes) y clic para ir a ese punto ----------
+    class WaveView {
+      constructor(o) {
+        this.o = o; this.view = [0, 0]; this.box = o.box; this.canvas = o.box.querySelector('canvas'); this.nav = o.nav; this.drag = null;
+        this.bind();
+      }
+      d() { return this.o.dur() || 0; }
+      setView(a, b) {
+        const d = this.d(); if (!d) { this.view = [0, 0]; this.draw(); return; }
+        const span = Math.min(d, Math.max(Math.min(d, 0.3), b - a)); a = Math.min(Math.max(0, a), d - span);
+        this.view = [a, a + span]; this.draw();
+      }
+      zoom(f, center) {
+        const d = this.d(); if (!d) return;
+        let [a, b] = this.view; if (b <= a) [a, b] = [0, d];
+        const span = b - a;
+        if (center == null) { const n = this.o.now ? this.o.now() : null, sel = this.o.sel ? this.o.sel() : null; center = n != null && n >= a && n <= b && n > 0 ? n : sel ? (sel[0] + sel[1]) / 2 : (a + b) / 2; }
+        const ns = Math.min(d, Math.max(0.3, span * f)), r = Math.min(1, Math.max(0, (center - a) / span));
+        this.setView(center - ns * r, center - ns * r + ns);
+      }
+      pan(dt) { const [a, b] = this.view; this.setView(a + dt, b + dt); }
+      all() { this.setView(0, this.d()); }
+      timeAt(event) { const r = this.box.getBoundingClientRect(), [a, b] = this.view; return a + Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * (b - a); }
+      px(t) { const [a, b] = this.view; return (t - a) / Math.max(0.001, b - a) * this.box.clientWidth; }
+      draw() {
+        const c = this.canvas, w = c.clientWidth, h = c.clientHeight, dpr = window.devicePixelRatio || 1;
+        if (!w) return;
+        if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+        const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+        const d = this.d(); this.syncNav();
+        if (!d) return;
+        if (this.view[1] <= this.view[0] || this.view[1] > d + 0.001) this.view = [0, d];
+        const [v0, v1] = this.view, span = Math.max(0.001, v1 - v0), X = t => (t - v0) / span * w;
+        if (this.o.decor) this.o.decor(g, X, w, h, v0, v1);
+        const sel = this.o.sel ? this.o.sel() : null;
+        if (sel) {
+          g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(0, 0, Math.max(0, X(sel[0])), h); g.fillRect(X(sel[1]), 0, w - X(sel[1]), h);
+          g.fillStyle = 'rgba(133,105,255,.28)'; g.fillRect(X(sel[0]), 0, X(sel[1]) - X(sel[0]), h);
+        }
+        const p = (this.o.peaks && this.o.peaks()) || [], mid = (h - 14) / 2;
+        if (p.length) {
+          for (let x = 0; x < w; x++) {
+            const t0 = v0 + x / w * span, t1 = v0 + (x + 1) / w * span;
+            const i0 = Math.floor(t0 / d * p.length), i1 = Math.max(i0 + 1, Math.ceil(t1 / d * p.length)); let peak = 0;
+            for (let i = Math.max(0, i0); i < Math.min(p.length, i1); i++) peak = Math.max(peak, p[i]);
+            const on = !sel || (t0 >= sel[0] && t0 <= sel[1]), y = Math.max(0.5, peak * (mid - 2));
+            g.fillStyle = on ? '#c9bcff' : '#5c656c'; g.fillRect(x, mid - y, 1, y * 2);
+          }
+        }
+        if (sel) { g.fillStyle = '#ffffff'; sel.forEach(t => g.fillRect(X(t) - 1, 0, 2, h - 14)); }
+        const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800], step = steps.find(s => span / s <= 10) || 3600;
+        g.fillStyle = '#9aa3aa'; g.font = '10px Segoe UI, sans-serif';
+        for (let t = Math.ceil(v0 / step) * step; t <= v1; t += step) { g.fillRect(X(t), h - 14, 1, 4); g.fillText(fmt2(t).replace(/\.00$/, ''), X(t) + 2, h - 3); }
+        const now = this.o.now ? this.o.now() : null;
+        if (now != null && now >= v0 && now <= v1) { g.fillStyle = '#f2c94c'; g.fillRect(X(now) - 1, 0, 2, h); }
+      }
+      syncNav() {
+        if (!this.nav) return;
+        const d = this.d(), th = this.nav.firstElementChild, [a, b] = this.view;
+        const full = !d || b - a >= d - 0.001;
+        th.style.left = (d ? a / d * 100 : 0) + '%'; th.style.width = (d ? (b - a) / d * 100 : 100) + '%';
+        this.nav.style.opacity = full ? .45 : 1;
+      }
+      bind() {
+        const box = this.box;
+        box.addEventListener('contextmenu', event => { if (this.drag && this.drag.pan) event.preventDefault(); });
+        box.addEventListener('pointerdown', event => {
+          if (!this.d()) return;
+          if (this.o.focus) this.o.focus();
+          if (event.button === 1 || (event.button === 0 && event.altKey)) {  // moverse arrastrando (clic de rueda o Alt)
+            this.drag = {pan: true, x0: event.clientX, v: [...this.view]}; box.setPointerCapture(event.pointerId); box.style.cursor = 'grabbing'; event.preventDefault(); return;
+          }
+          if (event.button !== 0) return;
+          const t0 = this.timeAt(event), x = this.px(t0), sel = this.o.sel ? this.o.sel() : null;
+          const edge = sel && this.o.setSel ? (Math.abs(x - this.px(sel[0])) < 8 ? 0 : Math.abs(x - this.px(sel[1])) < 8 ? 1 : -1) : -1;
+          this.drag = {t0, x0: event.clientX, edge, moved: false};
+          box.setPointerCapture(event.pointerId);
+        });
+        box.addEventListener('pointermove', event => {
+          const dr = this.drag;
+          if (!dr) {
+            const sel = this.o.sel ? this.o.sel() : null, r = box.getBoundingClientRect(), x = event.clientX - r.left;
+            box.style.cursor = event.altKey ? 'grab' : sel && this.o.setSel && (Math.abs(x - this.px(sel[0])) < 8 || Math.abs(x - this.px(sel[1])) < 8) ? 'ew-resize' : this.o.newSel === false ? 'pointer' : 'crosshair';
+            return;
+          }
+          if (dr.pan) { const span = dr.v[1] - dr.v[0], dt = -(event.clientX - dr.x0) / box.clientWidth * span; this.setView(dr.v[0] + dt, dr.v[1] + dt); return; }
+          if (Math.abs(event.clientX - dr.x0) >= 4) dr.moved = true;
+          if (!dr.moved || !this.o.setSel) return;
+          const t1 = this.timeAt(event), sel = this.o.sel();
+          if (dr.edge === 0) this.o.setSel(Math.min(t1, sel[1] - 0.1), sel[1], false);
+          else if (dr.edge === 1) this.o.setSel(sel[0], Math.max(t1, sel[0] + 0.1), false);
+          else if (this.o.newSel !== false) this.o.setSel(Math.min(dr.t0, t1), Math.max(dr.t0, t1), false);
+        });
+        const up = () => {
+          const dr = this.drag; this.drag = null; box.style.cursor = '';
+          if (!dr || dr.pan) return;
+          if (!dr.moved) { if (this.o.seek) this.o.seek(dr.t0); this.draw(); }
+          else if (this.o.setSel) { const sel = this.o.sel(); this.o.setSel(sel[0], sel[1], true); }
+        };
+        box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+        box.addEventListener('wheel', event => {
+          if (!this.d()) return; event.preventDefault();
+          const span = this.view[1] - this.view[0] || this.d();
+          if (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+            const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+            this.pan(Math.sign(delta) * Math.min(1, Math.max(0.05, Math.abs(delta) / 100 * 0.15)) * span);
+          } else this.zoom(event.deltaY < 0 ? 0.75 : 1.33, this.timeAt(event));
+        }, {passive: false});
+        if (this.nav) {
+          const nav = this.nav; let grab = null;
+          const frac = event => { const r = nav.getBoundingClientRect(); return Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)); };
+          nav.addEventListener('pointerdown', event => {
+            const d = this.d(); if (!d) return;
+            const [a, b] = this.view, t = frac(event) * d;
+            grab = t >= a && t <= b ? t - a : (b - a) / 2;  // agarrar la barra donde está, o centrarla donde diste clic
+            this.setView(t - grab, t - grab + (b - a)); nav.setPointerCapture(event.pointerId); event.preventDefault();
+          });
+          nav.addEventListener('pointermove', event => { if (grab === null) return; const d = this.d(), [a, b] = this.view, t = frac(event) * d; this.setView(t - grab, t - grab + (b - a)); });
+          const end = () => { grab = null; };
+          nav.addEventListener('pointerup', end); nav.addEventListener('pointercancel', end);
+        }
+        new ResizeObserver(() => this.draw()).observe(box);
+      }
+    }
+
     const Edit = {
-      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], fx: [], fxOn: -1, ov: [], ovOn: -1, vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], view: [0, 0], el: null, playEnd: null, editing: -1, job: null,
+      kind: 'audio', sources: [], active: -1, frags: [], afrags: [], fx: [], fxOn: -1, ov: [], ovOn: -1, vaudio: 'own', track: 'main', editTrack: 'main', sel: [0, 0], el: null, playEnd: null, editing: -1, job: null,
+      wv: null, fw: null, blk: {}, focus: null, cut: null, fpeaks: null, fpeaksDur: 0, cutEnd: null,
       COLORS: ['#8569ff', '#25c2a0', '#f2994a', '#eb5757', '#56ccf2', '#f2c94c', '#bb6bd9', '#6fcf97'],
       say(text, ok = false) { $('#edStatus').textContent = text; $('#edStatus').classList.toggle('ok', ok); },
       src(token) { return this.sources.find(x => x.token === token); },
       cur() { return this.sources[this.active]; },
       pathOf(m) { return m.folder + (m.folder.includes('\\') ? '\\' : '/') + m.name; },
-      save() {
+      save(warn = true) {
         // si ya había vista previa, avisar que no trae los cambios nuevos
-        if ($('#edPreviewBox audio, #edPreviewBox video') && !this.job) this.say(tf('Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.', $('#edPreview').textContent));
-        const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end}));
-        try { localStorage.setItem('ectube-edit', JSON.stringify({kind: this.kind, smooth: $('#edSmooth').checked, mode: $('#edMode').value, vaudio: this.vaudio,
+        if (warn && this.prev() && !this.job) this.say(tf('Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.', $('#edPreview').textContent));
+        const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end, uid: f.uid, mode: f.mode || 'original'}));
+        try { localStorage.setItem('ectube-edit', JSON.stringify({v: 2, kind: this.kind, smooth: $('#edSmooth').checked, vaudio: this.vaudio,
           sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
-          fx: this.fx.map(({id, name, seconds, url, at, start, end, repeat, volume}) => ({id, name, seconds, url, at, start, end, repeat, volume})),
-          ov: this.ov})); } catch (_) {}
+          fx: this.fx.map(({id, name, seconds, url, frag, at, start, end, repeat, volume}) => ({id, name, seconds, url, frag, at, start, end, repeat, volume})),
+          ov: this.ov, cut: this.cut})); } catch (_) {}
       },
       async restore() {
         let data; try { data = JSON.parse(localStorage.getItem('ectube-edit') || 'null'); } catch (_) {}
@@ -1855,14 +2056,25 @@
         this.fx = Array.isArray(data.fx) ? data.fx.filter(x => x && x.id) : [];
         this.ov = Array.isArray(data.ov) ? data.ov.filter(x => x && (x.id || x.kind === 'banner')) : [];
         this.setKind(data.kind === 'video' ? 'video' : 'audio');
-        $('#edSmooth').checked = data.smooth !== false; $('#edMode').value = data.mode || 'original';
+        $('#edSmooth').checked = data.smooth !== false;
         const tokens = [];
         for (const item of data.sources || []) {
           try { const m = (await api('/api/media-path', {path: item.path})).media; this.sources.push({...m, color: item.color, peaks: null, duration: 0}); tokens.push(m.token); }
           catch (_) { tokens.push(null); }
         }
-        const unpack = list => (list || []).filter(f => tokens[f.i]).map(f => ({token: tokens[f.i], start: f.start, end: f.end}));
+        const old = ['music', 'voice'].includes(data.mode) ? data.mode : 'original';  // antes era un solo «qué guardar» para todo
+        const unpack = list => (list || []).filter(f => tokens[f.i]).map(f => ({token: tokens[f.i], start: f.start, end: f.end, uid: f.uid || this.uid(), mode: f.mode || old}));
         this.frags = unpack(data.frags); this.afrags = unpack(data.afrags); this.setVAudio(data.vaudio || 'own');
+        if (Array.isArray(data.cut) && data.cut.length === 2) this.cut = data.cut;
+        // sonidos de antes (con tiempo de toda la edición): pasarlos al fragmento donde caen
+        this.fx.forEach(f => {
+          if (f.frag && this.frags.some(x => x.uid === f.frag)) return;
+          let acc = 0, home = null, off = 0;
+          for (const x of this.frags) { home = x; off = acc; if (f.at < acc + (x.end - x.start)) break; acc += x.end - x.start; }
+          if (!home) return;
+          f.frag = home.uid; f.at = Math.max(0, Math.min(f.at - off, home.end - home.start - 0.05));
+        });
+        this.fx = this.fx.filter(f => this.frags.some(x => x.uid === f.frag));
         if (this.sources.length) this.select(0); else this.render();
       },
       setKind(kind) {
@@ -1879,7 +2091,6 @@
         $('#edTrackSeg').hidden = $('#edAudioTrack').hidden = !other;
         if (!other) this.setTrack('main');
         $('#edListTitle').textContent = t(other ? '🎬 Pista de video (fragmentos en orden)' : 'Fragmentos (en el orden de la edición final)');
-        $('#edMode').hidden = this.kind === 'video' && this.vaudio === 'none';
       },
       list(tr) { return tr === 'audio' ? this.afrags : this.frags; },
       async addToken(token) { try { this.add((await api('/api/media-info', {token})).media); } catch (error) { say(error.message); } },
@@ -1904,6 +2115,7 @@
         const na = this.afrags.filter(f => f.token === s0.token).length;
         if ((n + na) && !await ask(tf('¿Quitar «{0}» de la edición?\n\nTambién se quitan sus {1} fragmentos de la lista. El archivo NO se borra de tu computadora.', s0.name, n + na))) return;
         this.frags = this.frags.filter(f => f.token !== s0.token); this.afrags = this.afrags.filter(f => f.token !== s0.token); this.sources.splice(i, 1);
+        this.fx = this.fx.filter(f => this.frags.some(x => x.uid === f.frag)); this.fxOn = -1;
         this.editing = -1;
         if (!this.sources.length) { this.active = -1; this.unload(); } else this.select(Math.min(i, this.sources.length - 1));
         this.save(); this.render();
@@ -1942,58 +2154,183 @@
         $('#edSelLen').textContent = tf('Tramo: {0}', fmt2(b - a));
         this.draw();
       },
-      zoomAll(range) { const d = this.cur()?.duration || 0; this.view = [0, d]; this.draw(); },
-      zoom(factor) {
-        const d = this.cur()?.duration || 0; if (!d) return;
-        const center = this.el && !this.el.paused ? this.el.currentTime : (this.sel[0] + this.sel[1]) / 2;
-        const span = Math.min(d, Math.max(1, (this.view[1] - this.view[0]) * factor));
-        let a = Math.max(0, center - span / 2); a = Math.min(a, d - span); this.view = [a, a + span]; this.draw();
-      },
+      zoomAll() { if (this.wv) this.wv.all(); },
+      zoom(factor) { if (this.wv) this.wv.zoom(factor); },
       loop() { this.draw(); if (this.el && !this.el.paused) requestAnimationFrame(() => this.loop()); },
-      draw() {
-        const c = $('#edCanvas'), m = this.cur(); if (!c || !m) return;
-        const w = c.clientWidth, h = c.clientHeight, dpr = window.devicePixelRatio || 1;
-        if (!w) return;
-        if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
-        const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-        const [v0, v1] = this.view, span = Math.max(0.001, v1 - v0), X = t => (t - v0) / span * w;
-        // fragmentos ya usados de esta fuente
+      draw() { if (this.wv) this.wv.draw(); },
+      // fragmentos ya usados de esta fuente (se ven en su onda)
+      decorUsed(g, X, w, h, v0, v1) {
+        const m = this.cur(); if (!m) return;
         [[this.frags, '#'], [this.afrags, '♪']].forEach(([list, mark]) => list.forEach((f, n) => {
           if (f.token !== m.token || f.end < v0 || f.start > v1) return;
           g.fillStyle = m.color + '33'; g.fillRect(X(f.start), 0, X(f.end) - X(f.start), h);
           g.fillStyle = m.color; g.font = '600 11px Segoe UI, sans-serif'; g.fillText(mark + (n + 1), X(f.start) + 3, 12);
         }));
-        // tramo marcado
-        const [a, b] = this.sel; g.fillStyle = 'rgba(133,105,255,.28)'; g.fillRect(X(a), 0, X(b) - X(a), h);
-        // onda
-        const p = m.peaks || [], d = m.duration || 1, mid = (h - 14) / 2;
-        if (p.length) {
-          for (let x = 0; x < w; x++) {
-            const t0 = v0 + x / w * span, t1 = v0 + (x + 1) / w * span;
-            let i0 = Math.floor(t0 / d * p.length), i1 = Math.max(i0 + 1, Math.ceil(t1 / d * p.length)), peak = 0;
-            for (let i = Math.max(0, i0); i < Math.min(p.length, i1); i++) peak = Math.max(peak, p[i]);
-            const on = t0 >= a && t0 <= b, y = Math.max(0.5, peak * (mid - 2));
-            g.fillStyle = on ? '#c9bcff' : '#5c656c'; g.fillRect(x, mid - y, 1, y * 2);
-          }
-        }
-        // bordes del tramo, marcas de tiempo y punto de reproducción
-        g.fillStyle = '#ffffff'; [a, b].forEach(t => g.fillRect(X(t) - 1, 0, 2, h - 14));
-        const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800], step = steps.find(s => span / s <= 10) || 3600;
-        g.fillStyle = '#9aa3aa'; g.font = '10px Segoe UI, sans-serif';
-        for (let t = Math.ceil(v0 / step) * step; t <= v1; t += step) { g.fillRect(X(t), h - 14, 1, 4); g.fillText(fmt2(t).replace(/\.00$/, ''), X(t) + 2, h - 3); }
-        if (this.el) { const now = this.el.currentTime; if (now >= v0 && now <= v1) { g.fillStyle = '#f2c94c'; g.fillRect(X(now) - 1, 0, 2, h); } }
+      },
+      prev() { return $('#edPreviewBox audio, #edPreviewBox video'); },
+      uid() { return Math.random().toString(36).slice(2, 10); },
+      fragOf(uid) { return this.frags.find(f => f.uid === uid) || this.afrags.find(f => f.uid === uid); },
+      trackOf(uid) { return this.frags.some(f => f.uid === uid) ? 'main' : 'audio'; },
+      offsetOf(uid) { let acc = 0; for (const f of this.frags) { if (f.uid === uid) return acc; acc += f.end - f.start; } return -1; },
+      // ¿se usa el audio de esta pista? (en un video «sin audio» u «otra pista», el audio de los fragmentos de video no se usa)
+      modeShown(tr) { return this.kind === 'audio' || tr === 'audio' || this.vaudio === 'own'; },
+      pauseAll(keep) { [this.el, this.prev(), ...Object.values(this.blk).map(b => b.media)].forEach(x => { if (x && x !== keep && !x.paused) x.pause(); }); },
+      ensurePeaks(m) {
+        if (!m || m.peaks || m.loading) return;
+        m.loading = api('/api/peaks', {token: m.token, buckets: 4000}).then(w => { m.peaks = w.peaks; m.duration = m.duration || w.duration; })
+          .catch(() => { m.peaks = []; }).finally(() => { m.loading = null; this.renderBlocks(); });
+      },
+      // ---------- Un bloque por fragmento: reproductor, onda y ajuste fino (sin crear otro fragmento) ----------
+      makeBlock(f) {
+        const m = this.src(f.token) || {name: '?', color: '#888', kind: 'audio'}, uid = f.uid, el = document.createElement('div');
+        const tag = m.kind === 'video' ? 'video' : 'audio';
+        el.className = 'eblk'; el.dataset.u = uid;
+        el.innerHTML = `<div class="eb-h"><span class="num"></span><span class="dot" style="background:${m.color}"></span><b title="${esc(m.name)}">${esc(m.name)}</b><span class="dur"></span><span class="grow"></span>
+            <select data-k="mode" aria-label="${t('Voz y música de este fragmento')}" title="${t('Voz y música de este fragmento')}"><option value="original">${t('✂ Tal cual (voz y música)')}</option><option value="music">${t('🎵 Solo música (quitar la voz)')}</option><option value="voice">${t('🎤 Solo voz (quitar la música)')}</option></select></div>
+          <div class="eb-media"><${tag} preload="metadata" playsinline></${tag}></div>
+          <div class="eb-play"><button type="button" class="secondary" data-a="play" title="${t('Reproducir este fragmento')}">▶</button><input type="range" data-a="seek" min="0" max="1" step="0.01" value="0" aria-label="${t('Posición dentro del fragmento')}"><span class="tl"></span></div>
+          <div class="wave" aria-label="${t('Onda del fragmento: arrastra sus bordes blancos para ajustar el inicio o el final')}"><canvas></canvas></div>
+          <div class="wnav" title="${t('Barra para moverte: arrástrala para ir a otra parte de la onda cuando tienes zoom')}"><div class="wthumb"></div></div>
+          <div class="wave-tools"><span class="grow">${t('Arrastra los bordes blancos para ajustar · clic para ir a ese punto · rueda = zoom · Shift + rueda o la barra = moverte.')}</span>
+            <button class="secondary" type="button" data-a="zout" title="${t('Alejar')}">🔍−</button><button class="secondary" type="button" data-a="zin" title="${t('Acercar')}">🔍+</button>
+            <button class="secondary" type="button" data-a="zfrag">${t('Ver fragmento')}</button><button class="secondary" type="button" data-a="zall">${t('Ver todo')}</button></div>
+          <div class="ed-times">
+            <label class="field">${t('Inicio')} <input data-k="start" inputmode="decimal" aria-label="${t('Inicio del tramo (minutos:segundos)')}"></label>
+            <button class="secondary" type="button" data-a="mstart" title="${t('Usa el punto donde va el reproductor')}">${t('⇤ Inicio aquí')}</button>
+            <label class="field">${t('Final')} <input data-k="end" inputmode="decimal" aria-label="${t('Final del tramo (minutos:segundos)')}"></label>
+            <button class="secondary" type="button" data-a="mend" title="${t('Usa el punto donde va el reproductor')}">${t('Final aquí ⇥')}</button>
+            <span class="field len"></span>
+            <button class="secondary" type="button" data-a="playsel">${t('▶ Escuchar tramo')}</button>
+          </div>
+          <div class="eb-fx">
+            <div class="fx-head"><h4>${t('🔊 Sonidos encima de este fragmento')}</h4><small>${t('Aplausos, «boing», risas… suenan encima, sin cortarlo.')}</small><span style="flex:1"></span><button class="secondary" type="button" data-a="fx">${t('➕ Agregar sonido')}</button></div>
+            <div class="fxline" data-b="${uid}"></div><ol class="fxrows" data-b="${uid}"></ol>
+          </div>`;
+        const media = el.querySelector(tag), b = {el, media, token: f.token, uid, stopAt: null, viewSet: false};
+        media.src = '/media/' + f.token;
+        media.addEventListener('loadedmetadata', () => { const F = this.fragOf(uid); if (!m.duration) m.duration = media.duration || 0; if (F && media.currentTime < 0.01) media.currentTime = F.start; this.fillBlock(b); });
+        media.addEventListener('timeupdate', () => { if (b.stopAt !== null && media.currentTime >= b.stopAt) { media.pause(); b.stopAt = null; } this.tickBlock(b); });
+        media.addEventListener('play', () => { el.querySelector('[data-a=play]').textContent = '⏸'; const loop = () => { this.tickBlock(b); if (!media.paused) requestAnimationFrame(loop); }; loop(); });
+        media.addEventListener('pause', () => { el.querySelector('[data-a=play]').textContent = '▶'; this.tickBlock(b); });
+        media.addEventListener('seeked', () => this.tickBlock(b));
+        b.wv = new WaveView({box: el.querySelector('.wave'), nav: el.querySelector('.wnav'), dur: () => m.duration || 0, peaks: () => m.peaks,
+          sel: () => { const F = this.fragOf(uid); return F ? [F.start, F.end] : null; },
+          setSel: (a, c, done) => this.setFrag(uid, a, c, done), now: () => media.readyState ? media.currentTime : null,
+          seek: tt => { media.currentTime = tt; this.tickBlock(b); }, focus: () => this.setFocus(uid)});
+        this.blk[uid] = b; this.ensurePeaks(m);
+        return b;
+      },
+      dropBlock(uid) {
+        const b = this.blk[uid]; if (!b) return;
+        b.media.pause(); b.media.removeAttribute('src'); b.media.load(); b.el.remove(); delete this.blk[uid];
+      },
+      fragView(b) { const F = this.fragOf(b.uid); if (!F) return; const pad = Math.max(0.5, (F.end - F.start) * 0.15); b.wv.setView(F.start - pad, F.end + pad); },
+      tickBlock(b) {
+        const F = this.fragOf(b.uid); if (!F) return;
+        const now = b.media.readyState ? b.media.currentTime : F.start, sk = b.el.querySelector('[data-a=seek]');
+        if (document.activeElement !== sk) sk.value = Math.min(F.end, Math.max(F.start, now));
+        b.el.querySelector('.tl').textContent = (now < F.start - 0.01 ? '−' + fmt2(F.start - now) : fmt2(Math.max(0, now - F.start))) + ' / ' + fmt2(F.end - F.start);
+        b.wv.draw(); Fx.head(b.uid);
+      },
+      fillBlock(b) {
+        const F = this.fragOf(b.uid); if (!F) return;
+        const tr = this.trackOf(b.uid), i = this.list(tr).indexOf(F), m = this.src(F.token), el = b.el;
+        el.querySelector('.num').textContent = (tr === 'audio' ? '♪' : '') + (i + 1);
+        el.querySelector('.dur').textContent = fmt2(F.end - F.start);
+        const ms = el.querySelector('[data-k=mode]'); ms.value = F.mode || 'original'; ms.hidden = !this.modeShown(tr);
+        ['start', 'end'].forEach(k => { const inp = el.querySelector(`.ed-times [data-k=${k}]`); if (document.activeElement !== inp) inp.value = fmt2(F[k]); });
+        el.querySelector('.len').textContent = tf('Tramo: {0}', fmt2(F.end - F.start));
+        el.querySelector('.eb-fx').hidden = tr !== 'main';
+        el.classList.toggle('on', this.focus === b.uid);
+        const sk = el.querySelector('[data-a=seek]'); sk.min = F.start; sk.max = F.end;
+        if (!b.viewSet && m && m.duration) { b.viewSet = true; this.fragView(b); }
+        this.tickBlock(b);
+      },
+      renderBlocks() {
+        const want = [...this.frags.map(f => [f, 'main']), ...(this.other() ? this.afrags.map(f => [f, 'audio']) : [])];
+        want.forEach(([f]) => { if (!f.uid) f.uid = this.uid(); if (!f.mode) f.mode = 'original'; });
+        const keep = new Set(want.map(([f]) => f.uid));
+        Object.keys(this.blk).forEach(u => { if (!keep.has(u) || this.blk[u].token !== this.fragOf(u)?.token) this.dropBlock(u); });
+        const boxes = {main: $('#edBlocks'), audio: $('#edABlocks')}, order = {main: [], audio: []};
+        want.forEach(([f, tr]) => { const b = this.blk[f.uid] || this.makeBlock(f); order[tr].push(b); });
+        for (const tr of ['main', 'audio']) order[tr].forEach((b, k) => { if (boxes[tr].children[k] !== b.el) boxes[tr].insertBefore(b.el, boxes[tr].children[k] || null); this.fillBlock(b); });
+        $('#edBlocksHead').hidden = !this.frags.length;
+        $('#edABlocksBox').hidden = !order.audio.length;
+      },
+      playBlock(b, from) {
+        const F = this.fragOf(b.uid); if (!F) return;
+        this.pauseAll(b.media); this.setFocus(b.uid);
+        b.media.currentTime = from; b.stopAt = F.end; b.media.play().catch(() => {});
+      },
+      setFrag(uid, a, c, done) {
+        const F = this.fragOf(uid); if (!F) return;
+        const d = this.src(F.token)?.duration || Infinity;
+        a = Math.max(0, Math.min(a, d)); c = Math.max(0, Math.min(c, d)); if (c < a) [a, c] = [c, a];
+        if (c - a < 0.1) { if (a + 0.1 <= d) c = a + 0.1; else a = Math.max(0, c - 0.1); }
+        F.start = Math.round(a * 1000) / 1000; F.end = Math.round(c * 1000) / 1000;
+        const b = this.blk[uid]; if (b) this.fillBlock(b);
+        const li = document.querySelector(`#edFrags li[data-u="${uid}"], #edAFrags li[data-u="${uid}"]`);
+        if (li) { li.querySelector('[data-f=start]').value = fmt2(F.start); li.querySelector('[data-f=end]').value = fmt2(F.end); li.querySelector('.dur').textContent = fmt2(F.end - F.start); }
+        if (done) { this.save(); this.render(); }
+      },
+      setFocus(uid, scroll) {
+        this.focus = uid;
+        Object.values(this.blk).forEach(b => b.el.classList.toggle('on', b.uid === uid));
+        document.querySelectorAll('#edFrags li[data-u], #edAFrags li[data-u]').forEach(li => li.classList.toggle('editing', li.dataset.u === uid));
+        if (scroll && this.blk[uid]) this.blk[uid].el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      },
+      // ---------- La edición final: su onda (de la vista previa) y el recorte del inicio y el final de todo ----------
+      renderFinal() {
+        const T = this.total();
+        if (this.cut) { const a = Math.max(0, this.cut[0]), b = Math.min(this.cut[1], T); this.cut = b - a < 0.1 || (a <= 0.01 && b >= T - 0.01) ? null : [a, b]; }
+        const [a, b] = this.cut || [0, T];
+        if (document.activeElement !== $('#edCutA')) $('#edCutA').value = fmt2(a);
+        if (document.activeElement !== $('#edCutB')) $('#edCutB').value = fmt2(b);
+        $('#edCutLen').textContent = !T ? '' : this.cut ? tf('Se guarda: {0} (de {1})', fmt2(b - a), fmt2(T)) : tf('Se guarda completa: {0}', fmt2(T));
+        $('#edCutReset').hidden = !this.cut;
+        ['#edCutA', '#edCutB', '#edCutMarkA', '#edCutMarkB', '#edCutPlay', '#edFZoomIn', '#edFZoomOut', '#edFZoomAll'].forEach(q => { $(q).disabled = !T; });
+        if (this.fw) this.fw.draw();
+      },
+      setCut(a, b, done) {
+        const T = this.total(); if (!T) return;
+        a = Math.max(0, Math.min(a, T)); b = Math.max(0, Math.min(b, T)); if (b < a) [a, b] = [b, a];
+        if (b - a < 0.1) { if (a + 0.1 <= T) b = a + 0.1; else a = Math.max(0, b - 0.1); }
+        this.cut = a <= 0.01 && b >= T - 0.01 ? null : [Math.round(a * 1000) / 1000, Math.round(b * 1000) / 1000];
+        this.renderFinal();
+        if (done) this.save(false);
+      },
+      decorFinal(g, X, w, h) {
+        let acc = 0;
+        this.frags.forEach((f, n) => {
+          const x = this.src(f.token) || {color: '#888888'}, d = f.end - f.start;
+          g.fillStyle = x.color + '2a'; g.fillRect(X(acc), 0, X(acc + d) - X(acc), h - 14);
+          g.fillStyle = x.color; g.fillRect(X(acc), 0, 1, h - 14); g.font = '600 11px Segoe UI, sans-serif'; g.fillText(String(n + 1), X(acc) + 4, 12);
+          acc += d;
+        });
+      },
+      hookPreview(token) {
+        const p = this.prev(); if (!p) return;
+        const loop = () => { if (this.fw) this.fw.draw(); if (!p.paused) requestAnimationFrame(loop); };
+        p.addEventListener('play', () => { this.pauseAll(p); loop(); });
+        p.addEventListener('timeupdate', () => { if (this.cutEnd !== null && p.currentTime >= this.cutEnd) { p.pause(); this.cutEnd = null; } if (this.fw) this.fw.draw(); });
+        p.addEventListener('seeked', () => { if (this.fw) this.fw.draw(); });
+        api('/api/peaks', {token, buckets: 4000}).then(w => {
+          this.fpeaks = w.peaks; this.fpeaksDur = w.duration || this.total();
+          $('#edFInfo').textContent = t('Arrastra los bordes blancos para recortar el inicio o el final de todo · clic para ir a ese punto · rueda = zoom · Shift + rueda o la barra = moverte.');
+          if (this.fw) this.fw.all();
+        }).catch(() => {});
       },
       fragLabel(f) { return fmt2(f.start) + ' → ' + fmt2(f.end); },
       total(list = this.frags) { return list.reduce((acc, f) => acc + (f.end - f.start), 0); },
       listHtml(list, tr) {
         return list.length ? list.map((f, i) => {
           const x = this.src(f.token) || {name: '?', color: '#888'};
-          const editing = this.editing === i && this.editTrack === tr;
-          return `<li draggable="true" data-t="${tr}" data-i="${i}" class="${editing ? 'editing' : ''}"><span class="num">${tr === 'audio' ? '♪' : ''}${i + 1}</span><span class="dot" style="background:${x.color}"></span>
+          const editing = (this.editing === i && this.editTrack === tr) || (f.uid && f.uid === this.focus);
+          return `<li draggable="true" data-t="${tr}" data-i="${i}" data-u="${f.uid || ''}" class="${editing ? 'editing' : ''}"><span class="num">${tr === 'audio' ? '♪' : ''}${i + 1}</span><span class="dot" style="background:${x.color}"></span>
             <span class="tname" title="${esc(x.name)}">${esc(x.name)}</span>
             <span class="ft"><input data-f="start" value="${fmt2(f.start)}" aria-label="${t('Inicio')}"> → <input data-f="end" value="${fmt2(f.end)}" aria-label="${t('Final')}"></span>
             <span class="dur">${fmt2(f.end - f.start)}</span>
-            <span class="tbtn"><button type="button" data-act="play" title="${t('Escuchar')}">▶</button><button type="button" data-act="edit" title="${t('Ajustar en la onda')}">✎</button><button type="button" data-act="up" title="${t('Subir')}">↑</button><button type="button" data-act="down" title="${t('Bajar')}">↓</button><button type="button" data-act="del" title="${t('Quitar')}">🗑</button></span></li>`;
+            <span class="tbtn"><button type="button" data-act="play" title="${t('Escuchar')}">▶</button><button type="button" data-act="edit" title="${t('Ir a su bloque para ajustarlo')}">✎</button><button type="button" data-act="up" title="${t('Subir')}">↑</button><button type="button" data-act="down" title="${t('Bajar')}">↓</button><button type="button" data-act="del" title="${t('Quitar')}">🗑</button></span></li>`;
         }).join('') : `<li style="cursor:default"><span></span><span></span><span class="tname" style="color:var(--muted)">${t(tr === 'audio' ? 'Todavía no hay audio. Elige «🎵 Pista de audio», marca un tramo de una canción y agrégalo.' : 'Todavía no hay fragmentos. Marca un tramo en la onda y presiona «➕ Agregar fragmento».')}</span></li>`;
       },
       render() {
@@ -2010,29 +2347,31 @@
         $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
           : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
         $('#edCancelEdit').hidden = this.editing < 0;
+        this.renderBlocks(); this.renderFinal();
         this.draw(); Fx.render(); if (typeof An !== 'undefined') An.render();
       },
       playRange(a, b) { if (!this.el) return; this.el.currentTime = a; this.playEnd = b; this.el.play().catch(() => {}); },
       async run(preview) {
         if (!this.frags.length) return;
         if (this.el) this.el.pause();
-        const mode = preview ? 'original' : $('#edMode').value;
-        $('#edPreviewBox').innerHTML = '';
+        this.pauseAll();
+        $('#edPreviewBox').innerHTML = ''; if (preview) { this.fpeaks = null; if (this.fw) this.fw.draw(); }
         try {
           if (this.other() && !this.afrags.length) { this.say(t('Agrega al menos un fragmento a la pista de audio (o elige otro «Audio del video final»).')); return; }
-          const pack = list => list.map(f => ({token: f.token, start: f.start, end: f.end}));
-          const job = await api('/api/edit', {kind: this.kind, preview, mode, smooth: $('#edSmooth').checked, fragments: pack(this.frags),
-            audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags) : [],
-            effects: this.fx.map(({id, at, start, end, repeat, volume}) => ({id, at, start, end, repeat, volume})),
+          const pack = (list, tr) => list.map(f => ({token: f.token, start: f.start, end: f.end, mode: this.modeShown(tr) ? (f.mode || 'original') : 'original'}));
+          const job = await api('/api/edit', {kind: this.kind, preview, mode: 'original', smooth: $('#edSmooth').checked, fragments: pack(this.frags, 'main'),
+            audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags, 'audio') : [],
+            cut: !preview && this.cut ? this.cut : null,
+            effects: this.fx.filter(f => this.offsetOf(f.frag) >= 0).map(f => ({id: f.id, at: Math.round((this.offsetOf(f.frag) + f.at) * 1000) / 1000, start: f.start, end: f.end, repeat: f.repeat, volume: f.volume})),
             overlays: this.kind === 'video' ? this.ov.map(({id, kind, text, color, at, dur, x, y, w, h, pop}) => ({id, kind, text, color, at, dur, x, y, w, h, pop})) : []});
           this.job = job.id; this.render();
           const poll = async () => {
             let st; try { st = await api('/api/edit/' + job.id); } catch (error) { this.job = null; this.render(); this.say(t(error.message)); return; }
             if (st.status === 'running') {
               const pct = Math.round(st.percent);
-              this.say(preview ? tf('Preparando la vista previa… {0} %', pct)
-                : st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
-                : st.phase === 'separate' || st.phase === 'audio' ? tf(mode === 'music' ? 'Quitando la voz… {0} %' : 'Quitando la música… {0} %', pct)
+              this.say(st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
+                : st.phase === 'separate' || st.phase === 'audio' ? tf('Separando la voz y la música de los fragmentos… {0} %', pct)
+                : preview ? tf('Preparando la vista previa… {0} %', pct)
                 : st.phase === 'save' ? tf('Guardando… {0} %', pct) : st.phase === 'effects' ? tf('Poniendo los sonidos encima… {0} %', pct)
                 : st.phase === 'anims' ? tf('Preparando las animaciones… {0} %', pct)
                 : tf('Uniendo los fragmentos… {0} %', pct));
@@ -2044,7 +2383,7 @@
               const tag = this.kind === 'video' ? 'video' : 'audio';
               const d3 = t('Es la edición final ya armada, con tus fragmentos, sonidos y animaciones. Todavía no se guarda: presiona «💾 Guardar edición» cuando te guste. Si cambias algo, vuelve a hacer la vista previa.');
               $('#edPreviewBox').innerHTML = `<div class="scr-h" title="${d3}"><span class="n">${this.kind === 'video' ? 3 : 2}</span><span>${t('Vista previa de la edición final')}</span><span class="i">${t('ⓘ ¿qué es?')}</span></div><${tag} controls autoplay src="/media/${st.media.token}" title="${d3}"></${tag}>`;
-              Fx.watchPreview();
+              this.hookPreview(st.media.token);
               this.say(t('Vista previa lista. No se guarda: cuando te guste, presiona «💾 Guardar edición».'), true);
             } else {
               Files.load();
@@ -2061,13 +2400,15 @@
 
     // ---------- Sonidos encima (efectos): siempre suenan ENCIMA del audio o video final ----------
     const Fx = {
-      lib: null, tab: 'all', audio: new Audio(), playing: null, drag: null,
+      lib: null, tab: 'all', audio: new Audio(), playing: null, drag: null, target: null,
       CATS: [['all', 'Todos'], ['mine', '⭐ Mis sonidos'], ['fiesta', '🎉 Festejo'], ['voces', '🗣 Voces (en inglés)'], ['risas', '😂 Risas y chistosos'], ['efectos', '✨ Efectos']],
       name(x) { return typeof x.name === 'string' ? x.name : (x.name[LANG] || x.name.es); },
-      total() { return Edit.total(); },
+      // cada sonido va DENTRO de un fragmento: «at» cuenta desde el inicio de ese fragmento
+      total(uid) { const f = Edit.fragOf(uid); return f ? f.end - f.start : 0; },
       len(f) { return (f.end - f.start) * f.repeat; },
       async load(force) { if (!this.lib || force) { const d = await api('/api/effects'); this.lib = d; } return this.lib; },
-      async open() {
+      async open(uid) {
+        this.target = uid || Edit.focus || Edit.frags[0]?.uid || null;
         $('#fxPicker').hidden = false; $('#fxSearch').value = '';
         try { await this.load(); } catch (error) { $('#fxGrid').textContent = t(error.message); return; }
         this.renderPicker(); $('#fxSearch').focus();
@@ -2097,16 +2438,20 @@
           : `<p class="ed-help">${t(this.tab === 'mine' && !q ? 'Todavía no tienes sonidos tuyos. Presiona «📂 Agregar mis sonidos…» para traerlos de tu PC.' : 'No hay sonidos con ese nombre.')}</p>`;
       },
       find(id) { const lib = this.lib || {bank: [], mine: []}; return [...lib.mine, ...lib.bank].find(x => x.id === id); },
-      // Dónde poner un sonido nuevo: donde va la vista previa (si la hay); si no, al inicio.
-      here() { const p = $('#edPreviewBox audio, #edPreviewBox video'); return p && p.currentTime > 0 ? Math.min(p.currentTime, Math.max(0, this.total() - 0.05)) : 0; },
+      // Dónde poner un sonido nuevo: donde va el reproductor de su bloque (si está dentro del fragmento); si no, al inicio.
+      here(uid) {
+        const b = Edit.blk[uid], f = Edit.fragOf(uid); if (!b || !f || !b.media.readyState) return 0;
+        const rel = b.media.currentTime - f.start; return rel > 0 && rel < f.end - f.start ? Math.round(rel * 100) / 100 : 0;
+      },
       add(id) {
         const x = this.find(id); if (!x) return;
         if (!Edit.frags.length) { Edit.say(t('Primero agrega fragmentos a la edición; los sonidos van encima de ellos.')); this.close(); return; }
-        const at = this.here(), secs = +x.seconds || 1;
-        Edit.fx.push({id: x.id, name: this.name(x), seconds: secs, url: x.url, at, start: 0, end: secs, repeat: 1, volume: 1});
+        const uid = Edit.frags.some(f => f.uid === this.target) ? this.target : Edit.frags[0].uid;
+        const at = this.here(uid), secs = +x.seconds || 1, n = Edit.frags.findIndex(f => f.uid === uid) + 1;
+        Edit.fx.push({id: x.id, name: this.name(x), seconds: secs, url: x.url, frag: uid, at, start: 0, end: secs, repeat: 1, volume: 1});
         Edit.fxOn = Edit.fx.length - 1; Edit.save(); this.render(); this.close();
-        Edit.say(tf('Sonido «{0}» puesto en {1}. Arrástralo en la línea de tiempo para moverlo.', this.name(x), fmt2(at)), true);
-        $('#fxLine').scrollIntoView({behavior: 'smooth', block: 'center'});
+        Edit.say(tf('Sonido «{0}» puesto en el fragmento {1}, en {2}. Arrástralo en su línea de tiempo para moverlo.', this.name(x), n, fmt2(at)), true);
+        Edit.blk[uid]?.el.querySelector('.fxline').scrollIntoView({behavior: 'smooth', block: 'center'});
       },
       async addMine() {
         const b = $('#fxMine'); b.disabled = true; $('#fxNote').textContent = t('Elige tus sonidos en la ventana que se abrió…');
@@ -2127,50 +2472,52 @@
         if (used) { Edit.fx = Edit.fx.filter(f => f.id !== id); Edit.fxOn = -1; Edit.save(); this.render(); }
         this.renderPicker();
       },
-      lanes() {  // acomodar los sonidos en renglones para que no se encimen en la línea de tiempo
-        const T = Math.max(0.001, this.total()), ends = [], lane = [];
-        Edit.fx.map((f, i) => i).sort((a, b) => Edit.fx[a].at - Edit.fx[b].at).forEach(i => {
+      lanes(uid) {  // acomodar los sonidos de un fragmento en renglones para que no se encimen
+        const T = Math.max(0.001, this.total(uid)), ends = [], lane = [];
+        Edit.fx.map((f, i) => i).filter(i => Edit.fx[i].frag === uid).sort((a, b) => Edit.fx[a].at - Edit.fx[b].at).forEach(i => {
           const f = Edit.fx[i], minW = T * 0.06; let l = ends.findIndex(e => e <= f.at);
           if (l < 0) { l = ends.length; ends.push(0); }
           ends[l] = f.at + Math.max(this.len(f), minW); lane[i] = l;
         });
         return {lane, count: Math.max(1, ends.length)};
       },
-      render() {
-        const line = $('#fxLine'), T = this.total();
-        const {lane, count} = this.lanes();
+      render() { Edit.frags.forEach(f => this.renderOne(f.uid)); },
+      renderOne(uid) {
+        const b = Edit.blk[uid], F = Edit.fragOf(uid); if (!b || !F) return;
+        const line = b.el.querySelector('.fxline'), rows = b.el.querySelector('.fxrows'), T = Math.max(0.001, this.total(uid));
+        const last = Edit.frags[Edit.frags.length - 1]?.uid === uid, x = Edit.src(F.token) || {color: '#888'};
+        const {lane, count} = this.lanes(uid);
         line.style.height = (22 + count * 24) + 'px';
-        if (!Edit.frags.length) { line.innerHTML = `<div class="empty">${t('Aquí verás la edición final y sus sonidos encima.')}</div>`; $('#fxRows').innerHTML = ''; return; }
-        let acc = 0, html = '';
-        Edit.frags.forEach((f, i) => { const x = Edit.src(f.token) || {color: '#888'}, w = (f.end - f.start) / T * 100;
-          html += `<div class="blk" style="left:${acc / T * 100}%;width:${w}%;background:${x.color}"><b>${i + 1}</b></div>`; acc += f.end - f.start; });
-        const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600], step = steps.find(s => T / s <= 8) || 1200;
+        let html = `<div class="blk" style="left:0;width:100%;background:${x.color}"></div>`;
+        const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600], step = steps.find(s => T / s <= 8) || 1200;
         for (let s = 0; s < T; s += step) html += `<span class="tick" style="left:${s / T * 100}%">${fmt2(s).replace(/\.00$/, '')}</span>`;
-        Edit.fx.forEach((f, i) => {
+        const mine = Edit.fx.map((f, i) => [f, i]).filter(([f]) => f.frag === uid);
+        mine.forEach(([f, i]) => {
           const out = f.at >= T, left = Math.min(f.at, T) / T * 100, w = Math.min(this.len(f), Math.max(0, T - f.at)) / T * 100;
-          html += `<div class="chip${i === Edit.fxOn ? ' on' : ''}${out ? ' out' : ''}" data-fx="${i}" style="left:${Math.min(left, 99)}%;width:${w}%;top:${2 + lane[i] * 24}px" title="${esc(f.name)} · ${fmt2(f.at)}">🔊 ${esc(f.name)}</div>`;
+          html += `<div class="chip${i === Edit.fxOn ? ' on' : ''}${out ? ' out' : ''}" data-fx="${i}" style="left:${Math.min(left, 99)}%;width:${w}%;top:${2 + (lane[i] || 0) * 24}px" title="${esc(f.name)} · ${fmt2(f.at)}">🔊 ${esc(f.name)}</div>`;
         });
-        html += `<div class="head" id="fxHead" hidden></div>`;
-        line.innerHTML = html; this.head();
-        $('#fxRows').innerHTML = Edit.fx.map((f, i) => {
-          const out = f.at >= T, cut = !out && f.at + this.len(f) > T + 0.01;
+        if (!mine.length) html += `<div class="empty">${t('Sin sonidos encima. Presiona «➕ Agregar sonido».')}</div>`;
+        html += `<div class="head" hidden></div>`;
+        line.innerHTML = html; this.head(uid);
+        rows.innerHTML = mine.map(([f, i]) => {
+          const out = f.at >= T, over = !out && f.at + this.len(f) > T + 0.01;
           return `<li data-fx="${i}" class="${i === Edit.fxOn ? 'on' : ''}"><span class="nm" title="${esc(f.name)}">🔊 ${esc(f.name)}</span>
             <label>${t('Suena en')} <input class="tm" data-k="at" value="${fmt2(f.at)}"></label>
             <label>${t('Pedazo')} <input class="tm" data-k="start" value="${fmt2(f.start)}"> → <input class="tm" data-k="end" value="${fmt2(f.end)}"></label>
             <label>${t('Repetir')} × <input class="rp" data-k="repeat" type="number" min="1" max="50" value="${f.repeat}"></label>
             <label>🔉 <input data-k="volume" type="range" min="0" max="200" step="5" value="${Math.round(f.volume * 100)}"> <span>${Math.round(f.volume * 100)} %</span></label>
             <span><button type="button" class="secondary" data-act="play" title="${t('Escuchar el sonido')}">${this.playing === 'row' + i ? '⏸' : '▶'}</button><button type="button" class="secondary" data-act="dup" title="${t('Duplicar (para ponerlo en otro lado)')}">⧉</button><button type="button" class="secondary" data-act="del" title="${t('Quitar')}">🗑</button></span>
-            ${out ? `<span class="warn">${t('⚠ Queda después del final de la edición: no se va a oír. Muévelo más atrás.')}</span>` : cut ? `<span class="warn">${t('Se corta al final de la edición.')}</span>` : ''}</li>`;
+            ${out ? `<span class="warn">${t('⚠ Empieza después del final de este fragmento. Muévelo más atrás.')}</span>` : over ? `<span class="warn">${t(last ? 'Se corta al final de la edición.' : 'Sigue sonando sobre el fragmento siguiente.')}</span>` : ''}</li>`;
         }).join('');
       },
-      // la rayita roja: dónde va la vista previa de la edición final
-      head() {
-        const h = $('#fxHead'), p = $('#edPreviewBox audio, #edPreviewBox video'), T = this.total();
-        if (!h) return; h.hidden = !p || !T; if (p && T) h.style.left = Math.min(100, p.currentTime / T * 100) + '%';
+      // la rayita roja: dónde va el reproductor de ese bloque
+      head(uid) {
+        const b = Edit.blk[uid], F = Edit.fragOf(uid); if (!b || !F) return;
+        const h = b.el.querySelector('.fxline .head'); if (!h) return;
+        const T = F.end - F.start, rel = b.media.readyState ? b.media.currentTime - F.start : -1;
+        h.hidden = !(T > 0 && rel >= 0 && rel <= T); if (!h.hidden) h.style.left = rel / T * 100 + '%';
       },
-      watchPreview() { const p = $('#edPreviewBox audio, #edPreviewBox video'); if (p) ['timeupdate', 'seeked'].forEach(e => p.addEventListener(e, () => this.head())); },
     };
-    $('#fxOpen').addEventListener('click', () => Fx.open());
     $('#fxClose').addEventListener('click', () => Fx.close());
     $('#fxPicker').addEventListener('click', event => { if (event.target === $('#fxPicker')) Fx.close(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#fxPicker').hidden) Fx.close(); });
@@ -2185,39 +2532,40 @@
     });
     Fx.audio.addEventListener('pause', () => {  // terminó o se pausó: los botones vuelven a ▶
       if (!Fx.audio.paused) return;
-      Fx.playing = null; document.querySelectorAll('[data-fxplay], #fxRows [data-act=play]').forEach(x => x.textContent = '▶');
+      Fx.playing = null; document.querySelectorAll('[data-fxplay], .fxrows [data-act=play]').forEach(x => x.textContent = '▶');
       document.querySelectorAll('.fx-item.playing').forEach(x => x.classList.remove('playing'));
     });
-    // Mover un sonido: arrastrarlo en la línea de tiempo. Clic en lo vacío: llevar ahí la vista previa.
+    // Mover un sonido: arrastrarlo en la línea de tiempo de su fragmento. Clic en lo vacío: llevar ahí el reproductor del bloque.
     (() => {
-      const line = $('#fxLine');
-      const timeAt = event => { const r = line.getBoundingClientRect(); return Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * Fx.total(); };
-      line.addEventListener('pointerdown', event => {
-        const chip = event.target.closest('.chip');
-        if (!chip) { const p = $('#edPreviewBox audio, #edPreviewBox video'); if (p) { p.currentTime = timeAt(event); Fx.head(); } return; }
+      const timeAt = (line, event) => { const r = line.getBoundingClientRect(); return Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * Fx.total(line.dataset.b); };
+      document.addEventListener('pointerdown', event => {
+        const line = event.target.closest('.eblk .fxline[data-b]'); if (!line) return;
+        const uid = line.dataset.b, chip = event.target.closest('.chip');
+        if (!chip) { const b = Edit.blk[uid], F = Edit.fragOf(uid); if (b && F) { b.media.currentTime = F.start + timeAt(line, event); Edit.tickBlock(b); } return; }
         const i = +chip.dataset.fx, f = Edit.fx[i];
-        Fx.drag = {i, offset: timeAt(event) - f.at, moved: false, x0: event.clientX};
+        Fx.drag = {i, line, offset: timeAt(line, event) - f.at, moved: false, x0: event.clientX};
         Edit.fxOn = i; line.setPointerCapture(event.pointerId); event.preventDefault();
       });
-      line.addEventListener('pointermove', event => {
+      document.addEventListener('pointermove', event => {
         const d = Fx.drag; if (!d) return;
         if (Math.abs(event.clientX - d.x0) >= 3) d.moved = true;
         if (!d.moved) return;
-        const f = Edit.fx[d.i], T = Fx.total();
-        f.at = Math.round(Math.min(Math.max(0, timeAt(event) - d.offset), Math.max(0, T - 0.05)) * 100) / 100;
-        const chip = line.querySelector(`.chip[data-fx="${d.i}"]`);
+        const f = Edit.fx[d.i], T = Fx.total(d.line.dataset.b);
+        f.at = Math.round(Math.min(Math.max(0, timeAt(d.line, event) - d.offset), Math.max(0, T - 0.05)) * 100) / 100;
+        const chip = d.line.querySelector(`.chip[data-fx="${d.i}"]`);
         if (chip) { chip.style.left = f.at / T * 100 + '%'; chip.style.width = Math.min(Fx.len(f), T - f.at) / T * 100 + '%'; chip.title = f.name + ' · ' + fmt2(f.at); }
-        const input = $(`#fxRows li[data-fx="${d.i}"] input[data-k=at]`); if (input) input.value = fmt2(f.at);
+        const input = document.querySelector(`.fxrows li[data-fx="${d.i}"] input[data-k=at]`); if (input) input.value = fmt2(f.at);
       });
-      const end = () => { if (!Fx.drag) return; Fx.drag = null; Edit.save(); Fx.render(); };
-      line.addEventListener('pointerup', end); line.addEventListener('pointercancel', end);
+      const end = () => { if (!Fx.drag) return; const uid = Fx.drag.line.dataset.b; Fx.drag = null; Edit.save(); Fx.renderOne(uid); };
+      document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
     })();
-    $('#fxRows').addEventListener('input', event => {
-      const li = event.target.closest('li[data-fx]'); if (!li || event.target.dataset.k !== 'volume') return;
+    const fxRowsOf = event => { const li = event.target.closest('.fxrows li[data-fx]'); return li && Edit.fx[+li.dataset.fx] ? li : null; };
+    document.addEventListener('input', event => {
+      const li = fxRowsOf(event); if (!li || event.target.dataset.k !== 'volume') return;
       const f = Edit.fx[+li.dataset.fx]; f.volume = +event.target.value / 100; event.target.nextElementSibling.textContent = event.target.value + ' %'; Edit.save();
     });
-    $('#fxRows').addEventListener('change', event => {
-      const li = event.target.closest('li[data-fx]'), k = event.target.dataset.k; if (!li || !k || k === 'volume') return;
+    document.addEventListener('change', event => {
+      const li = fxRowsOf(event), k = event.target.dataset.k; if (!li || !k || k === 'volume') return;
       const f = Edit.fx[+li.dataset.fx];
       if (k === 'repeat') f.repeat = Math.max(1, Math.min(50, Math.round(+event.target.value) || 1));
       else {
@@ -2228,19 +2576,19 @@
           if (f.end - f.start < 0.05) { if (k === 'start') f.start = Math.max(0, f.end - 0.05); else f.end = f.start + 0.05; }
         }
       }
-      Edit.fxOn = +li.dataset.fx; Edit.save(); Fx.render();
+      Edit.fxOn = +li.dataset.fx; Edit.save(); Fx.renderOne(f.frag);
     });
-    $('#fxRows').addEventListener('click', event => {
-      const li = event.target.closest('li[data-fx]'); if (!li) return;
+    document.addEventListener('click', event => {
+      const li = fxRowsOf(event); if (!li) return;
       const i = +li.dataset.fx, f = Edit.fx[i], b = event.target.closest('button[data-act]');
       if (Edit.fxOn !== i && !b) { Edit.fxOn = i; Fx.render(); return; }
       if (!b) return;
       Edit.fxOn = i;
-      if (b.dataset.act === 'play') { Fx.play(f.url, f.start, f.end, 'row' + i, f.repeat); Fx.render(); }
-      else if (b.dataset.act === 'dup') { Edit.fx.splice(i + 1, 0, {...f, at: Math.min(f.at + Math.max(1, Fx.len(f)), Math.max(0, Fx.total() - 0.05))}); Edit.fxOn = i + 1; Edit.save(); Fx.render(); }
+      if (b.dataset.act === 'play') { Fx.play(f.url, f.start, f.end, 'row' + i, f.repeat); Fx.renderOne(f.frag); }
+      else if (b.dataset.act === 'dup') { Edit.fx.splice(i + 1, 0, {...f, at: Math.min(f.at + Math.max(1, Fx.len(f)), Math.max(0, Fx.total(f.frag) - 0.05))}); Edit.fxOn = i + 1; Edit.save(); Fx.render(); }
       else if (b.dataset.act === 'del') { Fx.stop(); Edit.fx.splice(i, 1); Edit.fxOn = -1; Edit.save(); Fx.render(); }
     });
-    (() => { let w = 0; new ResizeObserver(() => { const now = $('#fxLine').clientWidth; if (now !== w) { w = now; Fx.render(); } }).observe($('#fxLine')); })();
+    (() => { let w = 0; new ResizeObserver(() => { const now = $('#edBlocks').clientWidth; if (now !== w) { w = now; Fx.render(); } }).observe($('#edBlocks')); })();
 
     // ---------- Animaciones encima del video ----------
     const An = {
@@ -2590,32 +2938,71 @@
       catch (error) { Edit.say(error.message); }
       finally { button.disabled = false; }
     });
-    // Arrastrar sobre la onda: marcar un tramo (o mover uno de sus bordes). Un clic sin arrastrar: ir a ese punto.
-    (() => {
-      const wave = $('#edWave'); let drag = null;
-      const timeAt = event => { const r = wave.getBoundingClientRect(); return Edit.view[0] + Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) * (Edit.view[1] - Edit.view[0]); };
-      const px = t => (t - Edit.view[0]) / Math.max(0.001, Edit.view[1] - Edit.view[0]) * wave.clientWidth;
-      wave.addEventListener('pointerdown', event => {
-        if (!Edit.cur()) return;
-        const t0 = timeAt(event), x = px(t0);
-        const edge = Math.abs(x - px(Edit.sel[0])) < 7 ? 0 : Math.abs(x - px(Edit.sel[1])) < 7 ? 1 : -1;
-        drag = {t0, x0: event.clientX, edge, moved: false, prev: [...Edit.sel]};
-        wave.setPointerCapture(event.pointerId);
+    // Onda de la fuente: arrastrar = marcar un tramo (o mover uno de sus bordes) · clic = ir a ese punto · rueda = zoom · Shift+rueda o barra = moverse
+    Edit.wv = new WaveView({box: $('#edWave'), nav: $('#edNav'), dur: () => Edit.cur()?.duration || 0, peaks: () => Edit.cur()?.peaks,
+      sel: () => Edit.cur() ? Edit.sel : null, setSel: (a, b) => Edit.setSel(a, b), now: () => Edit.el ? Edit.el.currentTime : null,
+      seek: tt => { if (Edit.el) Edit.el.currentTime = tt; }, decor: (...args) => Edit.decorUsed(...args)});
+    // Onda de la edición final (de la vista previa): sus bordes son el recorte del inicio y el final de todo
+    Edit.fw = new WaveView({box: $('#edFWave'), nav: $('#edFNav'), dur: () => Edit.total(),
+      peaks: () => Edit.fpeaks && Math.abs(Edit.fpeaksDur - Edit.total()) < 0.75 ? Edit.fpeaks : null,
+      sel: () => Edit.total() ? (Edit.cut || [0, Edit.total()]) : null, newSel: false,
+      setSel: (a, b, done) => Edit.setCut(a, b, done), now: () => Edit.prev() ? Edit.prev().currentTime : null,
+      seek: tt => { const p = Edit.prev(); if (p) p.currentTime = tt; }, decor: (...args) => Edit.decorFinal(...args)});
+    $('#edFZoomIn').addEventListener('click', () => Edit.fw.zoom(0.5));
+    $('#edFZoomOut').addEventListener('click', () => Edit.fw.zoom(2));
+    $('#edFZoomAll').addEventListener('click', () => Edit.fw.all());
+    const cutNow = () => { const p = Edit.prev(); return p ? p.currentTime : null; };
+    const needPreview = () => Edit.say(tf('Primero presiona «{0}» para tener la vista previa.', $('#edPreview').textContent));
+    $('#edCutA').addEventListener('change', () => { const v = parseTime($('#edCutA').value), [a, b] = Edit.cut || [0, Edit.total()]; if (isNaN(v)) { Edit.renderFinal(); return; } Edit.setCut(v, v >= b ? Edit.total() : b, true); });
+    $('#edCutB').addEventListener('change', () => { const v = parseTime($('#edCutB').value), [a, b] = Edit.cut || [0, Edit.total()]; if (isNaN(v)) { Edit.renderFinal(); return; } Edit.setCut(v <= a ? 0 : a, v, true); });
+    $('#edCutMarkA').addEventListener('click', () => { const n = cutNow(); if (n === null) { needPreview(); return; } const [, b] = Edit.cut || [0, Edit.total()]; Edit.setCut(n, Math.max(b, n + 0.1), true); });
+    $('#edCutMarkB').addEventListener('click', () => { const n = cutNow(); if (n === null) { needPreview(); return; } const [a] = Edit.cut || [0, Edit.total()]; Edit.setCut(Math.min(a, n - 0.1), n, true); });
+    $('#edCutPlay').addEventListener('click', () => {
+      const p = Edit.prev(); if (!p) { needPreview(); return; }
+      const [a, b] = Edit.cut || [0, Edit.total()]; Edit.pauseAll(p); p.currentTime = a; Edit.cutEnd = b; p.play().catch(() => {});
+    });
+    $('#edCutReset').addEventListener('click', () => { Edit.cut = null; Edit.renderFinal(); Edit.save(false); });
+    // Los bloques de cada fragmento
+    for (const box of [$('#edBlocks'), $('#edABlocks')]) {
+      box.addEventListener('pointerdown', event => { const el = event.target.closest('.eblk[data-u]'); if (el && Edit.focus !== el.dataset.u) Edit.setFocus(el.dataset.u); }, true);
+      box.addEventListener('click', event => {
+        if (event.target.closest('.fxrows, .fxline')) return;
+        const btn = event.target.closest('button[data-a]'), el = event.target.closest('.eblk[data-u]'); if (!btn || !el) return;
+        const uid = el.dataset.u, b = Edit.blk[uid], F = Edit.fragOf(uid); if (!b || !F) return;
+        const media = b.media, now = media.readyState ? media.currentTime : F.start;
+        const a = btn.dataset.a;
+        if (a === 'play') { if (!media.paused) media.pause(); else Edit.playBlock(b, now < F.end - 0.05 ? now : F.start); }
+        else if (a === 'playsel') Edit.playBlock(b, F.start);
+        else if (a === 'mstart') { if (now >= F.end - 0.1) Edit.say(t('El inicio debe quedar antes del final: mueve el reproductor más atrás.')); else Edit.setFrag(uid, now, F.end, true); }
+        else if (a === 'mend') { if (now <= F.start + 0.1) Edit.say(t('El final debe quedar después del inicio: mueve el reproductor más adelante.')); else Edit.setFrag(uid, F.start, now, true); }
+        else if (a === 'zin') b.wv.zoom(0.5);
+        else if (a === 'zout') b.wv.zoom(2);
+        else if (a === 'zall') b.wv.all();
+        else if (a === 'zfrag') Edit.fragView(b);
+        else if (a === 'fx') Fx.open(uid);
       });
-      wave.addEventListener('pointermove', event => {
-        if (!drag) { const r = wave.getBoundingClientRect(), x = event.clientX - r.left; wave.style.cursor = Math.abs(x - px(Edit.sel[0])) < 7 || Math.abs(x - px(Edit.sel[1])) < 7 ? 'ew-resize' : 'crosshair'; return; }
-        if (Math.abs(event.clientX - drag.x0) >= 4) drag.moved = true;
-        if (!drag.moved) return;
-        const t1 = timeAt(event);
-        if (drag.edge === 0) Edit.setSel(t1, Edit.sel[1]); else if (drag.edge === 1) Edit.setSel(Edit.sel[0], t1); else Edit.setSel(drag.t0, t1);
+      box.addEventListener('input', event => {
+        const sk = event.target.closest('[data-a=seek]'), el = event.target.closest('.eblk[data-u]'); if (!sk || !el) return;
+        const b = Edit.blk[el.dataset.u]; if (b) { b.media.currentTime = +sk.value; Edit.tickBlock(b); }
       });
-      wave.addEventListener('pointerup', () => {
-        if (drag && !drag.moved && Edit.el) { Edit.el.currentTime = drag.t0; Edit.draw(); }
-        drag = null;
+      box.addEventListener('change', event => {
+        if (event.target.closest('.fxrows')) return;
+        const k = event.target.dataset.k, el = event.target.closest('.eblk[data-u]'); if (!k || !el) return;
+        const uid = el.dataset.u, F = Edit.fragOf(uid); if (!F) return;
+        if (k === 'mode') {
+          F.mode = event.target.value; Edit.save();
+          const n = (Edit.trackOf(uid) === 'audio' ? '♪' : '') + (Edit.list(Edit.trackOf(uid)).indexOf(F) + 1);
+          Edit.say(F.mode === 'original' ? tf('El fragmento {0} va tal cual (voz y música).', n)
+            : tf(F.mode === 'music' ? 'Al fragmento {0} se le quita la voz (solo música). La primera vez tarda un poco más, también en la vista previa.' : 'Al fragmento {0} se le quita la música (solo voz). La primera vez tarda un poco más, también en la vista previa.', n), true);
+          return;
+        }
+        if (k !== 'start' && k !== 'end') return;
+        const v = parseTime(event.target.value), a = F.start, c = F.end;
+        if (isNaN(v)) { Edit.fillBlock(Edit.blk[uid]); return; }
+        // escribir un inicio después del final (o un final antes del inicio) mueve el tramo completo
+        if (k === 'start') Edit.setFrag(uid, v, v >= c ? v + (c - a) : c, true); else Edit.setFrag(uid, v <= a ? Math.max(0, v - (c - a)) : a, v, true);
       });
-      wave.addEventListener('wheel', event => { if (!Edit.cur()) return; event.preventDefault(); Edit.zoom(event.deltaY < 0 ? 0.7 : 1.4); }, {passive: false});
-      new ResizeObserver(() => Edit.draw()).observe(wave);
-    })();
+    }
     $('#edZoomIn').addEventListener('click', () => Edit.zoom(0.5));
     $('#edZoomOut').addEventListener('click', () => Edit.zoom(2));
     $('#edZoomAll').addEventListener('click', () => Edit.zoomAll());
@@ -2631,8 +3018,8 @@
       if (b - a < 0.1) { Edit.say(t('El tramo debe durar al menos 0.1 segundos.')); return; }
       const tr = Edit.editing >= 0 ? Edit.editTrack : Edit.track, list = Edit.list(tr);
       if (Edit.kind === 'video' && tr === 'main' && m.kind !== 'video') { Edit.say(t('En la pista de video solo van videos. Cambia a «🎵 Pista de audio» para agregar esta canción.')); return; }
-      if (Edit.editing >= 0) { list[Edit.editing] = {token: m.token, start: a, end: b}; Edit.say(tf('Fragmento {0} actualizado.', (tr === 'audio' ? '♪' : '') + (Edit.editing + 1)), true); Edit.editing = -1; }
-      else { list.push({token: m.token, start: a, end: b}); Edit.say(tf('Fragmento {0} agregado.', (tr === 'audio' ? '♪' : '') + list.length), true); }
+      if (Edit.editing >= 0) { const old = list[Edit.editing]; list[Edit.editing] = {token: m.token, start: a, end: b, uid: old.token === m.token ? old.uid : Edit.uid(), mode: old.mode || 'original'}; Edit.say(tf('Fragmento {0} actualizado.', (tr === 'audio' ? '♪' : '') + (Edit.editing + 1)), true); Edit.editing = -1; }
+      else { const uid = Edit.uid(); list.push({token: m.token, start: a, end: b, uid, mode: 'original'}); Edit.focus = uid; Edit.say(tf('Fragmento {0} agregado. Abajo tiene su propio bloque para ajustarlo.', (tr === 'audio' ? '♪' : '') + list.length), true); }
       Edit.save(); Edit.render();
     });
     $('#edCancelEdit').addEventListener('click', () => { Edit.editing = -1; Edit.render(); });
@@ -2648,10 +3035,20 @@
         const b = event.target.closest('button[data-act]'), li = b && b.closest('li[data-i]'); if (!li) return;
         const tr = li.dataset.t, list = Edit.list(tr), i = +li.dataset.i, f = list[i], si = Edit.sources.findIndex(x => x.token === f.token);
         if (b.dataset.act === 'play') Edit.select(si, [f.start, f.end]).then(() => Edit.playRange(f.start, f.end));
-        else if (b.dataset.act === 'edit') { Edit.editing = i; Edit.editTrack = tr; Edit.setTrack(tr); Edit.select(si, [f.start, f.end]); Edit.render(); $('#edViewer').scrollIntoView({behavior: 'smooth', block: 'center'}); }
+        else if (b.dataset.act === 'edit') Edit.setFocus(f.uid, true);
         else if (b.dataset.act === 'up' && i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; Edit.editing = -1; Edit.save(); Edit.render(); }
         else if (b.dataset.act === 'down' && i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; Edit.editing = -1; Edit.save(); Edit.render(); }
-        else if (b.dataset.act === 'del') { list.splice(i, 1); Edit.editing = -1; Edit.save(); Edit.render(); }
+        else if (b.dataset.act === 'del') {
+          const nfx = Edit.fx.filter(x => x.frag === f.uid).length;
+          (nfx ? ask(tf('¿Quitar el fragmento {0}?\n\nTambién se quitan sus {1} sonido(s) encima. Tu archivo NO se borra.', (tr === 'audio' ? '♪' : '') + (i + 1), nfx)) : Promise.resolve(true)).then(ok => {
+            if (!ok) return;
+            list.splice(i, 1); Edit.fx = Edit.fx.filter(x => x.frag !== f.uid); Edit.fxOn = -1; Edit.editing = -1; Edit.save(); Edit.render();
+          });
+        }
+      });
+      box.addEventListener('click', event => {  // clic en la fila: resaltarla e ir a su bloque
+        if (event.target.closest('button, input')) return;
+        const li = event.target.closest('li[data-u]'); if (li && li.dataset.u) Edit.setFocus(li.dataset.u, true);
       });
       let from = null;
       box.addEventListener('dragstart', event => { if (event.target.matches && event.target.matches('input')) { event.preventDefault(); return; } const li = event.target.closest('li[data-i]'); from = li ? +li.dataset.i : null; event.dataTransfer.effectAllowed = 'move'; });
@@ -2663,13 +3060,12 @@
       box.addEventListener('dragend', () => { from = null; box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over')); });
     }
     $('#edSmooth').addEventListener('change', () => Edit.save());
-    $('#edMode').addEventListener('change', () => { Edit.save(); $('#edSave').textContent = t($('#edMode').value === 'music' ? '🎵 Quitar la voz y guardar' : $('#edMode').value === 'voice' ? '🎤 Quitar la música y guardar' : '💾 Guardar edición'); });
     $('#edPreview').addEventListener('click', () => Edit.run(true));
     $('#edSave').addEventListener('click', () => Edit.run(false));
     $('#edClear').addEventListener('click', async () => {
       if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length && !Edit.ov.length) return;
       if (!await ask(t('¿Vaciar la edición?\n\nSe quitan las fuentes, la lista de fragmentos, los sonidos y las animaciones encima de este editor. Tus archivos, «Mis sonidos», «Mis animaciones» y las ediciones que ya guardaste NO se borran.'))) return;
-      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
+      Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1; Edit.cut = null; Edit.fpeaks = null; Edit.focus = null; Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.render();
     });
     Edit.restore();
 
@@ -4391,7 +4787,7 @@
       if (k === 'download') {
         $('#urls').value = ''; if (!$('#editor').hidden) closeEditor();
         await api('/api/jobs/clear', {}).catch(() => {}); refreshJobs();
-        Fx.stop(); Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1;
+        Fx.stop(); Edit.sources = []; Edit.frags = []; Edit.afrags = []; Edit.fx = []; Edit.fxOn = -1; Edit.ov = []; Edit.ovOn = -1; Edit.active = -1; Edit.editing = -1; Edit.cut = null; Edit.fpeaks = null; Edit.focus = null;
         Edit.unload(); $('#edPreviewBox').innerHTML = ''; Edit.say(''); Edit.save(); Edit.say(''); Edit.render(); say('');
       } else if (k === 'subs') {
         if (Subs.marking) Subs.stopMark(); sVideo.pause();

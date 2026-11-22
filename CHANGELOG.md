@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 5.3.0 — ✂ Edición por bloques
+- **Un bloque por cada fragmento**, debajo de la lista: su propio reproductor, su **onda** para ajustar fino el inicio y el final (arrastrando los bordes blancos, escribiendo el tiempo o con «Inicio aquí / Final aquí»), **sin crear otro fragmento**.
+- **Voz y música por fragmento**: cada uno puede ir tal cual, solo música o solo voz (también en la vista previa). Lo separado se guarda para no volver a separarlo.
+- **Sonidos encima dentro de cada fragmento**: «➕ Agregar sonido» en su bloque; si mueves el fragmento en la lista, sus sonidos se van con él. Las ediciones guardadas de antes pasan sus sonidos al fragmento donde caían.
+- **Bloque «Edición final»**: vista previa con su onda y **recorte del inicio y el final de todo** (los sonidos y animaciones se recorren solos).
+- **Moverte en las ondas con zoom**: rueda = zoom donde está el mouse · Shift + rueda o la barra de abajo de la onda = moverte · clic con la rueda (o Alt) y arrastrar = moverte. Ya no se queda fija en un solo lugar.
+
 ## 5.2.2
 - Abajo de la ventana: «¿Te ha servido EC-Tube? Invítanos un café (PayPal): @blukastle».
 

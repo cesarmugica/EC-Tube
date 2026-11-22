@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.2.2"
+APP_VERSION = "5.3.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1225,14 +1225,31 @@ def waveform(path: Path, buckets: int = 1600) -> dict:
     return data
 
 
+def _cut_list(frags: list, modes: list, a: float, b: float) -> tuple[list, list]:
+    """Quedarse solo con lo que cae entre a y b (segundos de la edición final), ajustando los fragmentos de las orillas."""
+    out, out_modes, pos = [], [], 0.0
+    for k, (src, start, end) in enumerate(frags):
+        dur = end - start
+        s0, s1 = max(a, pos), min(b, pos + dur)
+        if s1 - s0 >= 0.05:
+            out.append((src, start + (s0 - pos), start + (s1 - pos)))
+            out_modes.append(modes[k] if k < len(modes) else "original")
+        pos += dur
+    return out, out_modes
+
+
 class EditJob:
     """Une los fragmentos en el orden de la lista. Opcional: quitar la voz o la música al resultado."""
 
     def __init__(self, kind: str, fragments: list[tuple[Path, float, float]], mode: str = "original",
                  smooth: bool = True, preview: bool = False, audio_mode: str = "own",
                  audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None,
-                 overlays: list[dict] | None = None) -> None:
+                 overlays: list[dict] | None = None, frag_modes: list[str] | None = None,
+                 audio_modes: list[str] | None = None) -> None:
         self.id = uuid.uuid4().hex[:12]
+        # «Tal cual / solo música / solo voz» de CADA fragmento (cada uno se separa por su cuenta antes de unir)
+        self.frag_modes = [m if m in TRIM_WORDS else "original" for m in (frag_modes or [])]
+        self.audio_modes = [m if m in TRIM_WORDS else "original" for m in (audio_modes or [])]
         # animaciones encima del video: {render (para ectube_overlay.render), at, x, y, w, h (fracciones del cuadro)}
         self.overlays = overlays if kind == "video" else []
         self.overlay_files: list[Path] = []
@@ -1244,6 +1261,8 @@ class EditJob:
         self.audio_fragments = audio_fragments or []
         if self.audio_mode == "other" and not self.audio_fragments:
             self.audio_mode = "none"
+        if any(m != "original" for m in self.frag_modes + self.audio_modes):
+            mode = "original"  # ya va por fragmento
         self.mode = "original" if preview or mode not in TRIM_WORDS or self.audio_mode == "none" else mode
         self.total = sum(end - start for _, start, end in fragments)
         self.effects = [e for e in self.effects if e["at"] < self.total]
@@ -1450,15 +1469,59 @@ class EditJob:
             self.overlay_files.append(out)
             self.percent = 10.0 * (k + 1) / len(self.overlays)
 
+    def _separate_parts(self) -> None:
+        """Los fragmentos con «solo música» o «solo voz» se separan uno por uno (y se guardan para la próxima vez)."""
+        jobs = [(lst, i, m) for lst, modes in ((self.fragments, self.frag_modes), (self.audio_fragments, self.audio_modes))
+                for i, m in enumerate(modes) if i < len(lst) and m != "original"]
+        if not jobs or (self.kind == "video" and self.audio_mode == "none" and all(lst is self.fragments for lst, _, _ in jobs)):
+            return
+        cache = EDIT_TMP / "separados"
+        cache.mkdir(parents=True, exist_ok=True)
+        for k, (lst, i, m) in enumerate(jobs):
+            if self.cancelled:
+                raise InterruptedError
+            src, start, end = lst[i]
+            stamp = 0
+            with contextlib.suppress(OSError):
+                stamp = src.stat().st_mtime_ns
+            key = hashlib.sha1(f"{src}|{stamp}|{start:.3f}|{end:.3f}|{m}".encode()).hexdigest()[:20]
+            out = cache / f"{key}{src.suffix.lower() if src.suffix.lower() in AUDIO_CODECS or src.suffix.lower() in VIDEO_EXTS else '.mp3'}"
+            if not out.exists():
+                self.phase = "separate"
+                sub = TrimJob(src, start, end, m)
+                tmp = out.with_name(out.stem + ".tmp" + out.suffix)
+                sub.output = tmp
+                self.sub = sub
+                done = threading.Event()
+
+                def follow(sub=sub, k=k) -> None:
+                    while not done.wait(0.4):
+                        self.phase = sub.phase or "separate"
+                        self.percent = 5 + (k + sub.percent / 100) / len(jobs) * 60
+
+                threading.Thread(target=follow, daemon=True).start()
+                sub.run()
+                done.set()
+                self.sub = None
+                if sub.status == "cancelled" or self.cancelled:
+                    raise InterruptedError
+                if sub.status != "done" or not tmp.exists():
+                    raise RuntimeError(sub.error or "No se pudo separar la voz o la música de un fragmento.")
+                tmp.replace(out)
+            lst[i] = (out, 0.0, end - start)
+            self.percent = 5 + (k + 1) / len(jobs) * 60
+
     def run(self) -> None:
         temp: Path | None = None
         try:
+            self._separate_parts()
             self._render_overlays()
             self.phase = "join"
             log(f"[edición {self.id}] {len(self.fragments)} fragmentos, {self.total:.1f} s, {self.kind}, {self.mode}"
                 + (" (vista previa)" if self.preview else ""))
             if self.mode == "original":
-                self._join(self.output, 90.0 if self.overlays else 100.0, base=10.0 if self.overlays else 0.0)
+                base = self.percent if self.percent > 0 else (10.0 if self.overlays else 0.0)
+                self._join(self.output, 100.0 - base, base=base)
             else:  # primero se une todo y luego se separa la voz o la música del resultado
                 EDIT_TMP.mkdir(parents=True, exist_ok=True)
                 temp = EDIT_TMP / f"unido-{self.id}{self.output.suffix}"
@@ -3084,6 +3147,23 @@ class Handler(BaseHTTPRequestHandler):
         if sum(e - s for _, s, e in fragments) > 3 * 3600:
             self.send_json({"ok": False, "error": "La edición final puede durar máximo 3 horas."}, 400)
             return
+        modes = [str((x or {}).get("mode") or "original") if isinstance(x, dict) else "original" for x in data.get("fragments") or []]
+        amodes = [str((x or {}).get("mode") or "original") if isinstance(x, dict) else "original" for x in data.get("audio_fragments") or []]
+        cut = data.get("cut")
+        if isinstance(cut, list) and len(cut) == 2:  # recortar la edición completa (inicio y final de todo)
+            try:
+                a, b = float(cut[0]), float(cut[1])
+            except (TypeError, ValueError):
+                a, b = 0.0, 0.0
+            if b - a >= 0.1:
+                fragments, modes = _cut_list(fragments, modes, a, b)
+                if audio_fragments:
+                    audio_fragments, amodes = _cut_list(audio_fragments, amodes, a, b)
+                effects = [{**e, "at": e["at"] - a} for e in effects if a <= e["at"] < b]
+                overlays = [{**o, "at": o["at"] - a} for o in overlays if a <= o["at"] < b]
+                if not fragments:
+                    self.send_json({"ok": False, "error": "El recorte de la edición final quedó vacío."}, 400)
+                    return
         preview = bool(data.get("preview"))
         if preview:  # solo una vista previa a la vez
             for old in [j for j in EDITS.values() if j.preview]:
@@ -3093,7 +3173,7 @@ class Handler(BaseHTTPRequestHandler):
                 EDITS.pop(old.id, None)
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
-                          audio_mode, audio_fragments, effects, overlays)
+                          audio_mode, audio_fragments, effects, overlays, modes, amodes)
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return
