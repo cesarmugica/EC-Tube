@@ -1036,6 +1036,18 @@
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
+      'Dónde': 'Where',
+      '⏮ Al inicio (antes de todo)': '⏮ At the start (before everything)',
+      '🔊 Encima de este fragmento': '🔊 On top of this clip',
+      '⏭ Al final (después de todo)': '⏭ At the end (after everything)',
+      'Suena antes de que empiece la edición (la alarga {0}).': 'Plays before the edit starts (makes it {0} longer).',
+      'Suena completo cuando termina la edición (la alarga {0}).': 'Plays in full when the edit ends (makes it {0} longer).',
+      'Se corta al final de la edición. Si quieres que suene completo después, en «Dónde» elige «⏭ Al final».': 'It gets cut at the end of the edit. If you want it to play in full afterwards, choose “⏭ At the end” in “Where”.',
+      '«{0}» va a sonar completo al final, después de todo. La edición dura ahora {1}.': '“{0}” will play in full at the end, after everything. The edit now lasts {1}.',
+      '«{0}» va a sonar al inicio, antes de todo. La edición dura ahora {1}.': '“{0}” will play at the start, before everything. The edit now lasts {1}.',
+      '«{0}» suena encima del fragmento.': '“{0}” plays on top of the clip.',
+      'Antes de todo: {0} de sonido(s) al inicio': 'Before everything: {0} of sound(s) at the start',
+      'Después de todo: {0} de sonido(s) al final': 'After everything: {0} of sound(s) at the end',
       '🧩 Capas: cómo se acomodan los fragmentos': '🧩 Layers: how the clips are arranged',
       'Arrástralos: encímalo con el anterior (uno se desvanece mientras entra el otro) o sepáralo (queda silencio). Doble clic = pegarlo otra vez.': 'Drag them: overlap a clip with the previous one (one fades out while the other comes in) or move it apart (silence in between). Double-click = stick it back.',
       '↺ Pegar todos uno tras otro': '↺ Put them all back one after another',
@@ -2087,7 +2099,7 @@
         const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end, uid: f.uid, mode: f.mode || 'original', gap: f.gap || 0}));
         try { localStorage.setItem('ectube-edit', JSON.stringify({v: 2, kind: this.kind, smooth: $('#edSmooth').checked, vaudio: this.vaudio,
           sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
-          fx: this.fx.map(({id, name, seconds, url, frag, at, start, end, repeat, volume}) => ({id, name, seconds, url, frag, at, start, end, repeat, volume})),
+          fx: this.fx.map(({id, name, seconds, url, frag, place, at, start, end, repeat, volume}) => ({id, name, seconds, url, frag, place: place || 'over', at, start, end, repeat, volume})),
           ov: this.ov, cut: this.cut})); } catch (_) {}
       },
       async restore() {
@@ -2214,10 +2226,14 @@
       // Capas: dónde empieza cada fragmento en la edición final. «gap» = espacio con el anterior (negativo = encimado).
       // Si mueves uno, los que siguen se recorren con él (conservan su espacio).
       positions() {
-        const out = []; let end = 0;
-        this.frags.forEach((f, i) => { const p = i ? Math.max(out[i - 1], end + (f.gap || 0)) : Math.max(0, f.gap || 0); out.push(p); end = p + f.end - f.start; });
+        const out = [], pre = this.fxLen('start'); let end = 0;
+        this.frags.forEach((f, i) => { const p = i ? Math.max(out[i - 1], end + (f.gap || 0)) : pre + Math.max(0, f.gap || 0); out.push(p); end = p + f.end - f.start; });
         return out;
       },
+      // sonidos «al inicio de todo» (antes del primer fragmento) y «al final de todo» (después del último): van uno tras otro
+      fxPlaced(place) { return this.fx.filter(f => f.place === place && this.frags.some(x => x.uid === f.frag)); },
+      fxLen(place) { return this.fxPlaced(place).reduce((acc, f) => acc + (f.end - f.start) * f.repeat, 0); },
+      contentEnd() { const P = this.positions(); return this.frags.reduce((acc, f, i) => Math.max(acc, P[i] + f.end - f.start), 0); },
       offsetOf(uid) { const i = this.frags.findIndex(f => f.uid === uid); return i < 0 ? -1 : this.positions()[i]; },
       // ¿se usa el audio de esta pista? (en un video «sin audio» u «otra pista», el audio de los fragmentos de video no se usa)
       modeShown(tr) { return this.kind === 'audio' || tr === 'audio' || this.vaudio === 'own'; },
@@ -2372,7 +2388,7 @@
       fragLabel(f) { return fmt2(f.start) + ' → ' + fmt2(f.end); },
       total(list = this.frags) {
         if (list !== this.frags) return list.reduce((acc, f) => acc + (f.end - f.start), 0);
-        const P = this.positions(); return this.frags.reduce((acc, f, i) => Math.max(acc, P[i] + f.end - f.start), 0);
+        return this.frags.length ? this.contentEnd() + this.fxLen('end') : 0;
       },
       layScale: 0, layDrag: null,
       renderLayers() {
@@ -2388,12 +2404,15 @@
             const prevEnd = P[i - 1] + frags[i - 1].end - frags[i - 1].start, d = P[i] - prevEnd;
             if (d < -0.004) { extra = `<div class="xf" style="left:${pct(P[i])}%;width:${pct(Math.min(-d, dur))}%"></div>`; info.push(tf('{0} y {1}: se enciman {2} (cambio suave)', i, i + 1, fmt2(-d))); }
             else if (d > 0.004) { extra = `<div class="gapz" style="left:${pct(prevEnd)}%;width:${pct(d)}%"></div>`; info.push(tf('{0} y {1}: {2} de silencio entre ellos', i, i + 1, fmt2(d))); }
-          } else if (P[0] > 0.004) info.push(tf('El 1 empieza en {0} (antes, silencio)', fmt2(P[0])));
+          } else if (P[0] - this.fxLen('start') > 0.004) info.push(tf('El 1 empieza en {0} (antes, silencio)', fmt2(P[0])));
           html += `<div class="lane"><span class="ln">${i + 1}</span><div class="track">${extra}<div class="lchip${this.layDrag && this.layDrag.i === i ? ' drag' : ''}" data-i="${i}" style="left:${pct(P[i])}%;width:${pct(dur)}%;background:${x.color}" title="${esc(x.name)} · ${fmt2(P[i])} → ${fmt2(P[i] + dur)}">${i + 1} · ${esc(x.name)}</div></div></div>`;
         });
         const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600], step = steps.find(v => T / v <= 10) || 1200;
         let ticks = ''; for (let v = 0; v < T; v += step) ticks += `<span style="left:${v / T * 100}%">${fmt2(v).replace(/\.00$/, '')}</span>`;
         box.innerHTML = html + `<div class="ticks">${ticks}</div>`;
+        const pre = this.fxLen('start'), post = this.fxLen('end');
+        if (pre) info.unshift(tf('Antes de todo: {0} de sonido(s) al inicio', fmt2(pre)));
+        if (post) info.push(tf('Después de todo: {0} de sonido(s) al final', fmt2(post)));
         $('#edLayInfo').textContent = info.length ? info.join(' · ') : t('Todos van pegados, uno tras otro.');
       },
       listHtml(list, tr) {
@@ -2438,7 +2457,13 @@
           const job = await api('/api/edit', {kind: this.kind, preview, mode: 'original', smooth: $('#edSmooth').checked, fragments: pack(this.frags, 'main'),
             audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags, 'audio') : [],
             cut: !preview && this.cut ? this.cut : null,
-            effects: this.fx.filter(f => this.offsetOf(f.frag) >= 0).map(f => ({id: f.id, at: Math.round((this.offsetOf(f.frag) + f.at) * 1000) / 1000, start: f.start, end: f.end, repeat: f.repeat, volume: f.volume})),
+            effects: (() => {
+              const out = [], r = v => Math.round(v * 1000) / 1000, one = (f, at, extend) => out.push({id: f.id, at: r(at), start: f.start, end: f.end, repeat: f.repeat, volume: f.volume, extend});
+              let acc = 0; this.fxPlaced('start').forEach(f => { one(f, acc, false); acc += (f.end - f.start) * f.repeat; });
+              acc = this.contentEnd(); this.fxPlaced('end').forEach(f => { one(f, acc, true); acc += (f.end - f.start) * f.repeat; });
+              this.fx.filter(f => (f.place || 'over') === 'over' && this.offsetOf(f.frag) >= 0).forEach(f => one(f, this.offsetOf(f.frag) + f.at, false));
+              return out;
+            })(),
             overlays: this.kind === 'video' ? this.ov.map(({id, kind, text, color, at, dur, x, y, w, h, pop}) => ({id, kind, text, color, at, dur, x, y, w, h, pop})) : []});
           this.job = job.id; this.render();
           const poll = async () => {
@@ -2527,7 +2552,7 @@
         if (!Edit.frags.length) { Edit.say(t('Primero agrega fragmentos a la edición; los sonidos van encima de ellos.')); this.close(); return; }
         const uid = Edit.frags.some(f => f.uid === this.target) ? this.target : Edit.frags[0].uid;
         const at = this.here(uid), secs = +x.seconds || 1, n = Edit.frags.findIndex(f => f.uid === uid) + 1;
-        Edit.fx.push({id: x.id, name: this.name(x), seconds: secs, url: x.url, frag: uid, at, start: 0, end: secs, repeat: 1, volume: 1});
+        Edit.fx.push({id: x.id, name: this.name(x), seconds: secs, url: x.url, frag: uid, place: 'over', at, start: 0, end: secs, repeat: 1, volume: 1});
         Edit.fxOn = Edit.fx.length - 1; Edit.save(); this.render(); this.close();
         Edit.say(tf('Sonido «{0}» puesto en el fragmento {1}, en {2}. Arrástralo en su línea de tiempo para moverlo.', this.name(x), n, fmt2(at)), true);
         Edit.blk[uid]?.el.querySelector('.fxline').scrollIntoView({behavior: 'smooth', block: 'center'});
@@ -2553,7 +2578,7 @@
       },
       lanes(uid) {  // acomodar los sonidos de un fragmento en renglones para que no se encimen
         const T = Math.max(0.001, this.total(uid)), ends = [], lane = [];
-        Edit.fx.map((f, i) => i).filter(i => Edit.fx[i].frag === uid).sort((a, b) => Edit.fx[a].at - Edit.fx[b].at).forEach(i => {
+        Edit.fx.map((f, i) => i).filter(i => Edit.fx[i].frag === uid && (Edit.fx[i].place || 'over') === 'over').sort((a, b) => Edit.fx[a].at - Edit.fx[b].at).forEach(i => {
           const f = Edit.fx[i], minW = T * 0.06; let l = ends.findIndex(e => e <= f.at);
           if (l < 0) { l = ends.length; ends.push(0); }
           ends[l] = f.at + Math.max(this.len(f), minW); lane[i] = l;
@@ -2571,7 +2596,7 @@
         const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600], step = steps.find(s => T / s <= 8) || 1200;
         for (let s = 0; s < T; s += step) html += `<span class="tick" style="left:${s / T * 100}%">${fmt2(s).replace(/\.00$/, '')}</span>`;
         const mine = Edit.fx.map((f, i) => [f, i]).filter(([f]) => f.frag === uid);
-        mine.forEach(([f, i]) => {
+        mine.filter(([f]) => (f.place || 'over') === 'over').forEach(([f, i]) => {
           const out = f.at >= T, left = Math.min(f.at, T) / T * 100, w = Math.min(this.len(f), Math.max(0, T - f.at)) / T * 100;
           html += `<div class="chip${i === Edit.fxOn ? ' on' : ''}${out ? ' out' : ''}" data-fx="${i}" style="left:${Math.min(left, 99)}%;width:${w}%;top:${2 + (lane[i] || 0) * 24}px" title="${esc(f.name)} · ${fmt2(f.at)}">🔊 ${esc(f.name)}</div>`;
         });
@@ -2579,14 +2604,21 @@
         html += `<div class="head" hidden></div>`;
         line.innerHTML = html; this.head(uid);
         rows.innerHTML = mine.map(([f, i]) => {
-          const out = f.at >= T, over = !out && f.at + this.len(f) > T + 0.01;
+          const place = f.place || 'over', on = place === 'over';
+          const out = on && f.at >= T, over = on && !out && f.at + this.len(f) > T + 0.01;
           return `<li data-fx="${i}" class="${i === Edit.fxOn ? 'on' : ''}"><span class="nm" title="${esc(f.name)}">🔊 ${esc(f.name)}</span>
-            <label>${t('Suena en')} <input class="tm" data-k="at" value="${fmt2(f.at)}"></label>
+            <label>${t('Dónde')} <select data-k="place">
+              <option value="start"${place === 'start' ? ' selected' : ''}>${t('⏮ Al inicio (antes de todo)')}</option>
+              <option value="over"${on ? ' selected' : ''}>${t('🔊 Encima de este fragmento')}</option>
+              <option value="end"${place === 'end' ? ' selected' : ''}>${t('⏭ Al final (después de todo)')}</option></select></label>
+            ${on ? `<label>${t('Suena en')} <input class="tm" data-k="at" value="${fmt2(f.at)}"></label>` : ''}
             <label>${t('Pedazo')} <input class="tm" data-k="start" value="${fmt2(f.start)}"> → <input class="tm" data-k="end" value="${fmt2(f.end)}"></label>
             <label>${t('Repetir')} × <input class="rp" data-k="repeat" type="number" min="1" max="50" value="${f.repeat}"></label>
             <label>🔉 <input data-k="volume" type="range" min="0" max="200" step="5" value="${Math.round(f.volume * 100)}"> <span>${Math.round(f.volume * 100)} %</span></label>
             <span><button type="button" class="secondary" data-act="play" title="${t('Escuchar el sonido')}">${this.playing === 'row' + i ? '⏸' : '▶'}</button><button type="button" class="secondary" data-act="dup" title="${t('Duplicar (para ponerlo en otro lado)')}">⧉</button><button type="button" class="secondary" data-act="del" title="${t('Quitar')}">🗑</button></span>
-            ${out ? `<span class="warn">${t('⚠ Empieza después del final de este fragmento. Muévelo más atrás.')}</span>` : over ? `<span class="warn">${t(last ? 'Se corta al final de la edición.' : 'Sigue sonando sobre el fragmento siguiente.')}</span>` : ''}</li>`;
+            ${place === 'start' ? `<span class="warn" style="color:var(--muted)">${tf('Suena antes de que empiece la edición (la alarga {0}).', fmt2(this.len(f)))}</span>`
+              : place === 'end' ? `<span class="warn" style="color:var(--muted)">${tf('Suena completo cuando termina la edición (la alarga {0}).', fmt2(this.len(f)))}</span>`
+              : out ? `<span class="warn">${t('⚠ Empieza después del final de este fragmento. Muévelo más atrás.')}</span>` : over ? `<span class="warn">${t(last ? 'Se corta al final de la edición. Si quieres que suene completo después, en «Dónde» elige «⏭ Al final».' : 'Sigue sonando sobre el fragmento siguiente.')}</span>` : ''}</li>`;
         }).join('');
       },
       // la rayita roja: dónde va el reproductor de ese bloque
@@ -2646,6 +2678,13 @@
     document.addEventListener('change', event => {
       const li = fxRowsOf(event), k = event.target.dataset.k; if (!li || !k || k === 'volume') return;
       const f = Edit.fx[+li.dataset.fx];
+      if (k === 'place') {
+        f.place = event.target.value; Edit.fxOn = +li.dataset.fx; Edit.save(); Edit.render();
+        Edit.say(f.place === 'end' ? tf('«{0}» va a sonar completo al final, después de todo. La edición dura ahora {1}.', f.name, fmt2(Edit.total()))
+          : f.place === 'start' ? tf('«{0}» va a sonar al inicio, antes de todo. La edición dura ahora {1}.', f.name, fmt2(Edit.total()))
+          : tf('«{0}» suena encima del fragmento.', f.name), true);
+        return;
+      }
       if (k === 'repeat') f.repeat = Math.max(1, Math.min(50, Math.round(+event.target.value) || 1));
       else {
         const v = parseTime(event.target.value);
@@ -2655,7 +2694,8 @@
           if (f.end - f.start < 0.05) { if (k === 'start') f.start = Math.max(0, f.end - 0.05); else f.end = f.start + 0.05; }
         }
       }
-      Edit.fxOn = +li.dataset.fx; Edit.save(); Fx.renderOne(f.frag);
+      Edit.fxOn = +li.dataset.fx; Edit.save();
+      if ((f.place || 'over') !== 'over') Edit.render(); else Fx.renderOne(f.frag);
     });
     document.addEventListener('click', event => {
       const li = fxRowsOf(event); if (!li) return;
@@ -2665,7 +2705,7 @@
       Edit.fxOn = i;
       if (b.dataset.act === 'play') { Fx.play(f.url, f.start, f.end, 'row' + i, f.repeat); Fx.renderOne(f.frag); }
       else if (b.dataset.act === 'dup') { Edit.fx.splice(i + 1, 0, {...f, at: Math.min(f.at + Math.max(1, Fx.len(f)), Math.max(0, Fx.total(f.frag) - 0.05))}); Edit.fxOn = i + 1; Edit.save(); Fx.render(); }
-      else if (b.dataset.act === 'del') { Fx.stop(); Edit.fx.splice(i, 1); Edit.fxOn = -1; Edit.save(); Fx.render(); }
+      else if (b.dataset.act === 'del') { Fx.stop(); Edit.fx.splice(i, 1); Edit.fxOn = -1; Edit.save(); Edit.render(); }
     });
     (() => { let w = 0; new ResizeObserver(() => { const now = $('#edBlocks').clientWidth; if (now !== w) { w = now; Fx.render(); } }).observe($('#edBlocks')); })();
 

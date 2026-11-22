@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 5.5.0 — 🔊 Sonidos al inicio o al final
+- Cada sonido tiene **«Dónde»**: **⏮ Al inicio (antes de todo)**, **🔊 Encima de este fragmento** (como siempre) o **⏭ Al final (después de todo)**. Al inicio o al final, el sonido suena **completo** y la edición se alarga lo que dure (por ejemplo, terminar la canción con una explosión). Si hay varios, van uno tras otro.
+- Si un sonido encima se corta al final de la edición, el aviso dice cómo ponerlo completo al final.
+- Las capas dicen cuánto sonido va antes y después de todo.
+
 ## 5.4.2
 - Al presionar «➕ Agregar fragmento» se **pausa la pista original** que estabas escuchando (y cualquier otro reproductor de la edición), y se agrega el fragmento como siempre.
 

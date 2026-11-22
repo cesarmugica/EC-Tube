@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.4.2"
+APP_VERSION = "5.5.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1250,7 +1250,8 @@ class EditJob:
                  smooth: bool = True, preview: bool = False, audio_mode: str = "own",
                  audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None,
                  overlays: list[dict] | None = None, frag_modes: list[str] | None = None,
-                 audio_modes: list[str] | None = None, positions: list[float] | None = None) -> None:
+                 audio_modes: list[str] | None = None, positions: list[float] | None = None,
+                 max_total: float | None = None) -> None:
         self.id = uuid.uuid4().hex[:12]
         # Capas: dónde empieza cada fragmento en la edición final. Si se enciman, uno se desvanece mientras entra el otro;
         # si hay espacio entre ellos, queda silencio (y negro en video). None = pegados uno tras otro (lo de siempre).
@@ -1281,6 +1282,17 @@ class EditJob:
         self.mode = "original" if preview or mode not in TRIM_WORDS or self.audio_mode == "none" else mode
         self.total = (max(ps + en - st for (_, st, en), ps in zip(fragments, self.positions)) if self.positions
                       else sum(end - start for _, start, end in fragments))
+        # sonidos «al final de todo»: la edición se alarga para que suenen completos (en silencio y, en video, en negro)
+        tail = max((e["at"] + (e["end"] - e["start"]) * e["repeat"] for e in self.effects if e.get("extend")), default=0.0)
+        if max_total is not None:
+            tail = min(tail, max_total)
+        if tail > self.total + 0.01:
+            if not self.positions:  # se arma por capas para poder alargarla
+                acc, self.positions = 0.0, []
+                for _, st, en in fragments:
+                    self.positions.append(acc)
+                    acc += en - st
+            self.total = tail
         self.effects = [e for e in self.effects if e["at"] < self.total]
         self.overlays = [o for o in (self.overlays or []) if o["at"] < self.total]
         first = fragments[0][0]
@@ -3158,7 +3170,8 @@ class Handler(BaseHTTPRequestHandler):
             if at < 0 or start < 0 or end - start < 0.05:
                 return "Cada efecto debe durar al menos 0.05 segundos."
             out.append({"path": path, "at": at, "start": start, "end": end,
-                        "repeat": max(1, min(repeat, 50)), "volume": max(0.0, min(volume, 3.0))})
+                        "repeat": max(1, min(repeat, 50)), "volume": max(0.0, min(volume, 3.0)),
+                        "extend": bool(item.get("extend"))})  # «al final de todo»: alarga la edición para que suene completo
         return out
 
     def _overlays(self, raw) -> list | str:
@@ -3225,6 +3238,7 @@ class Handler(BaseHTTPRequestHandler):
                 positions = [max(0.0, min(3 * 3600.0, float(x))) for x in raw]
         except (TypeError, ValueError):
             positions = None
+        max_total = None
         cut = data.get("cut")
         if isinstance(cut, list) and len(cut) == 2:  # recortar la edición completa (inicio y final de todo)
             try:
@@ -3232,6 +3246,7 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 a, b = 0.0, 0.0
             if b - a >= 0.1:
+                max_total = b - a
                 fragments, modes, positions = _cut_list(fragments, modes, a, b, positions)
                 if audio_fragments:
                     audio_fragments, amodes, _ = _cut_list(audio_fragments, amodes, a, b)
@@ -3249,7 +3264,7 @@ class Handler(BaseHTTPRequestHandler):
                 EDITS.pop(old.id, None)
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
-                          audio_mode, audio_fragments, effects, overlays, modes, amodes, positions)
+                          audio_mode, audio_fragments, effects, overlays, modes, amodes, positions, max_total)
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return
