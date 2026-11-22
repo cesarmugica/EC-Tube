@@ -1,5 +1,10 @@
 # Historial de versiones
 
+## 5.4.0 — 🧩 Capas en la edición final
+- **Capas** en el bloque «Edición final»: un renglón por fragmento que puedes **arrastrar en el tiempo**. Si lo encimas con el anterior, **uno se desvanece mientras entra el otro** (en video, la imagen también se funde); si lo separas, queda **silencio** (y negro en video). Cerca de pegado se pega solo; doble clic lo vuelve a pegar y «↺ Pegar todos uno tras otro» deja todo como antes. Si mueves uno, los que siguen se recorren con él.
+- Abajo de las capas dice qué pasa en cada unión («1 y 2: se enciman 0:02.00», «2 y 3: 0:01.36 de silencio»).
+- Botones más claros: «🔄 Armar y escuchar la unión de los fragmentos» (todo junto, todavía sin recorte) y «▶ Escuchar como se va a guardar» (solo la parte que se guarda).
+
 ## 5.3.0 — ✂ Edición por bloques
 - **Un bloque por cada fragmento**, debajo de la lista: su propio reproductor, su **onda** para ajustar fino el inicio y el final (arrastrando los bordes blancos, escribiendo el tiempo o con «Inicio aquí / Final aquí»), **sin crear otro fragmento**.
 - **Voz y música por fragmento**: cada uno puede ir tal cual, solo música o solo voz (también en la vista previa). Lo separado se guarda para no volver a separarlo.

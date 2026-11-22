@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.3.0"
+APP_VERSION = "5.4.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -1225,17 +1225,22 @@ def waveform(path: Path, buckets: int = 1600) -> dict:
     return data
 
 
-def _cut_list(frags: list, modes: list, a: float, b: float) -> tuple[list, list]:
-    """Quedarse solo con lo que cae entre a y b (segundos de la edición final), ajustando los fragmentos de las orillas."""
-    out, out_modes, pos = [], [], 0.0
+def _cut_list(frags: list, modes: list, a: float, b: float,
+              positions: list[float] | None = None) -> tuple[list, list, list[float]]:
+    """Quedarse solo con lo que cae entre a y b (segundos de la edición final), ajustando los fragmentos de las orillas.
+    `positions`: dónde empieza cada fragmento en la edición final (si no, van pegados uno tras otro)."""
+    out, out_modes, out_pos, pos = [], [], [], 0.0
     for k, (src, start, end) in enumerate(frags):
         dur = end - start
+        if positions is not None:
+            pos = positions[k]
         s0, s1 = max(a, pos), min(b, pos + dur)
         if s1 - s0 >= 0.05:
             out.append((src, start + (s0 - pos), start + (s1 - pos)))
             out_modes.append(modes[k] if k < len(modes) else "original")
+            out_pos.append(s0 - a)
         pos += dur
-    return out, out_modes
+    return out, out_modes, out_pos
 
 
 class EditJob:
@@ -1245,8 +1250,18 @@ class EditJob:
                  smooth: bool = True, preview: bool = False, audio_mode: str = "own",
                  audio_fragments: list[tuple[Path, float, float]] | None = None, effects: list[dict] | None = None,
                  overlays: list[dict] | None = None, frag_modes: list[str] | None = None,
-                 audio_modes: list[str] | None = None) -> None:
+                 audio_modes: list[str] | None = None, positions: list[float] | None = None) -> None:
         self.id = uuid.uuid4().hex[:12]
+        # Capas: dónde empieza cada fragmento en la edición final. Si se enciman, uno se desvanece mientras entra el otro;
+        # si hay espacio entre ellos, queda silencio (y negro en video). None = pegados uno tras otro (lo de siempre).
+        self.positions: list[float] | None = None
+        if positions and len(positions) == len(fragments):
+            acc, seq = 0.0, True
+            for (_, st, en), ps in zip(fragments, positions):
+                seq = seq and abs(ps - acc) < 0.005
+                acc += en - st
+            if not seq:
+                self.positions = [max(0.0, float(x)) for x in positions]
         # «Tal cual / solo música / solo voz» de CADA fragmento (cada uno se separa por su cuenta antes de unir)
         self.frag_modes = [m if m in TRIM_WORDS else "original" for m in (frag_modes or [])]
         self.audio_modes = [m if m in TRIM_WORDS else "original" for m in (audio_modes or [])]
@@ -1264,7 +1279,8 @@ class EditJob:
         if any(m != "original" for m in self.frag_modes + self.audio_modes):
             mode = "original"  # ya va por fragmento
         self.mode = "original" if preview or mode not in TRIM_WORDS or self.audio_mode == "none" else mode
-        self.total = sum(end - start for _, start, end in fragments)
+        self.total = (max(ps + en - st for (_, st, en), ps in zip(fragments, self.positions)) if self.positions
+                      else sum(end - start for _, start, end in fragments))
         self.effects = [e for e in self.effects if e["at"] < self.total]
         self.overlays = [o for o in (self.overlays or []) if o["at"] < self.total]
         first = fragments[0][0]
@@ -1361,11 +1377,44 @@ class EditJob:
             chains.append("".join(labels) + f"concat=n={len(frags)}:v=0:a=1[{prefix}]")
             return f"[{prefix}]"
 
+        positions = self.positions or []
+        order = sorted(range(len(positions)), key=lambda i: positions[i])
+
+        def blend(k: int) -> tuple[float, float]:
+            """Cuánto se encima el fragmento (en orden de capas) con el anterior y con el siguiente."""
+            i = order[k]
+            _, st, en = self.fragments[i]
+            dur, ps = en - st, positions[i]
+            prev_end = max((positions[j] + self.fragments[j][2] - self.fragments[j][1] for j in order[:k]), default=-1.0)
+            fade_in = min(dur / 2, max(0.0, prev_end - ps))
+            fade_out = min(dur / 2, max(0.0, ps + dur - positions[order[k + 1]])) if k + 1 < len(order) else 0.0
+            return fade_in, fade_out
+
+        def layered_audio(prefix: str) -> str:
+            labels = []
+            for k, i in enumerate(order):
+                path, start, end = self.fragments[i]
+                dur = end - start
+                idx = add_input(path, start, dur) if probe(path)["audio"] else silence(dur)
+                fade_in, fade_out = blend(k)
+                if self.smooth:
+                    fade_in, fade_out = max(fade_in, 0.015), max(fade_out, 0.015)
+                chain = f"[{idx}:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS"
+                if fade_in > 0 and dur > 0.1:
+                    chain += f",afade=t=in:d={fade_in:.3f}"
+                if fade_out > 0 and dur > 0.1:
+                    chain += f",afade=t=out:st={max(0.0, dur - fade_out):.3f}:d={fade_out:.3f}"
+                chains.append(chain + f",adelay={int(round(positions[i] * 1000))}:all=1[{prefix}{i}]")
+                labels.append(f"[{prefix}{i}]")
+            chains.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:dropout_transition=0:normalize=0,"
+                          f"apad,atrim=0:{self.total:.3f}[{prefix}]")
+            return f"[{prefix}]"
+
         if self.kind == "audio":
             for path, *_ in self.fragments:
                 if not probe(path)["audio"]:
                     raise RuntimeError(f"«{path.name}» no tiene audio.")
-            track = audio_track(self.fragments, "a")
+            track = layered_audio("a") if self.positions else audio_track(self.fragments, "a")
             if with_fx and self.effects:
                 self._fx_chains(track, add_input, chains, "mix")
                 track = "[mix]"
@@ -1380,7 +1429,24 @@ class EditJob:
         width, height = (info["width"] or 1280) // 2 * 2, (info["height"] or 720) // 2 * 2
         fps = min(60.0, max(24.0, round(info["fps"] or 30, 3)))  # los cuadros por segundo del primer video (60 se queda en 60)
         vlabels = []
-        for i, (path, start, end) in enumerate(self.fragments):
+        if self.positions:  # capas: fondo negro y cada fragmento encima a su tiempo (el que entra aparece poco a poco)
+            chains.append(f"color=c=black:s={width}x{height}:r={fps}:d={self.total:.3f},format=yuv420p[bg]")
+            cur = "bg"
+            for k, i in enumerate(order):
+                path, start, end = self.fragments[i]
+                idx = add_input(path, start, end - start)
+                fade_in, _ = blend(k)
+                chain = (f"[{idx}:v:0]setpts=PTS-STARTPTS,scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},format=yuva420p")
+                if fade_in > 0:
+                    chain += f",fade=t=in:st=0:d={fade_in:.3f}:alpha=1"
+                chains.append(chain + f",setpts=PTS+{positions[i]:.3f}/TB[v{i}]")
+                chains.append(f"[{cur}][v{i}]overlay=eof_action=pass:format=auto[lv{k}]")
+                cur = f"lv{k}"
+            chains.append(f"[{cur}]format=yuv420p[v]")
+            if self.audio_mode == "own":
+                chains.append(f"{layered_audio('la')}anull[a]")
+        for i, (path, start, end) in enumerate([] if self.positions else self.fragments):
             dur = end - start
             idx = add_input(path, start, dur)
             chains.append(f"[{idx}:v:0]setpts=PTS-STARTPTS,scale={width}:{height}:force_original_aspect_ratio=decrease,"
@@ -1406,10 +1472,13 @@ class EditJob:
             vout = "[v]"
         fx = with_fx and bool(self.effects)
         has_audio = self.audio_mode != "none" or fx
-        if self.audio_mode == "own":
+        if self.positions:
+            pass  # [v] y [a] ya están armados por capas
+        elif self.audio_mode == "own":
             chains.append("".join(vlabels) + f"concat=n={count}:v=1:a=1[v][a]")
         else:
             chains.append("".join(vlabels) + f"concat=n={count}:v=1:a=0[v]")
+        if self.audio_mode != "own":
             if self.audio_mode == "other":
                 track = audio_track(self.audio_fragments, "b")
                 # la pista de audio dura lo mismo que el video: si sobra se corta, si falta queda en silencio
@@ -3149,6 +3218,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         modes = [str((x or {}).get("mode") or "original") if isinstance(x, dict) else "original" for x in data.get("fragments") or []]
         amodes = [str((x or {}).get("mode") or "original") if isinstance(x, dict) else "original" for x in data.get("audio_fragments") or []]
+        positions: list[float] | None = None
+        try:  # capas: dónde empieza cada fragmento (si el usuario los separó o los enciman)
+            raw = [x.get("pos") for x in data.get("fragments") or [] if isinstance(x, dict)]
+            if len(raw) == len(fragments) and all(x is not None for x in raw):
+                positions = [max(0.0, min(3 * 3600.0, float(x))) for x in raw]
+        except (TypeError, ValueError):
+            positions = None
         cut = data.get("cut")
         if isinstance(cut, list) and len(cut) == 2:  # recortar la edición completa (inicio y final de todo)
             try:
@@ -3156,9 +3232,9 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 a, b = 0.0, 0.0
             if b - a >= 0.1:
-                fragments, modes = _cut_list(fragments, modes, a, b)
+                fragments, modes, positions = _cut_list(fragments, modes, a, b, positions)
                 if audio_fragments:
-                    audio_fragments, amodes = _cut_list(audio_fragments, amodes, a, b)
+                    audio_fragments, amodes, _ = _cut_list(audio_fragments, amodes, a, b)
                 effects = [{**e, "at": e["at"] - a} for e in effects if a <= e["at"] < b]
                 overlays = [{**o, "at": o["at"] - a} for o in overlays if a <= o["at"] < b]
                 if not fragments:
@@ -3173,7 +3249,7 @@ class Handler(BaseHTTPRequestHandler):
                 EDITS.pop(old.id, None)
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
-                          audio_mode, audio_fragments, effects, overlays, modes, amodes)
+                          audio_mode, audio_fragments, effects, overlays, modes, amodes, positions)
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return
