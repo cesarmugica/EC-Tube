@@ -3120,6 +3120,7 @@
     $('#edPlaySel').addEventListener('click', () => Edit.playRange(...Edit.sel));
     $('#edAddFrag').addEventListener('click', () => {
       const m = Edit.cur(); if (!m) return;
+      Edit.pauseAll(); Edit.playEnd = null;  // al agregar, deja de sonar la pista original (y cualquier otro reproductor)
       const [a, b] = Edit.sel;
       if (b - a < 0.1) { Edit.say(t('El tramo debe durar al menos 0.1 segundos.')); return; }
       const tr = Edit.editing >= 0 ? Edit.editTrack : Edit.track, list = Edit.list(tr);

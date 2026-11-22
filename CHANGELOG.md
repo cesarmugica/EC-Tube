@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.4.2
+- Al presionar «➕ Agregar fragmento» se **pausa la pista original** que estabas escuchando (y cualquier otro reproductor de la edición), y se agrega el fragmento como siempre.
+
 ## 5.4.1
 - **«Escuchar tramo» ahora para exacto en el final** (antes se pasaba hasta ~¼ de segundo, y lo que oías no era justo lo que se corta). Al terminar, el reproductor se queda en el final marcado. Si mueves el borde mientras suena, para en el borde nuevo. Aplica en los bloques de cada fragmento, la onda de la fuente, «Escuchar como se va a guardar», el ✂ Recorte rápido, los sonidos encima y 💬 Subtítulos.
 
