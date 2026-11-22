@@ -362,6 +362,11 @@
     .layers .gapz { position: absolute; top: 9px; height: 8px; border-top: 1px dashed var(--muted); pointer-events: none; }
     .layers .ticks { position: relative; height: 14px; margin-left: 32px; }
     .layers .ticks span { position: absolute; top: 0; font-size: 10px; color: var(--muted); border-left: 1px solid var(--border); padding-left: 2px; line-height: 14px; }
+    .eblk .okb { font-size: .78rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .eblk .okb.yes { background: color-mix(in srgb, #2ecc71 22%, transparent); color: #7ee2a8; }
+    .eblk .okb.no { background: color-mix(in srgb, #f2c94c 18%, transparent); color: #f2c94c; }
+    .eb-acts { margin-top: 6px; }
+    .eb-mix video { display: block; max-width: 100%; max-height: 280px; margin-top: 6px; background: #000; border-radius: 10px; }
     .eb-mix audio { display: block; width: 100%; margin-top: 6px; }
     .eb-mix .mix-h { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 700; font-size: .9rem; }
     .eblk.final { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
@@ -520,7 +525,8 @@
           <label class="field">Final <input id="edEnd" inputmode="decimal" aria-label="Final del tramo (minutos:segundos)"></label>
           <button class="secondary" type="button" id="edMarkEnd" title="Usa el punto donde va el reproductor">Final aquí ⇥</button>
           <span class="field" id="edSelLen"></span>
-          <button class="secondary" type="button" id="edPlaySel">▶ Escuchar tramo</button>
+          <button class="secondary" type="button" id="edPlayAll" title="Toda la pista, desde el inicio, sin parar en lo marcado">▶ Escuchar todo</button>
+          <button class="secondary" type="button" id="edPlaySel" title="Solo lo marcado (entre los bordes blancos)">▶ Escuchar fragmento</button>
           <button type="button" id="edAddFrag">➕ Agregar fragmento</button>
           <button class="link" type="button" id="edCancelEdit" hidden>Cancelar cambio</button>
         </div>
@@ -562,14 +568,12 @@
         <p class="ed-help" id="edLayInfo"></p>
         <div class="ed-foot" style="margin-top:8px">
           <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
-          <span class="grow"></span>
-          <button class="secondary" type="button" id="edPreview">🔄 Armar y escuchar la unión de los fragmentos</button>
         </div>
         <div id="edPreviewBox"></div>
         <div class="wave" id="edFWave" aria-label="Onda de la edición final: arrastra los bordes para recortar el inicio o el final"><canvas></canvas></div>
         <div class="wnav" id="edFNav" title="Barra para moverte: arrástrala para ir a otra parte de la onda cuando tienes zoom"><div class="wthumb"></div></div>
         <div class="wave-tools">
-          <span class="grow" id="edFInfo">Presiona el botón de arriba para armar la vista previa y ver aquí su onda. Arrastra los bordes blancos para recortar el inicio o el final de todo.</span>
+          <span class="grow" id="edFInfo">Presiona «▶ Escuchar todo» (abajo) para ver aquí su onda. Arrastra los bordes blancos para recortar el inicio o el final de todo.</span>
           <button class="secondary" type="button" id="edFZoomOut" title="Alejar">🔍−</button>
           <button class="secondary" type="button" id="edFZoomIn" title="Acercar">🔍+</button>
           <button class="secondary" type="button" id="edFZoomAll">Ver todo</button>
@@ -580,7 +584,6 @@
           <label class="field">Termina en <input id="edCutB" inputmode="decimal" aria-label="Dónde termina la edición final (minutos:segundos)"></label>
           <button class="secondary" type="button" id="edCutMarkB" title="Usa el punto donde va la vista previa">Final aquí ⇥</button>
           <span class="field" id="edCutLen"></span>
-          <button class="secondary" type="button" id="edCutPlay">▶ Escuchar como se va a guardar</button>
           <button class="link" type="button" id="edCutReset">Sin recorte</button>
         </div>
         <div class="ed-times">
@@ -588,8 +591,15 @@
           <label class="field"><input id="edFadeInS" type="number" min="0.5" max="30" step="0.5" value="2" style="width:70px" aria-label="Segundos de la entrada suave"> s</label>
           <label class="check"><input type="checkbox" id="edFadeOut"> 🌇 Salida suave (fade out)</label>
           <label class="field"><input id="edFadeOutS" type="number" min="0.5" max="30" step="0.5" value="3" style="width:70px" aria-label="Segundos de la salida suave"> s</label>
+          <button class="secondary" type="button" id="edFadeApply" title="Arma la edición final con estos efectos y la reproduce">✔ Aplicar efecto</button>
         </div>
-        <p class="ed-help">Entrada suave: al empezar, el sonido sube poco a poco desde silencio. Salida suave: al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro. Se aplica a lo que se guarda (después del recorte) y lo oyes con «▶ Escuchar como se va a guardar».</p>
+        <p class="ed-help">Entrada suave: al empezar, el sonido sube poco a poco desde silencio. Salida suave: al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro. Cambia los segundos y presiona «✔ Aplicar efecto» para oír cómo queda.</p>
+        <div class="ed-times eb-acts">
+          <button class="secondary" type="button" id="edPreview" title="Todos los fragmentos unidos, completos (sin recorte ni efectos)">▶ Escuchar todo</button>
+          <button class="secondary" type="button" id="edCutPlay" title="Solo la parte marcada con «Empieza en» y «Termina en»">▶ Escuchar fragmento</button>
+          <button type="button" id="edOutPlay" title="Exactamente como se va a guardar: con el recorte, la entrada y salida suave, sonidos y todo">🎧 Escuchar edición final</button>
+        </div>
+        <div class="eb-mix" id="edOutBox"></div>
         <div class="ed-foot">
           <span class="grow"></span>
           <button class="secondary" type="button" id="edClear">🧹 Vaciar edición</button>
@@ -1046,6 +1056,31 @@
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
+      '▶ Escuchar todo': '▶ Play all',
+      '▶ Escuchar fragmento': '▶ Play clip',
+      '🎧 Escuchar edición final': '🎧 Play final edit',
+      '✔ Aplicar efecto': '✔ Apply effect',
+      'Toda la pista, desde el inicio, sin parar en lo marcado': 'The whole track, from the start, without stopping at the marked part',
+      'Solo lo marcado (entre los bordes blancos)': 'Only the marked part (between the white edges)',
+      'Toda la pista de donde sale este fragmento, desde el inicio, sin parar en lo marcado': 'The whole track this clip comes from, from the start, without stopping at the marked part',
+      '🎧 Escuchar edición (fragmento + sonidos)': '🎧 Play edit (clip + sounds)',
+      '✔ Aplicar': '✔ Apply',
+      'Deja este fragmento listo para la edición final (siempre puedes volver a ajustarlo)': 'Marks this clip ready for the final edit (you can always adjust it again)',
+      '✔ Listo': '✔ Ready',
+      '✎ Sin aplicar': '✎ Not applied',
+      '✔ Fragmento {0} listo: de {1} a {2} ({3}). Así entra en la edición final; si quieres, vuelve aquí y ajústalo otra vez.': '✔ Clip {0} ready: from {1} to {2} ({3}). This is how it goes into the final edit; you can come back and adjust it again.',
+      'Todos los fragmentos unidos, completos (sin recorte ni efectos)': 'All clips joined, in full (no trim or effects)',
+      'Solo la parte marcada con «Empieza en» y «Termina en»': 'Only the part marked with “Starts at” and “Ends at”',
+      'Exactamente como se va a guardar: con el recorte, la entrada y salida suave, sonidos y todo': 'Exactly as it will be saved: with the trim, fade in and out, sounds and everything',
+      'Arma la edición final con estos efectos y la reproduce': 'Builds the final edit with these effects and plays it',
+      'Entrada suave: al empezar, el sonido sube poco a poco desde silencio. Salida suave: al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro. Cambia los segundos y presiona «✔ Aplicar efecto» para oír cómo queda.': 'Fade in: at the start, the sound rises little by little from silence. Fade out: at the end, it goes down to silence. In video the picture also comes from black and goes to black. Change the seconds and press “✔ Apply effect” to hear how it sounds.',
+      'Presiona «▶ Escuchar todo» (abajo) para ver aquí su onda. Arrastra los bordes blancos para recortar el inicio o el final de todo.': 'Press “▶ Play all” (below) to see its waveform here. Drag the white edges to trim the start or the end of everything.',
+      'Cambiaste algo: presiona «🎧 Escuchar edición final» otra vez para oír cómo queda.': 'You changed something: press “🎧 Play final edit” again to hear how it sounds.',
+      'Armando la edición final…': 'Building the final edit…',
+      'Armando la edición final… {0} %': 'Building the final edit… {0} %',
+      'No se pudo armar la edición final.': 'Could not build the final edit.',
+      '🎧 Edición final (así se va a guardar)': '🎧 Final edit (as it will be saved)',
+      'Es la unión de tus fragmentos, con sus capas, sonidos y animaciones, completa (todavía sin recorte). Su ▶ toca solo lo marcado; «▶ Escuchar todo» la toca completa. Si cambias algo, se vuelve a armar sola.': 'This is all your clips joined, with their layers, sounds and animations, in full (no trim yet). Its ▶ plays only the marked part; “▶ Play all” plays all of it. If you change something, it is rebuilt by itself.',
       '🌅 Entrada suave (fade in)': '🌅 Fade in',
       '🌇 Salida suave (fade out)': '🌇 Fade out',
       'Segundos de la entrada suave': 'Fade-in seconds',
@@ -1554,7 +1589,7 @@
       "Entra brincando y sale desvaneciéndose": "It bounces in and fades out",
       "Aquí ves y escuchas el archivo original que tienes seleccionado. Marca un tramo en la onda de abajo y agrégalo con «➕ Agregar fragmento». Tu archivo no cambia.": "Here you see and hear the original file you have selected. Mark a section on the waveform below and add it with “➕ Add fragment”. Your file does not change.",
       "No se reproduce: es como una foto del video final en el momento que eliges con «Viendo». Aquí acomodas las animaciones: arrástralas para moverlas y jala la esquina azul para cambiar su tamaño.": "It does not play: it is like a snapshot of the final video at the moment you choose with “Showing”. Here you arrange the animations: drag them to move them and pull the blue corner to resize them.",
-      "Es la unión de tus fragmentos, con sus capas, sonidos y animaciones, completa (todavía sin recorte). Abajo eliges qué parte se guarda y la escuchas con «▶ Escuchar como se va a guardar». Si cambias algo, vuelve a armarla.": "This is all your clips joined, with their layers, sounds and animations, in full (no trim yet). Below you choose which part is saved and play it with “▶ Play it as it will be saved”. If you change something, build it again.",
+      "Es la unión de tus fragmentos, con sus capas, sonidos y animaciones, completa (todavía sin recorte). Su ▶ toca solo lo marcado; «▶ Escuchar todo» la toca completa. Si cambias algo, se vuelve a armar sola.": "This is all your clips joined, with their layers, sounds and animations, in full (no trim yet). Below you choose which part is saved and play it with “▶ Play it as it will be saved”. If you change something, build it again.",
       "Fuente: el archivo original": "Source: the original file",
       "Lienzo: aquí acomodas las animaciones": "Canvas: arrange the animations here",
       "Vista previa de la edición final": "Preview of the final edit",
@@ -2117,8 +2152,9 @@
       pathOf(m) { return m.folder + (m.folder.includes('\\') ? '\\' : '/') + m.name; },
       save(warn = true) {
         // si ya había vista previa, avisar que no trae los cambios nuevos
-        if (warn && this.prev() && !this.job) this.say(tf('Hiciste cambios después de la vista previa: presiona «{0}» otra vez para verlos.', $('#edPreview').textContent));
-        const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end, uid: f.uid, mode: f.mode || 'original', gap: f.gap || 0}));
+        if (warn && this.prev()) this.prevStale = true;  // la unión ya no trae los cambios: se vuelve a armar sola al escuchar
+        if ($('#edOutBox') && $('#edOutBox').querySelector('audio, video')) $('#edOutBox').innerHTML = `<p class="ed-help">${t('Cambiaste algo: presiona «🎧 Escuchar edición final» otra vez para oír cómo queda.')}</p>`;
+        const pack = list => list.map(f => ({i: this.sources.findIndex(x => x.token === f.token), start: f.start, end: f.end, uid: f.uid, mode: f.mode || 'original', gap: f.gap || 0, ok: !!f.ok}));
         try { localStorage.setItem('ectube-edit', JSON.stringify({v: 2, kind: this.kind, smooth: $('#edSmooth').checked, vaudio: this.vaudio,
           sources: this.sources.map(x => ({path: this.pathOf(x), color: x.color})), frags: pack(this.frags), afrags: pack(this.afrags),
           fx: this.fx.map(({id, name, seconds, url, frag, place, at, start, end, repeat, volume}) => ({id, name, seconds, url, frag, place: place || 'over', at, start, end, repeat, volume})),
@@ -2137,7 +2173,7 @@
           catch (_) { tokens.push(null); }
         }
         const old = ['music', 'voice'].includes(data.mode) ? data.mode : 'original';  // antes era un solo «qué guardar» para todo
-        const unpack = list => (list || []).filter(f => tokens[f.i]).map(f => ({token: tokens[f.i], start: f.start, end: f.end, uid: f.uid || this.uid(), mode: f.mode || old, gap: +f.gap || 0}));
+        const unpack = list => (list || []).filter(f => tokens[f.i]).map(f => ({token: tokens[f.i], start: f.start, end: f.end, uid: f.uid || this.uid(), mode: f.mode || old, gap: +f.gap || 0, ok: !!f.ok}));
         this.frags = unpack(data.frags); this.afrags = unpack(data.afrags); this.setVAudio(data.vaudio || 'own');
         if (Array.isArray(data.cut) && data.cut.length === 2) this.cut = data.cut;
         if (data.fade) { $('#edFadeIn').checked = !!data.fade.inOn; $('#edFadeOut').checked = !!data.fade.outOn; if (data.fade.inS) $('#edFadeInS').value = data.fade.inS; if (data.fade.outS) $('#edFadeOutS').value = data.fade.outS; }
@@ -2207,8 +2243,18 @@
           $('#edPlayerBox').innerHTML = `<${tag} controls preload="metadata"></${tag}>`;
           const el = this.el = $('#edPlayerBox ' + tag); el.src = '/media/' + m.token;
           el.addEventListener('loadedmetadata', () => { if (!m.duration) { m.duration = el.duration || 0; if (!range) this.setSel(0, m.duration); this.zoomAll(); } });
-          exactStop(el, () => this.playEnd, () => { this.playEnd = null; });
-          el.addEventListener('play', () => this.loop()); el.addEventListener('seeked', () => this.draw());
+          // su ▶ toca solo lo marcado (entre los bordes blancos); «▶ Escuchar todo» toca la pista completa
+          exactStop(el, () => this.playEnd !== null ? this.playEnd : this.selPlay ? this.sel[1] : null, () => { this.playEnd = null; this.selPlay = false; });
+          el.addEventListener('play', () => {
+            this.loop(); this.pauseAll(el);
+            if (this.armed) { this.armed = false; return; }
+            if (this.playAll) return;
+            const [a, b] = this.sel; if (b - a < 0.1) return;
+            if (el.currentTime < a - 0.01 || el.currentTime >= b - 0.05) el.currentTime = a;
+            this.playEnd = null; this.selPlay = true;
+          });
+          el.addEventListener('pause', () => { this.playAll = false; this.selPlay = false; });
+          el.addEventListener('seeked', () => this.draw());
         }
         if (!m.peaks) {
           $('#edWaveInfo').textContent = t('Leyendo la onda…'); this.draw();
@@ -2243,6 +2289,51 @@
         }));
       },
       prev() { return $('#edPreviewBox audio, #edPreviewBox video'); },
+      prevStale: false, prevAll: false, afterPreview: null, armed: false, selPlay: false, playAll: false,
+      // Edición final: «all» = la unión completa · «cut» = solo lo marcado (Empieza en / Termina en)
+      playFinal(what) {
+        if (!this.frags.length || this.job) return;
+        if (!this.prev() || this.prevStale) { this.afterPreview = () => this.playFinal(what); this.run(true); return; }
+        const p = this.prev(), [a, b] = this.cut || [0, this.total()];
+        this.pauseAll(p); this.prevAll = what === 'all'; this.cutEnd = what === 'all' ? null : b;
+        p.currentTime = what === 'all' ? 0 : a; p.play().catch(() => {});
+      },
+      // «🎧 Escuchar edición final»: se arma tal cual se va a guardar (recorte, entrada / salida suave, todo)
+      async playOut() {
+        if (!this.frags.length) return;
+        this.pauseAll();
+        const box = $('#edOutBox'), btns = ['#edOutPlay', '#edFadeApply'].map(q => $(q));
+        btns.forEach(x => { x.disabled = true; }); box.innerHTML = `<p class="ed-help">${t('Armando la edición final…')}</p>`;
+        try {
+          const P = this.positions(), r = v => Math.round(v * 1000) / 1000;
+          const pack = (list, tr) => list.map((f, i) => ({token: f.token, start: f.start, end: f.end, mode: this.modeShown(tr) ? (f.mode || 'original') : 'original', ...(tr === 'main' ? {pos: r(P[i])} : {})}));
+          const effects = [], one = (f, at, extend) => effects.push({id: f.id, at: r(at), start: f.start, end: f.end, repeat: f.repeat, volume: f.volume, extend});
+          let acc = 0; this.fxPlaced('start').forEach(f => { one(f, acc, false); acc += (f.end - f.start) * f.repeat; });
+          acc = this.contentEnd(); this.fxPlaced('end').forEach(f => { one(f, acc, true); acc += (f.end - f.start) * f.repeat; });
+          this.fx.filter(f => (f.place || 'over') === 'over' && this.offsetOf(f.frag) >= 0).forEach(f => one(f, this.offsetOf(f.frag) + f.at, false));
+          const job = await api('/api/edit', {kind: this.kind, preview: true, slot: 'salida', mode: 'original', smooth: $('#edSmooth').checked, fragments: pack(this.frags, 'main'),
+            audio_mode: this.kind === 'video' ? this.vaudio : 'own', audio_fragments: this.other() ? pack(this.afrags, 'audio') : [],
+            cut: this.cut, fade_in: this.fadeVals().fi, fade_out: this.fadeVals().fo, effects,
+            overlays: this.kind === 'video' ? this.ov.map(({id, kind, text, color, at, dur, x, y, w, h, pop}) => ({id, kind, text, color, at, dur, x, y, w, h, pop})) : []});
+          for (;;) {
+            await new Promise(ok => setTimeout(ok, 500));
+            const st = await api('/api/edit/' + job.id);
+            if (st.status === 'running') {
+              const pct = Math.round(st.percent);
+              box.innerHTML = `<p class="ed-help">${st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
+                : st.phase === 'separate' || st.phase === 'audio' ? tf('Separando la voz y la música de los fragmentos… {0} %', pct) : tf('Armando la edición final… {0} %', pct)}</p>`;
+              continue;
+            }
+            if (st.status !== 'done') { box.innerHTML = `<p class="ed-help">${esc(t(st.error || 'No se pudo armar la edición final.'))}</p>`; break; }
+            const tag = this.kind === 'video' ? 'video' : 'audio';
+            box.innerHTML = `<div class="mix-h">${t('🎧 Edición final (así se va a guardar)')}<span style="flex:1"></span><button class="link" type="button" id="edOutClose">${t('Cerrar')}</button></div><${tag} controls autoplay src="/media/${st.media.token}"></${tag}>`;
+            const el = box.querySelector(tag); el.addEventListener('play', () => this.pauseAll(el));
+            $('#edOutClose').onclick = () => { el.pause(); box.innerHTML = ''; };
+            break;
+          }
+        } catch (error) { box.innerHTML = `<p class="ed-help">${esc(t(error.message))}</p>`; }
+        finally { btns.forEach(x => { x.disabled = !this.frags.length || !!this.job; }); }
+      },
       // entrada / salida suave de toda la edición (segundos; 0 = sin)
       fadeVals(raw) {
         const n = q => Math.max(0.5, Math.min(30, +$(q).value || 0));
@@ -2266,7 +2357,7 @@
       offsetOf(uid) { const i = this.frags.findIndex(f => f.uid === uid); return i < 0 ? -1 : this.positions()[i]; },
       // ¿se usa el audio de esta pista? (en un video «sin audio» u «otra pista», el audio de los fragmentos de video no se usa)
       modeShown(tr) { return this.kind === 'audio' || tr === 'audio' || this.vaudio === 'own'; },
-      pauseAll(keep) { [this.el, this.prev(), ...Object.values(this.blk).map(b => b.media), ...document.querySelectorAll('.eb-mix audio')].forEach(x => { if (x && x !== keep && !x.paused) x.pause(); }); },
+      pauseAll(keep) { [this.el, this.prev(), ...Object.values(this.blk).map(b => b.media), ...document.querySelectorAll('.eb-mix audio, .eb-mix video')].forEach(x => { if (x && x !== keep && !x.paused) x.pause(); }); },
       ensurePeaks(m) {
         if (!m || m.peaks || m.loading) return;
         m.loading = api('/api/peaks', {token: m.token, buckets: 4000}).then(w => { m.peaks = w.peaks; m.duration = m.duration || w.duration; })
@@ -2277,7 +2368,7 @@
         const m = this.src(f.token) || {name: '?', color: '#888', kind: 'audio'}, uid = f.uid, el = document.createElement('div');
         const tag = m.kind === 'video' ? 'video' : 'audio';
         el.className = 'eblk'; el.dataset.u = uid;
-        el.innerHTML = `<div class="eb-h"><span class="num"></span><span class="dot" style="background:${m.color}"></span><b title="${esc(m.name)}">${esc(m.name)}</b><span class="dur"></span><span class="grow"></span>
+        el.innerHTML = `<div class="eb-h"><span class="num"></span><span class="dot" style="background:${m.color}"></span><b title="${esc(m.name)}">${esc(m.name)}</b><span class="dur"></span><span class="okb"></span><span class="grow"></span>
             <select data-k="mode" aria-label="${t('Voz y música de este fragmento')}" title="${t('Voz y música de este fragmento')}"><option value="original">${t('✂ Tal cual (voz y música)')}</option><option value="music">${t('🎵 Solo música (quitar la voz)')}</option><option value="voice">${t('🎤 Solo voz (quitar la música)')}</option></select></div>
           <div class="eb-media"><${tag} preload="metadata" playsinline></${tag}></div>
           <div class="eb-play"><button type="button" class="secondary" data-a="play" title="${t('Reproducir este fragmento')}">▶</button><input type="range" data-a="seek" min="0" max="1" step="0.01" value="0" aria-label="${t('Posición dentro del fragmento')}"><span class="tl"></span></div>
@@ -2292,8 +2383,13 @@
             <label class="field">${t('Final')} <input data-k="end" inputmode="decimal" aria-label="${t('Final del tramo (minutos:segundos)')}"></label>
             <button class="secondary" type="button" data-a="mend" title="${t('Usa el punto donde va el reproductor')}">${t('Final aquí ⇥')}</button>
             <span class="field len"></span>
-            <button class="secondary" type="button" data-a="playsel">${t('▶ Escuchar tramo')}</button>
-            <button class="secondary" type="button" data-a="mix" title="${t('Arma este fragmento con sus sonidos (encima, al inicio y al final) y con su voz/música, tal como va a quedar')}">${t('🎧 Escuchar la mezcla (fragmento + sonidos)')}</button>
+          </div>
+          <div class="ed-times eb-acts">
+            <button class="secondary" type="button" data-a="playall" title="${t('Toda la pista de donde sale este fragmento, desde el inicio, sin parar en lo marcado')}">${t('▶ Escuchar todo')}</button>
+            <button class="secondary" type="button" data-a="playsel" title="${t('Solo lo marcado (entre los bordes blancos)')}">${t('▶ Escuchar fragmento')}</button>
+            <button class="secondary" type="button" data-a="mix" title="${t('Arma este fragmento con sus sonidos (encima, al inicio y al final) y con su voz/música, tal como va a quedar')}">${t('🎧 Escuchar edición (fragmento + sonidos)')}</button>
+            <span style="flex:1"></span>
+            <button type="button" data-a="apply" title="${t('Deja este fragmento listo para la edición final (siempre puedes volver a ajustarlo)')}">${t('✔ Aplicar')}</button>
           </div>
           <div class="eb-mix"></div>
           <div class="eb-fx">
@@ -2333,6 +2429,7 @@
         const tr = this.trackOf(b.uid), i = this.list(tr).indexOf(F), m = this.src(F.token), el = b.el;
         el.querySelector('.num').textContent = (tr === 'audio' ? '♪' : '') + (i + 1);
         el.querySelector('.dur').textContent = fmt2(F.end - F.start);
+        const okb = el.querySelector('.okb'); okb.textContent = F.ok ? t('✔ Listo') : t('✎ Sin aplicar'); okb.className = 'okb ' + (F.ok ? 'yes' : 'no');
         const ms = el.querySelector('[data-k=mode]'); ms.value = F.mode || 'original'; ms.hidden = !this.modeShown(tr);
         ['start', 'end'].forEach(k => { const inp = el.querySelector(`.ed-times [data-k=${k}]`); if (document.activeElement !== inp) inp.value = fmt2(F[k]); });
         el.querySelector('.len').textContent = tf('Tramo: {0}', fmt2(F.end - F.start));
@@ -2398,6 +2495,7 @@
         const d = this.src(F.token)?.duration || Infinity;
         a = Math.max(0, Math.min(a, d)); c = Math.max(0, Math.min(c, d)); if (c < a) [a, c] = [c, a];
         if (c - a < 0.1) { if (a + 0.1 <= d) c = a + 0.1; else a = Math.max(0, c - 0.1); }
+        if (Math.abs(F.start - a) > 0.0005 || Math.abs(F.end - c) > 0.0005) F.ok = false;
         F.start = Math.round(a * 1000) / 1000; F.end = Math.round(c * 1000) / 1000;
         const b = this.blk[uid]; if (b) this.fillBlock(b);
         const li = document.querySelector(`#edFrags li[data-u="${uid}"], #edAFrags li[data-u="${uid}"]`);
@@ -2441,7 +2539,15 @@
       hookPreview(token) {
         const p = this.prev(); if (!p) return;
         const loop = () => { if (this.fw) this.fw.draw(); if (!p.paused) requestAnimationFrame(loop); };
-        p.addEventListener('play', () => { this.pauseAll(p); loop(); });
+        p.addEventListener('play', () => {
+          this.pauseAll(p); loop();
+          if (this.prevAll) return;  // «▶ Escuchar todo»
+          // su ▶ toca solo lo marcado (Empieza en / Termina en)
+          const [a, b] = this.cut || [0, this.total()];
+          if (p.currentTime < a - 0.01 || p.currentTime >= b - 0.05) p.currentTime = a;
+          this.cutEnd = b;
+        });
+        p.addEventListener('pause', () => { this.prevAll = false; });
         exactStop(p, () => this.cutEnd === null ? null : (this.cut ? this.cut[1] : this.total()), () => { this.cutEnd = null; });
         p.addEventListener('timeupdate', () => { if (this.fw) this.fw.draw(); });
         p.addEventListener('seeked', () => { if (this.fw) this.fw.draw(); });
@@ -2502,15 +2608,14 @@
           ? tf('Video: {0} fragmentos · {1} · Pista de audio: {2}', this.frags.length, fmt2(this.total()), fmt2(this.total(this.afrags)))
           : tf('Edición final: {0} fragmentos · {1}', this.frags.length, fmt2(this.total()));
         $('#edSave').disabled = $('#edPreview').disabled = !this.frags.length || !!this.job;
-        $('#edPreview').textContent = t(this.kind === 'video' ? '🔄 Armar y ver la unión de los fragmentos' : '🔄 Armar y escuchar la unión de los fragmentos');
-        $('#edCutPlay').textContent = t(this.kind === 'video' ? '▶ Ver como se va a guardar' : '▶ Escuchar como se va a guardar');
+        $('#edCutPlay').disabled = $('#edOutPlay').disabled = $('#edFadeApply').disabled = $('#edPreview').disabled;
         $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
           : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
         $('#edCancelEdit').hidden = this.editing < 0;
         this.renderBlocks(); this.renderLayers(); this.renderFinal();
         this.draw(); Fx.render(); if (typeof An !== 'undefined') An.render();
       },
-      playRange(a, b) { if (!this.el) return; this.el.currentTime = a; this.playEnd = b; this.el.play().catch(() => {}); },
+      playRange(a, b) { if (!this.el) return; this.pauseAll(this.el); this.armed = true; this.playAll = false; this.el.currentTime = a; this.playEnd = b; this.el.play().catch(() => {}); },
       async run(preview) {
         if (!this.frags.length) return;
         if (this.el) this.el.pause();
@@ -2549,10 +2654,12 @@
             if (st.status !== 'done') { this.say(t(st.error || (st.status === 'cancelled' ? 'Cancelado.' : 'No se pudo guardar la edición.'))); return; }
             if (preview) {
               const tag = this.kind === 'video' ? 'video' : 'audio';
-              const d3 = t('Es la unión de tus fragmentos, con sus capas, sonidos y animaciones, completa (todavía sin recorte). Abajo eliges qué parte se guarda y la escuchas con «▶ Escuchar como se va a guardar». Si cambias algo, vuelve a armarla.');
-              $('#edPreviewBox').innerHTML = `<div class="scr-h" title="${d3}"><span class="n">${this.kind === 'video' ? 3 : 2}</span><span>${t('Unión de los fragmentos (todavía sin recorte)')}</span><span class="i">${t('ⓘ ¿qué es?')}</span></div><${tag} controls autoplay src="/media/${st.media.token}" title="${d3}"></${tag}>`;
+              const d3 = t('Es la unión de tus fragmentos, con sus capas, sonidos y animaciones, completa (todavía sin recorte). Su ▶ toca solo lo marcado; «▶ Escuchar todo» la toca completa. Si cambias algo, se vuelve a armar sola.');
+              $('#edPreviewBox').innerHTML = `<div class="scr-h" title="${d3}"><span class="n">${this.kind === 'video' ? 3 : 2}</span><span>${t('Unión de los fragmentos (todavía sin recorte)')}</span><span class="i">${t('ⓘ ¿qué es?')}</span></div><${tag} controls src="/media/${st.media.token}" title="${d3}"></${tag}>`;
+              this.prevStale = false;
               this.hookPreview(st.media.token);
               this.say(t('Vista previa lista. No se guarda: cuando te guste, presiona «💾 Guardar edición».'), true);
+              const then = this.afterPreview || (() => this.playFinal('all')); this.afterPreview = null; then();
             } else {
               Files.load();
               $('#edStatus').classList.add('ok');
@@ -3143,21 +3250,9 @@
     $('#edCutB').addEventListener('change', () => { const v = parseTime($('#edCutB').value), [a, b] = Edit.cut || [0, Edit.total()]; if (isNaN(v)) { Edit.renderFinal(); return; } Edit.setCut(v <= a ? 0 : a, v, true); });
     $('#edCutMarkA').addEventListener('click', () => { const n = cutNow(); if (n === null) { needPreview(); return; } const [, b] = Edit.cut || [0, Edit.total()]; Edit.setCut(n, Math.max(b, n + 0.1), true); });
     $('#edCutMarkB').addEventListener('click', () => { const n = cutNow(); if (n === null) { needPreview(); return; } const [a] = Edit.cut || [0, Edit.total()]; Edit.setCut(Math.min(a, n - 0.1), n, true); });
-    $('#edCutPlay').addEventListener('click', () => {
-      const p = Edit.prev(); if (!p) { needPreview(); return; }
-      const [a, b] = Edit.cut || [0, Edit.total()]; Edit.pauseAll(p); p.currentTime = a; Edit.cutEnd = b; p.play().catch(() => {});
-      // la entrada / salida suave se simula aquí (la vista previa no la trae porque es sin recorte)
-      const {fi, fo} = Edit.fadeVals(), video = p.tagName === 'VIDEO';
-      const ramp = () => {
-        if (Edit.cutEnd === null || p.paused) { p.volume = 1; if (video) p.style.opacity = ''; return; }
-        const now = p.currentTime; let g = 1;
-        if (fi > 0) g = Math.min(g, Math.max(0, (now - a) / fi));
-        if (fo > 0) g = Math.min(g, Math.max(0, (b - now) / fo));
-        p.volume = Math.max(0, Math.min(1, g)); if (video) p.style.opacity = g;
-        requestAnimationFrame(ramp);
-      };
-      requestAnimationFrame(ramp);
-    });
+    $('#edCutPlay').addEventListener('click', () => Edit.playFinal('cut'));
+    $('#edOutPlay').addEventListener('click', () => Edit.playOut());
+    $('#edFadeApply').addEventListener('click', () => Edit.playOut());
     ['#edFadeIn', '#edFadeOut', '#edFadeInS', '#edFadeOutS'].forEach(q => $(q).addEventListener('change', () => Edit.save(false)));
     $('#edCutReset').addEventListener('click', () => { Edit.cut = null; Edit.renderFinal(); Edit.save(false); });
     // Capas: arrastrar un fragmento en el tiempo (encimarlo o separarlo). Doble clic: pegarlo otra vez al anterior.
@@ -3196,8 +3291,17 @@
         const uid = el.dataset.u, b = Edit.blk[uid], F = Edit.fragOf(uid); if (!b || !F) return;
         const media = b.media, now = media.readyState ? media.currentTime : F.start;
         const a = btn.dataset.a;
-        if (a === 'play') { if (!media.paused) media.pause(); else Edit.playBlock(b, now < F.end - 0.05 ? now : F.start); }
+        // ▶ de la barra: siempre solo el fragmento (sigue donde iba si está dentro; si no, desde su inicio)
+        if (a === 'play') { if (!media.paused) media.pause(); else Edit.playBlock(b, now >= F.start - 0.01 && now < F.end - 0.05 ? Math.max(now, F.start) : F.start); }
         else if (a === 'playsel') Edit.playBlock(b, F.start);
+        else if (a === 'playall') { Edit.pauseAll(media); Edit.setFocus(uid); b.stopAt = null; media.currentTime = 0; media.play().catch(() => {}); }
+        else if (a === 'apply') {
+          media.pause(); F.ok = true; Edit.save(); Edit.render();
+          const tr = Edit.trackOf(uid), list = Edit.list(tr), k = list.indexOf(F), n = (tr === 'audio' ? '♪' : '') + (k + 1);
+          Edit.say(tf('✔ Fragmento {0} listo: de {1} a {2} ({3}). Así entra en la edición final; si quieres, vuelve aquí y ajústalo otra vez.', n, fmt2(F.start), fmt2(F.end), fmt2(F.end - F.start)), true);
+          const next = list[k + 1];
+          if (next && Edit.blk[next.uid]) Edit.setFocus(next.uid, true); else $('#edFinal').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
         else if (a === 'mstart') { if (now >= F.end - 0.1) Edit.say(t('El inicio debe quedar antes del final: mueve el reproductor más atrás.')); else Edit.setFrag(uid, now, F.end, true); }
         else if (a === 'mend') { if (now <= F.start + 0.1) Edit.say(t('El final debe quedar después del inicio: mueve el reproductor más adelante.')); else Edit.setFrag(uid, F.start, now, true); }
         else if (a === 'zin') b.wv.zoom(0.5);
@@ -3217,7 +3321,7 @@
         const k = event.target.dataset.k, el = event.target.closest('.eblk[data-u]'); if (!k || !el) return;
         const uid = el.dataset.u, F = Edit.fragOf(uid); if (!F) return;
         if (k === 'mode') {
-          F.mode = event.target.value; Edit.save();
+          F.mode = event.target.value; F.ok = false; Edit.fillBlock(Edit.blk[uid]); Edit.save();
           const n = (Edit.trackOf(uid) === 'audio' ? '♪' : '') + (Edit.list(Edit.trackOf(uid)).indexOf(F) + 1);
           Edit.say(F.mode === 'original' ? tf('El fragmento {0} va tal cual (voz y música).', n)
             : tf(F.mode === 'music' ? 'Al fragmento {0} se le quita la voz (solo música). La primera vez tarda un poco más, también en la vista previa.' : 'Al fragmento {0} se le quita la música (solo voz). La primera vez tarda un poco más, también en la vista previa.', n), true);
@@ -3239,6 +3343,7 @@
     $('#edMarkStart').addEventListener('click', () => Edit.setSel(Edit.el?.currentTime || 0, Math.max(Edit.sel[1], Edit.el?.currentTime || 0)));
     $('#edMarkEnd').addEventListener('click', () => Edit.setSel(Math.min(Edit.sel[0], Edit.el?.currentTime || 0), Edit.el?.currentTime || 0));
     $('#edPlaySel').addEventListener('click', () => Edit.playRange(...Edit.sel));
+    $('#edPlayAll').addEventListener('click', () => { const el = Edit.el; if (!el) return; Edit.pauseAll(el); Edit.playAll = true; Edit.playEnd = null; Edit.selPlay = false; el.currentTime = 0; el.play().catch(() => {}); });
     $('#edAddFrag').addEventListener('click', () => {
       const m = Edit.cur(); if (!m) return;
       Edit.pauseAll(); Edit.playEnd = null;  // al agregar, deja de sonar la pista original (y cualquier otro reproductor)
@@ -3288,7 +3393,7 @@
       box.addEventListener('dragend', () => { from = null; box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over')); });
     }
     $('#edSmooth').addEventListener('change', () => Edit.save());
-    $('#edPreview').addEventListener('click', () => Edit.run(true));
+    $('#edPreview').addEventListener('click', () => Edit.playFinal('all'));
     $('#edSave').addEventListener('click', () => Edit.run(false));
     $('#edClear').addEventListener('click', async () => {
       if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length && !Edit.ov.length) return;

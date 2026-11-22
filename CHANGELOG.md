@@ -1,5 +1,12 @@
 # Historial de versiones
 
+## 5.7.0 — ▶ Escuchar más claro
+- **El ▶ de cada reproductor toca solo lo marcado** (entre los bordes blancos, como estén ahora): en la pista original, en cada fragmento y en la edición final. Si vas a la mitad, sigue desde ahí; si no, empieza en el inicio marcado.
+- Botones iguales en todos lados: **▶ Escuchar todo** (completo, sin parar) y **▶ Escuchar fragmento** (solo lo marcado). En cada fragmento también **🎧 Escuchar edición (fragmento + sonidos)**, y en la edición final **🎧 Escuchar edición final**: exactamente como se va a guardar, con recorte, entrada / salida suave y todo.
+- **✔ Aplicar** en cada fragmento: lo marca **✔ Listo** y te lleva al siguiente (o a la edición final). Si lo vuelves a mover, dice **✎ Sin aplicar**.
+- **✔ Aplicar efecto** junto a la entrada / salida suave: la arma y la reproduce para que pruebes 2, 3, 5 segundos…
+- La unión de los fragmentos se vuelve a armar sola si cambiaste algo.
+
 ## 5.6.0 — 🌅 Entrada y salida suave
 - En «Edición final»: **🌅 Entrada suave (fade in)** y **🌇 Salida suave (fade out)**, cada una con sus segundos (0.5 a 30). Al empezar, el sonido sube desde silencio; al terminar, baja hasta silencio. En video la imagen también sale de negro y se va a negro.
 - Se aplica a lo que se guarda (después del recorte) y se oye con «▶ Escuchar como se va a guardar».

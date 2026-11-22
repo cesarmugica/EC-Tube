@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.6.0"
+APP_VERSION = "5.7.0"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -3283,7 +3283,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
         preview = bool(data.get("preview"))
         # una vista previa a la vez por «lugar»: la de la edición final («final») y la mezcla de un bloque («bloque»)
-        slot = "bloque" if data.get("slot") == "bloque" else "final"
+        slot = str(data.get("slot")) if data.get("slot") in ("bloque", "salida") else "final"
         if preview:
             for old in [j for j in EDITS.values() if j.preview and getattr(j, "slot", "final") == slot]:
                 old.cancel()
@@ -3293,7 +3293,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             job = EditJob(kind, fragments, str(data.get("mode") or "original"), data.get("smooth") is not False, preview,
                           audio_mode, audio_fragments, effects, overlays, modes, amodes, positions, max_total,
-                          *((0.0, 0.0) if preview else (_num(data.get("fade_in")), _num(data.get("fade_out")))))
+                          *((0.0, 0.0) if preview and slot != "salida" else (_num(data.get("fade_in")), _num(data.get("fade_out")))))
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return
