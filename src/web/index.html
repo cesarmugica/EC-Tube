@@ -362,6 +362,8 @@
     .layers .gapz { position: absolute; top: 9px; height: 8px; border-top: 1px dashed var(--muted); pointer-events: none; }
     .layers .ticks { position: relative; height: 14px; margin-left: 32px; }
     .layers .ticks span { position: absolute; top: 0; font-size: 10px; color: var(--muted); border-left: 1px solid var(--border); padding-left: 2px; line-height: 14px; }
+    .eb-mix audio { display: block; width: 100%; margin-top: 6px; }
+    .eb-mix .mix-h { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 700; font-size: .9rem; }
     .eblk.final { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
     .ed-foot { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 12px; }
     .ed-foot .grow { flex: 1 1 auto; }
@@ -1036,6 +1038,13 @@
     const LANG = document.documentElement.lang === 'en' ? 'en' : 'es';
     const TRIM_HELP = 'Arrastra las marcas o reproduce y usa «Inicio aquí» / «Final aquí». El original no se toca: se guarda una copia «(recorte)» en la carpeta de recortes.';
     const EN = {
+      'Arma este fragmento con sus sonidos (encima, al inicio y al final) y con su voz/música, tal como va a quedar': 'Builds this clip with its sounds (on top, at the start and at the end) and its vocals/music setting, just as it will end up',
+      '🎧 Escuchar la mezcla (fragmento + sonidos)': '🎧 Play the mix (clip + sounds)',
+      'Armando la mezcla de este fragmento…': 'Building this clip’s mix…',
+      'Armando la mezcla de este fragmento… {0} %': 'Building this clip’s mix… {0} %',
+      'No se pudo armar la mezcla.': 'Could not build the mix.',
+      '🎧 Mezcla de este fragmento (así va a sonar)': '🎧 This clip’s mix (how it will sound)',
+      'Cerrar': 'Close',
       'Dónde': 'Where',
       '⏮ Al inicio (antes de todo)': '⏮ At the start (before everything)',
       '🔊 Encima de este fragmento': '🔊 On top of this clip',
@@ -2237,7 +2246,7 @@
       offsetOf(uid) { const i = this.frags.findIndex(f => f.uid === uid); return i < 0 ? -1 : this.positions()[i]; },
       // ¿se usa el audio de esta pista? (en un video «sin audio» u «otra pista», el audio de los fragmentos de video no se usa)
       modeShown(tr) { return this.kind === 'audio' || tr === 'audio' || this.vaudio === 'own'; },
-      pauseAll(keep) { [this.el, this.prev(), ...Object.values(this.blk).map(b => b.media)].forEach(x => { if (x && x !== keep && !x.paused) x.pause(); }); },
+      pauseAll(keep) { [this.el, this.prev(), ...Object.values(this.blk).map(b => b.media), ...document.querySelectorAll('.eb-mix audio')].forEach(x => { if (x && x !== keep && !x.paused) x.pause(); }); },
       ensurePeaks(m) {
         if (!m || m.peaks || m.loading) return;
         m.loading = api('/api/peaks', {token: m.token, buckets: 4000}).then(w => { m.peaks = w.peaks; m.duration = m.duration || w.duration; })
@@ -2264,7 +2273,9 @@
             <button class="secondary" type="button" data-a="mend" title="${t('Usa el punto donde va el reproductor')}">${t('Final aquí ⇥')}</button>
             <span class="field len"></span>
             <button class="secondary" type="button" data-a="playsel">${t('▶ Escuchar tramo')}</button>
+            <button class="secondary" type="button" data-a="mix" title="${t('Arma este fragmento con sus sonidos (encima, al inicio y al final) y con su voz/música, tal como va a quedar')}">${t('🎧 Escuchar la mezcla (fragmento + sonidos)')}</button>
           </div>
+          <div class="eb-mix"></div>
           <div class="eb-fx">
             <div class="fx-head"><h4>${t('🔊 Sonidos encima de este fragmento')}</h4><small>${t('Aplausos, «boing», risas… suenan encima, sin cortarlo.')}</small><span style="flex:1"></span><button class="secondary" type="button" data-a="fx">${t('➕ Agregar sonido')}</button></div>
             <div class="fxline" data-b="${uid}"></div><ol class="fxrows" data-b="${uid}"></ol>
@@ -2321,6 +2332,41 @@
         for (const tr of ['main', 'audio']) order[tr].forEach((b, k) => { if (boxes[tr].children[k] !== b.el) boxes[tr].insertBefore(b.el, boxes[tr].children[k] || null); this.fillBlock(b); });
         $('#edBlocksHead').hidden = !this.frags.length;
         $('#edABlocksBox').hidden = !order.audio.length;
+      },
+      // La mezcla de UN fragmento: el fragmento (con su voz/música) + sus sonidos encima, al inicio y al final
+      async mixBlock(b) {
+        const F = this.fragOf(b.uid); if (!F) return;
+        this.pauseAll();
+        document.querySelectorAll('.eb-mix').forEach(x => { if (x !== b.el.querySelector('.eb-mix')) x.innerHTML = ''; });
+        const box = b.el.querySelector('.eb-mix'), btn = b.el.querySelector('[data-a=mix]');
+        const mine = this.fx.filter(f => f.frag === b.uid), L = f => (f.end - f.start) * f.repeat, r = v => Math.round(v * 1000) / 1000;
+        const pre = mine.filter(f => f.place === 'start'), post = mine.filter(f => f.place === 'end'), over = mine.filter(f => (f.place || 'over') === 'over');
+        const preLen = pre.reduce((a, f) => a + L(f), 0), dur = F.end - F.start, effects = [];
+        const one = (f, at, extend) => effects.push({id: f.id, at: r(at), start: f.start, end: f.end, repeat: f.repeat, volume: f.volume, extend});
+        let acc = 0; pre.forEach(f => { one(f, acc, false); acc += L(f); });
+        over.forEach(f => one(f, preLen + f.at, false));
+        acc = preLen + dur; post.forEach(f => { one(f, acc, true); acc += L(f); });
+        btn.disabled = true; box.innerHTML = `<p class="ed-help">${t('Armando la mezcla de este fragmento…')}</p>`;
+        try {
+          const job = await api('/api/edit', {kind: 'audio', preview: true, slot: 'bloque', mode: 'original', smooth: $('#edSmooth').checked,
+            fragments: [{token: F.token, start: F.start, end: F.end, mode: this.modeShown(this.trackOf(b.uid)) ? (F.mode || 'original') : 'original', pos: r(preLen)}],
+            audio_mode: 'own', audio_fragments: [], effects, overlays: []});
+          for (;;) {
+            await new Promise(ok => setTimeout(ok, 500));
+            const st = await api('/api/edit/' + job.id);
+            if (st.status === 'running') {
+              const pct = Math.round(st.percent);
+              box.innerHTML = `<p class="ed-help">${st.phase === 'model' ? tf('Bajando el separador (solo la primera vez, ~65 MB)… {0} %', pct)
+                : st.phase === 'separate' || st.phase === 'audio' ? tf('Separando la voz y la música de los fragmentos… {0} %', pct) : tf('Armando la mezcla de este fragmento… {0} %', pct)}</p>`;
+              continue;
+            }
+            if (st.status !== 'done') { box.innerHTML = `<p class="ed-help">${esc(t(st.error || 'No se pudo armar la mezcla.'))}</p>`; break; }
+            box.innerHTML = `<div class="mix-h">${t('🎧 Mezcla de este fragmento (así va a sonar)')}<span style="flex:1"></span><button class="link" type="button" data-a="mixclose">${t('Cerrar')}</button></div><audio controls autoplay src="/media/${st.media.token}"></audio>`;
+            const au = box.querySelector('audio'); au.addEventListener('play', () => this.pauseAll(au));
+            break;
+          }
+        } catch (error) { box.innerHTML = `<p class="ed-help">${esc(t(error.message))}</p>`; }
+        finally { btn.disabled = false; }
       },
       playBlock(b, from) {
         const F = this.fragOf(b.uid); if (!F) return;
@@ -3126,6 +3172,8 @@
         else if (a === 'zall') b.wv.all();
         else if (a === 'zfrag') Edit.fragView(b);
         else if (a === 'fx') Fx.open(uid);
+        else if (a === 'mix') Edit.mixBlock(b);
+        else if (a === 'mixclose') { Edit.pauseAll(); el.querySelector('.eb-mix').innerHTML = ''; }
       });
       box.addEventListener('input', event => {
         const sk = event.target.closest('[data-a=seek]'), el = event.target.closest('.eblk[data-u]'); if (!sk || !el) return;

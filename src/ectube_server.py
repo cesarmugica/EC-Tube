@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-APP_VERSION = "5.5.0"
+APP_VERSION = "5.5.1"
 
 try:  # lo genera windows/build.ps1
     from ectube_build import BUILD_DATE  # type: ignore[import-not-found]
@@ -3256,8 +3256,10 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "error": "El recorte de la edición final quedó vacío."}, 400)
                     return
         preview = bool(data.get("preview"))
-        if preview:  # solo una vista previa a la vez
-            for old in [j for j in EDITS.values() if j.preview]:
+        # una vista previa a la vez por «lugar»: la de la edición final («final») y la mezcla de un bloque («bloque»)
+        slot = "bloque" if data.get("slot") == "bloque" else "final"
+        if preview:
+            for old in [j for j in EDITS.values() if j.preview and getattr(j, "slot", "final") == slot]:
                 old.cancel()
                 with contextlib.suppress(OSError):
                     old.output.unlink()
@@ -3268,6 +3270,7 @@ class Handler(BaseHTTPRequestHandler):
         except RuntimeError as exc:
             self.send_json({"ok": False, "error": str(exc)}, 400)
             return
+        job.slot = slot
         EDITS[job.id] = job
         threading.Thread(target=job.run, daemon=True).start()
         self.send_json({"ok": True, **job.public()})
