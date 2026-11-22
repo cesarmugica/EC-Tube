@@ -1595,6 +1595,18 @@
     };
     const t = text => (LANG === 'en' && text && EN[text]) || text;
     const tf = (text, ...values) => t(text).replace(/\{(\d)\}/g, (_, i) => values[+i]);
+    // Parar EXACTO en el final del tramo: «timeupdate» llega cada ~¼ de segundo y se pasaba de largo;
+    // mientras suena se revisa en cada cuadro (~60 veces por segundo) y se deja el reproductor justo en el final.
+    function exactStop(el, getEnd, clear) {
+      const tick = () => {
+        if (el.paused) return;
+        const end = getEnd();
+        if (end != null && el.currentTime >= end - 0.004) { el.pause(); try { el.currentTime = end; } catch (_) {} clear(); return; }
+        requestAnimationFrame(tick);
+      };
+      el.addEventListener('play', () => requestAnimationFrame(tick));
+      el.addEventListener('timeupdate', () => { const end = getEnd(); if (end != null && el.currentTime >= end) { el.pause(); try { el.currentTime = end; } catch (_) {} clear(); } });
+    }
     function translatePage() {
       if (LANG !== 'en') return;
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {acceptNode: node => node.parentElement.closest('script, style') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT});
@@ -1847,7 +1859,8 @@
         setRange(0, editor.duration); trimSay(t(TRIM_HELP));
       });
       el.addEventListener('error', () => trimSay(t('Este archivo no se puede reproducir aquí, pero sí puedes recortarlo escribiendo los tiempos.')));
-      el.addEventListener('timeupdate', () => { if (editor.previewEnd !== null && el.currentTime >= editor.previewEnd) { el.pause(); editor.previewEnd = null; } drawTrim(); });
+      exactStop(el, () => editor.previewEnd, () => { editor.previewEnd = null; });
+      el.addEventListener('timeupdate', () => drawTrim());
       $('#saveTrim').disabled = false; $('#editor').hidden = false; $('#trimMode').value = 'original'; syncTrimMode();
     }
     async function openEditorByToken(token) {
@@ -2159,7 +2172,7 @@
           $('#edPlayerBox').innerHTML = `<${tag} controls preload="metadata"></${tag}>`;
           const el = this.el = $('#edPlayerBox ' + tag); el.src = '/media/' + m.token;
           el.addEventListener('loadedmetadata', () => { if (!m.duration) { m.duration = el.duration || 0; if (!range) this.setSel(0, m.duration); this.zoomAll(); } });
-          el.addEventListener('timeupdate', () => { if (this.playEnd !== null && el.currentTime >= this.playEnd) { el.pause(); this.playEnd = null; } });
+          exactStop(el, () => this.playEnd, () => { this.playEnd = null; });
           el.addEventListener('play', () => this.loop()); el.addEventListener('seeked', () => this.draw());
         }
         if (!m.peaks) {
@@ -2243,7 +2256,9 @@
         const media = el.querySelector(tag), b = {el, media, token: f.token, uid, stopAt: null, viewSet: false};
         media.src = '/media/' + f.token;
         media.addEventListener('loadedmetadata', () => { const F = this.fragOf(uid); if (!m.duration) m.duration = media.duration || 0; if (F && media.currentTime < 0.01) media.currentTime = F.start; this.fillBlock(b); });
-        media.addEventListener('timeupdate', () => { if (b.stopAt !== null && media.currentTime >= b.stopAt) { media.pause(); b.stopAt = null; } this.tickBlock(b); });
+        // el final se lee en vivo: si mueves el borde mientras suena, para en el borde nuevo
+        exactStop(media, () => b.stopAt === null ? null : (this.fragOf(uid)?.end ?? b.stopAt), () => { b.stopAt = null; });
+        media.addEventListener('timeupdate', () => this.tickBlock(b));
         media.addEventListener('play', () => { el.querySelector('[data-a=play]').textContent = '⏸'; const loop = () => { this.tickBlock(b); if (!media.paused) requestAnimationFrame(loop); }; loop(); });
         media.addEventListener('pause', () => { el.querySelector('[data-a=play]').textContent = '▶'; this.tickBlock(b); });
         media.addEventListener('seeked', () => this.tickBlock(b));
@@ -2345,7 +2360,8 @@
         const p = this.prev(); if (!p) return;
         const loop = () => { if (this.fw) this.fw.draw(); if (!p.paused) requestAnimationFrame(loop); };
         p.addEventListener('play', () => { this.pauseAll(p); loop(); });
-        p.addEventListener('timeupdate', () => { if (this.cutEnd !== null && p.currentTime >= this.cutEnd) { p.pause(); this.cutEnd = null; } if (this.fw) this.fw.draw(); });
+        exactStop(p, () => this.cutEnd === null ? null : (this.cut ? this.cut[1] : this.total()), () => { this.cutEnd = null; });
+        p.addEventListener('timeupdate', () => { if (this.fw) this.fw.draw(); });
         p.addEventListener('seeked', () => { if (this.fw) this.fw.draw(); });
         api('/api/peaks', {token, buckets: 4000}).then(w => {
           this.fpeaks = w.peaks; this.fpeaksDur = w.duration || this.total();
@@ -2479,7 +2495,10 @@
         if (this.playing === key && key !== null) { this.stop(); return; }
         this.stop(); this.playing = key; const a = this.audio; let left = times;
         a.src = url; a.currentTime = from;
-        a.ontimeupdate = () => { if (to !== null && a.currentTime >= to) { if (--left > 0) a.currentTime = from; else this.stop(); } };
+        const check = () => { if (to !== null && a.currentTime >= to - 0.004) { if (--left > 0) a.currentTime = from; else this.stop(); } };
+        a.ontimeupdate = check;
+        const tick = () => { if (a.paused || this.playing !== key) return; check(); requestAnimationFrame(tick); };
+        a.onplay = () => requestAnimationFrame(tick);
         a.onended = () => { if (--left > 0) { a.currentTime = from; a.play().catch(() => {}); } else this.stop(); };
         a.play().catch(() => {});
         return true;
@@ -3474,7 +3493,7 @@
       } catch (error) { b.disabled = false; Subs.say(t(error.message)); }
     });
     sVideo.addEventListener('loadedmetadata', () => Subs.aspect());
-    sVideo.addEventListener('timeupdate', () => { if (Subs.stopAt != null && sVideo.currentTime >= Subs.stopAt) { sVideo.pause(); Subs.stopAt = null; } });
+    exactStop(sVideo, () => Subs.stopAt, () => { Subs.stopAt = null; });
     sVideo.addEventListener('click', () => { if (!Subs.marking) $('#sPP').click(); });
     $('#sPP').addEventListener('click', () => { Subs.stopAt = null; if (sVideo.paused) sVideo.play().catch(() => {}); else sVideo.pause(); });
     $('#sBack').addEventListener('click', () => { sVideo.currentTime = Math.max(0, sVideo.currentTime - 3); });

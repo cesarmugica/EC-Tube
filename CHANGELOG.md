@@ -1,5 +1,8 @@
 # Historial de versiones
 
+## 5.4.1
+- **«Escuchar tramo» ahora para exacto en el final** (antes se pasaba hasta ~¼ de segundo, y lo que oías no era justo lo que se corta). Al terminar, el reproductor se queda en el final marcado. Si mueves el borde mientras suena, para en el borde nuevo. Aplica en los bloques de cada fragmento, la onda de la fuente, «Escuchar como se va a guardar», el ✂ Recorte rápido, los sonidos encima y 💬 Subtítulos.
+
 ## 5.4.0 — 🧩 Capas en la edición final
 - **Capas** en el bloque «Edición final»: un renglón por fragmento que puedes **arrastrar en el tiempo**. Si lo encimas con el anterior, **uno se desvanece mientras entra el otro** (en video, la imagen también se funde); si lo separas, queda **silencio** (y negro en video). Cerca de pegado se pega solo; doble clic lo vuelve a pegar y «↺ Pegar todos uno tras otro» deja todo como antes. Si mueves uno, los que siguen se recorren con él.
 - Abajo de las capas dice qué pasa en cada unión («1 y 2: se enciman 0:02.00», «2 y 3: 0:01.36 de silencio»).
