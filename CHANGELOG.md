@@ -1,5 +1,9 @@
 # Historial de versiones
 
+## 5.7.1
+- Regresa **«🔄 Armar y escuchar la unión de los fragmentos»** en la edición final.
+- La **onda de la edición final muestra la entrada / salida suave**: la onda sube y baja con el fade y una línea amarilla marca dónde empieza y termina, con sus segundos. Cambia en cuanto mueves los segundos o las casillas.
+
 ## 5.7.0 — ▶ Escuchar más claro
 - **El ▶ de cada reproductor toca solo lo marcado** (entre los bordes blancos, como estén ahora): en la pista original, en cada fragmento y en la edición final. Si vas a la mitad, sigue desde ahí; si no, empieza en el inicio marcado.
 - Botones iguales en todos lados: **▶ Escuchar todo** (completo, sin parar) y **▶ Escuchar fragmento** (solo lo marcado). En cada fragmento también **🎧 Escuchar edición (fragmento + sonidos)**, y en la edición final **🎧 Escuchar edición final**: exactamente como se va a guardar, con recorte, entrada / salida suave y todo.

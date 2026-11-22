@@ -568,6 +568,8 @@
         <p class="ed-help" id="edLayInfo"></p>
         <div class="ed-foot" style="margin-top:8px">
           <label class="check"><input type="checkbox" id="edSmooth" checked> Suavizar uniones (sin «clic»)</label>
+          <span class="grow"></span>
+          <button class="secondary" type="button" id="edBuild" title="Une todos los fragmentos con sus capas y sonidos, y la reproduce completa">🔄 Armar y escuchar la unión de los fragmentos</button>
         </div>
         <div id="edPreviewBox"></div>
         <div class="wave" id="edFWave" aria-label="Onda de la edición final: arrastra los bordes para recortar el inicio o el final"><canvas></canvas></div>
@@ -2062,11 +2064,13 @@
             const t0 = v0 + x / w * span, t1 = v0 + (x + 1) / w * span;
             const i0 = Math.floor(t0 / d * p.length), i1 = Math.max(i0 + 1, Math.ceil(t1 / d * p.length)); let peak = 0;
             for (let i = Math.max(0, i0); i < Math.min(p.length, i1); i++) peak = Math.max(peak, p[i]);
-            const on = !sel || (t0 >= sel[0] && t0 <= sel[1]), y = Math.max(0.5, peak * (mid - 2));
+            const gain = this.o.gain ? this.o.gain(t0) : 1;
+            const on = !sel || (t0 >= sel[0] && t0 <= sel[1]), y = Math.max(0.5, peak * gain * (mid - 2));
             g.fillStyle = on ? '#c9bcff' : '#5c656c'; g.fillRect(x, mid - y, 1, y * 2);
           }
         }
         if (sel) { g.fillStyle = '#ffffff'; sel.forEach(t => g.fillRect(X(t) - 1, 0, 2, h - 14)); }
+        if (this.o.envelope) this.o.envelope(g, X, w, h, mid);
         const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800], step = steps.find(s => span / s <= 10) || 3600;
         g.fillStyle = '#9aa3aa'; g.font = '10px Segoe UI, sans-serif';
         for (let t = Math.ceil(v0 / step) * step; t <= v1; t += step) { g.fillRect(X(t), h - 14, 1, 4); g.fillText(fmt2(t).replace(/\.00$/, ''), X(t) + 2, h - 3); }
@@ -2335,6 +2339,27 @@
         finally { btns.forEach(x => { x.disabled = !this.frags.length || !!this.job; }); }
       },
       // entrada / salida suave de toda la edición (segundos; 0 = sin)
+      // cuánto suena en el segundo t de la edición final con la entrada / salida suave (para dibujarlo en la onda)
+      fadeGain(tt) {
+        const {fi, fo} = this.fadeVals(); if (!fi && !fo) return 1;
+        const [a, b] = this.cut || [0, this.total()]; if (tt < a || tt > b) return 1;
+        const half = (b - a) / 2; let g = 1;
+        if (fi) g = Math.min(g, (tt - a) / Math.min(fi, half));
+        if (fo) g = Math.min(g, (b - tt) / Math.min(fo, half));
+        return Math.max(0, Math.min(1, g));
+      },
+      drawFades(g, X, w, h, mid) {
+        const {fi, fo} = this.fadeVals(); if (!fi && !fo) return;
+        const [a, b] = this.cut || [0, this.total()], half = (b - a) / 2, top = 2, bot = mid;
+        g.strokeStyle = '#f2c94c'; g.lineWidth = 2; g.setLineDash([]);
+        g.beginPath();
+        const i = fi ? Math.min(fi, half) : 0, o = fo ? Math.min(fo, half) : 0;
+        g.moveTo(X(a), i ? bot : top); g.lineTo(X(a + i), top); g.lineTo(X(b - o), top); g.lineTo(X(b), o ? bot : top);
+        g.stroke();
+        g.fillStyle = '#f2c94c'; g.font = '600 10px Segoe UI, sans-serif';
+        if (i) g.fillText('fade in ' + fmt2(i).replace(/^0:0?/, '') + ' s', X(a) + 4, h - 18);
+        if (o) { const txt = 'fade out ' + fmt2(o).replace(/^0:0?/, '') + ' s'; g.fillText(txt, X(b) - g.measureText(txt).width - 4, h - 18); }
+      },
       fadeVals(raw) {
         const n = q => Math.max(0.5, Math.min(30, +$(q).value || 0));
         if (raw) return {inOn: $('#edFadeIn').checked, outOn: $('#edFadeOut').checked, inS: n('#edFadeInS'), outS: n('#edFadeOutS')};
@@ -2608,7 +2633,7 @@
           ? tf('Video: {0} fragmentos · {1} · Pista de audio: {2}', this.frags.length, fmt2(this.total()), fmt2(this.total(this.afrags)))
           : tf('Edición final: {0} fragmentos · {1}', this.frags.length, fmt2(this.total()));
         $('#edSave').disabled = $('#edPreview').disabled = !this.frags.length || !!this.job;
-        $('#edCutPlay').disabled = $('#edOutPlay').disabled = $('#edFadeApply').disabled = $('#edPreview').disabled;
+        $('#edCutPlay').disabled = $('#edOutPlay').disabled = $('#edFadeApply').disabled = $('#edBuild').disabled = $('#edPreview').disabled;
         $('#edAddFrag').textContent = this.editing >= 0 ? tf('✔ Actualizar fragmento {0}', (this.editTrack === 'audio' ? '♪' : '') + (this.editing + 1))
           : t(this.other() && this.track === 'audio' ? '➕ Agregar a la pista de audio' : this.other() ? '➕ Agregar a la pista de video' : '➕ Agregar fragmento');
         $('#edCancelEdit').hidden = this.editing < 0;
@@ -3240,7 +3265,8 @@
       peaks: () => Edit.fpeaks && Math.abs(Edit.fpeaksDur - Edit.total()) < 0.75 ? Edit.fpeaks : null,
       sel: () => Edit.total() ? (Edit.cut || [0, Edit.total()]) : null, newSel: false,
       setSel: (a, b, done) => Edit.setCut(a, b, done), now: () => Edit.prev() ? Edit.prev().currentTime : null,
-      seek: tt => { const p = Edit.prev(); if (p) p.currentTime = tt; }, decor: (...args) => Edit.decorFinal(...args)});
+      seek: tt => { const p = Edit.prev(); if (p) p.currentTime = tt; }, decor: (...args) => Edit.decorFinal(...args),
+      gain: tt => Edit.fadeGain(tt), envelope: (...args) => Edit.drawFades(...args)});
     $('#edFZoomIn').addEventListener('click', () => Edit.fw.zoom(0.5));
     $('#edFZoomOut').addEventListener('click', () => Edit.fw.zoom(2));
     $('#edFZoomAll').addEventListener('click', () => Edit.fw.all());
@@ -3253,7 +3279,10 @@
     $('#edCutPlay').addEventListener('click', () => Edit.playFinal('cut'));
     $('#edOutPlay').addEventListener('click', () => Edit.playOut());
     $('#edFadeApply').addEventListener('click', () => Edit.playOut());
-    ['#edFadeIn', '#edFadeOut', '#edFadeInS', '#edFadeOutS'].forEach(q => $(q).addEventListener('change', () => Edit.save(false)));
+    ['#edFadeIn', '#edFadeOut', '#edFadeInS', '#edFadeOutS'].forEach(q => {
+      $(q).addEventListener('change', () => { Edit.save(false); Edit.fw.draw(); });
+      $(q).addEventListener('input', () => Edit.fw.draw());  // la onda se ve con la entrada / salida suave al momento
+    });
     $('#edCutReset').addEventListener('click', () => { Edit.cut = null; Edit.renderFinal(); Edit.save(false); });
     // Capas: arrastrar un fragmento en el tiempo (encimarlo o separarlo). Doble clic: pegarlo otra vez al anterior.
     (() => {
@@ -3394,6 +3423,7 @@
     }
     $('#edSmooth').addEventListener('change', () => Edit.save());
     $('#edPreview').addEventListener('click', () => Edit.playFinal('all'));
+    $('#edBuild').addEventListener('click', () => { if (!Edit.frags.length || Edit.job) return; Edit.afterPreview = () => Edit.playFinal('all'); Edit.run(true); });
     $('#edSave').addEventListener('click', () => Edit.run(false));
     $('#edClear').addEventListener('click', async () => {
       if (!Edit.sources.length && !Edit.frags.length && !Edit.fx.length && !Edit.ov.length) return;
